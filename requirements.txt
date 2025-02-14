@@ -1,0 +1,10 @@
+ipython
+matplotlib
+pandas
+geopandas
+pytest
+tqdm
+xarray
+h5netcdf
+dask
+flask
