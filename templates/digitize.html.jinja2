@@ -1,35 +1,36 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Flask App</title>
-
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+{% extends "base.html.jinja2" %}
+{% block extrahead %}
     <link rel="stylesheet" href="{{ url_for('static', filename='plugins/node_modules/leaflet/dist/leaflet.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='plugins/node_modules/leaflet-draw/dist/leaflet.draw.css') }}">
 
     <meta name="radarkey" content="{{radar_key}}">
-</head>
-<body>
+{% endblock extrahead %}
+{% block content %}
     <a href="/" id="home-button">Home</a>
     <h1>Digitizing "{{radar_key}}"</h1>
-    <p>This is a basic Flask application with a static file example.</p>
-
+    <!--
     <form id="name-form" onSubmit="return false;">
         <label for="name">Name/alias:</label>
         <input type="text" id="user-name" name="name">
     </form>
-
+    -->
     <button id="save-button">Save progress</button>
-    <button id="load-button">Load data</button>
+    <!-- <button id="load-button">Load data</button> -->
+    <input type="file" id="load-button" accept=".json,application/json">
+    <button id="submit-button">Submit data</button>
+
+    <form id="comment-form" onSubmit="return false;">
+        <label for="comment">Comment</label>
+        <textarea id="user-comment" name="comment" rows=4 cols=50></textarea>
+    </form>
+
+    <p id="response-text" style="color: red;"></p>
 
     <form id="interp-class-select"></form>
     <div id="map"></div>
 
     <script src="{{ url_for('static', filename='plugins/node_modules/leaflet/dist/leaflet.js') }}"></script>
     <script src="{{ url_for('static', filename='plugins/node_modules/leaflet-draw/dist/leaflet.draw.js') }}"></script>
+    <script src="{{ url_for('static', filename='base.js') }}"></script>
     <script src="{{ url_for('static', filename='digitize.js') }}"></script>
-
-
-</body>
-</html>
+{% endblock content %}

@@ -43,3 +43,14 @@ form {
 input[type="radio"] {
   margin-right: 5px;
 }
+
+.radargram-choice {
+  border: 2px solid black;
+  border-radius: 15px;
+  display: flex;
+  max-width: 400px;
+  min-height: 10vw;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}

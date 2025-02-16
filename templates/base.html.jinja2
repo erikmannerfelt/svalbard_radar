@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Svalbard radar interpretation experiment</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+		{% block extrahead %}{% endblock extrahead %}
+</head>
+<body>
+  <script src="{{ url_for('static', filename='base.js') }}"></script>
+	{% block content %}{% endblock content %}
+</body>

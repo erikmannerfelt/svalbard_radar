@@ -8,3 +8,5 @@ xarray
 h5netcdf
 dask
 flask
+flask-httpauth
+jsonschema

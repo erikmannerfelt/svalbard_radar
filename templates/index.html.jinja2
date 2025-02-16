@@ -1,16 +1,22 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Flask App</title>
-
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-
-</head>
-<body>
+{% extends "base.html.jinja2" %}
+{% block content %}
     <h1>Hello</h1>
-    {% for radar_key in all_radargrams %}
-        <a href="/digitize/{{radar_key}}">{{radar_key}}</a>
+
+    <p>
+    {% if user != None %}
+        Logged in as <b>{{user}}</b>
+        <button id="logout-button">Log out</button>
+    {% else %}
+        <button id="login-button">Log in</button>
+    {% endif %}
+    </p>
+    {% for radar_key, values in all_radargrams.items() %}
+        <a href="/digitize/{{radar_key}}" class="radargram-choice" style="background-color: {{ '#ccffcc' if values.n_submitted_by_user > 0 else '#ffcccc' }};">
+            <b>{{radar_key}}</b><br>
+            Done by {{values.n_total_submissions}} people.<br>
+            {{ 'Not done by you' if values.n_submitted_by_user == 0 else 'Done (' + values.n_submitted_by_user | string + "x) by you!" }}
+            <img src="{{values.thumbnail}}" style="max-height: 100px; max-width: 200px;"></img>
+        </a>
     {% endfor %}
-</body>
-</html>
+    <script src="{{ url_for('static', filename='index.js') }}"></script>
+{% endblock content %}
