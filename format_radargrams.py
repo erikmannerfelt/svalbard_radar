@@ -3,6 +3,10 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 import numpy as np
 from PIL import Image
+import geopandas as gpd
+import shapely
+import scipy.interpolate
+import warnings
 
 def normalize(data: np.ndarray):
 
@@ -11,13 +15,22 @@ def normalize(data: np.ndarray):
     data = np.clip((data - minval) / (maxval - minval), 0, 1)
     return (data * 255).astype("uint8")
 
-def main(chunksize: int = 1000):
-
-    src_filepath = Path("./processed_radar/amenfonna/20240507/DAT_0042_A1.nc")
+def parse_radargram(src_filepath: Path, chunksize: int = 1000):
+    src_filepath = Path(src_filepath)
 
     cache_dir = (Path("static/radargrams/") / "/".join(src_filepath.parts[-3:])).with_suffix("")
 
     with xr.open_dataset(src_filepath) as data:
+
+        # distances = np.arange(0, data.attrs["total-distance"].item(), 5)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            x_inds = scipy.interpolate.interp1d(data["distance"].values, np.arange(data["data"].shape[1]))(np.r_[np.arange(0, data["distance"].values.max(), step=5), [data["distance"].max().item()]])
+            x_inds = np.clip(np.where(np.isfinite(x_inds), x_inds, 0), 0, data["data"].shape[1] - 1).astype(int)
+
+        track = gpd.points_from_xy(data["easting"].isel(x=x_inds), data["northing"].isel(x=x_inds), crs=data.attrs["crs"]).to_crs(4326)
+
+        track = shapely.geometry.LineString(track)
 
         image: np.ndarray | None = None
         # image = normalize(data["data"].values)
@@ -63,10 +76,29 @@ def main(chunksize: int = 1000):
             "width": data["data"].shape[1],
             "height": data["data"].shape[0],
             "thumbnail": str(thumbnail_path),
+            "track": shapely.geometry.mapping(track),
+            "length": data.attrs["total-distance"],
+            "length_km_rounded": round(data.attrs["total-distance"] / 1000, 1),
+            "bounds": {
+                "minlat": track.bounds[1],
+                "maxlat": track.bounds[3],
+                "minlon": track.bounds[0],
+                "maxlon": track.bounds[2],
+            },
+            "max_depth": data.depth.max().item(),
             "tiles": tiles,
         }
-
         return meta
 
+def parse_all_radargrams():
+    radargrams = {}
+    for filepath in Path("processed_radar").rglob("*.nc"):
+        radargram = parse_radargram(filepath)
+
+        radargrams[radargram["radar_key"]] = radargram
+
+    return radargrams
+    
+
 if __name__ == "__main__":
-    main()
+    parse_radargram(Path("./processed_radar/amenfonna/20240507/DAT_0042_A1.nc"))

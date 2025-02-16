@@ -10,3 +10,4 @@ dask
 flask
 flask-httpauth
 jsonschema
+scipy

@@ -240,9 +240,6 @@ async function load_digitized(event, meta, drawn_items) {
   };
 
   reader.readAsText(file);
-  
-
-
 }
 
 async function setup_map() {
@@ -268,6 +265,39 @@ async function setup_map() {
   map.fitBounds(bounds);
 
   let drawn_items = setup_draw_features(map);
+
+
+  let overview_map = L.map("overview-map", {
+    maxZoom: 15,
+    minZoom: 3,
+  });
+
+  let lines = L.geoJSON(meta["track"], {color: "black"}).addTo(overview_map);
+
+  lines.getLayers().forEach(function (line) {
+    L.polylineDecorator(line, {
+          patterns: [
+              {
+                  // offset: '100%',          // Start the pattern from the end
+                  repeat: 100,               // No repeat for arrow
+                  symbol: L.Symbol.arrowHead({
+                      pixelSize: 10,       // Size of the arrow
+                      polygon: false,
+                      pathOptions: { stroke: true, color: 'black' } // Arrow style
+                  })
+              }
+          ]
+      }).addTo(overview_map);
+  });
+  
+	L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+		bounds:[[-90, -180], [90, 180]],
+		noWrap: true,
+	}).addTo(overview_map);
+
+	let overview_bounds = [[meta["bounds"]["minlat"], meta["bounds"]["minlon"]], [meta["bounds"]["maxlat"], meta["bounds"]["maxlon"]]]
+  overview_map.fitBounds(overview_bounds);
+  console.log(overview_bounds);
 
   document.getElementById("save-button").onclick = function(event) {
     if (drawn_items.getLayers().length == 0) {

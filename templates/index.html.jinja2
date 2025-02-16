@@ -14,7 +14,8 @@
         <a href="/digitize/{{radar_key}}" class="radargram-choice" style="background-color: {{ '#ccffcc' if values.n_submitted_by_user > 0 else '#ffcccc' }};">
             <b>{{radar_key}}</b><br>
             Done by {{values.n_total_submissions}} people.<br>
-            {{ 'Not done by you' if values.n_submitted_by_user == 0 else 'Done (' + values.n_submitted_by_user | string + "x) by you!" }}
+            {{ 'Not done by you' if values.n_submitted_by_user == 0 else 'Done (' + values.n_submitted_by_user | string + "x) by you!" }}<br>
+            Length: {{values.length_km_rounded}} km.</br>
             <img src="{{values.thumbnail}}" style="max-height: 100px; max-width: 200px;"></img>
         </a>
     {% endfor %}

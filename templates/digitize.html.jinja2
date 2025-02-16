@@ -26,11 +26,14 @@
 
     <p id="response-text" style="color: red;"></p>
 
+    <div id="overview-map"></div>
+
     <form id="interp-class-select"></form>
     <div id="map"></div>
 
     <script src="{{ url_for('static', filename='plugins/node_modules/leaflet/dist/leaflet.js') }}"></script>
     <script src="{{ url_for('static', filename='plugins/node_modules/leaflet-draw/dist/leaflet.draw.js') }}"></script>
+    <script src="{{ url_for('static', filename='plugins/node_modules/leaflet-polylinedecorator/dist/leaflet.polylineDecorator.js') }}"></script>
     <script src="{{ url_for('static', filename='base.js') }}"></script>
     <script src="{{ url_for('static', filename='digitize.js') }}"></script>
 {% endblock content %}

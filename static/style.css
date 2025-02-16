@@ -20,6 +20,11 @@ p {
 
 }
 
+#overview-map {
+  height: 400px;
+  width: 400px;
+}
+
 form {
   display: flex;
   width: 80vw;
