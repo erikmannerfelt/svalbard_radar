@@ -5,10 +5,10 @@ async function setup_map() {
   if (logout_button) {
     logout_button.onclick = force_logout;
   }
-  let login_button = document.getElementById("login-button");
-  if (login_button) {
-    login_button.onclick = log_in;
-  }
+  // let login_button = document.getElementById("login-button");
+  // if (login_button) {
+  //   login_button.onclick = log_in;
+  // }
 }
 
 async function main() {

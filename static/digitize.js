@@ -179,6 +179,11 @@ async function submit_digitized(data) {
           body: JSON.stringify(data)
       });
 
+      if (response.status == 401) {
+        user_message("Not logged in! Please save the data, log in, and try again.");
+        return;
+      }
+
       const result = await response.json();
       console.log('Response:', result);
       user_message(result.message);

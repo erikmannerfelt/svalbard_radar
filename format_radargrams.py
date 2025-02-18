@@ -8,6 +8,7 @@ import shapely
 import scipy.interpolate
 import scipy
 import warnings
+import tqdm
 
 def normalize(data: np.ndarray):
 
@@ -126,12 +127,17 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000):
         }
         return meta
 
-def parse_all_radargrams():
+def parse_all_radargrams(progress: bool = False):
     radargrams = {}
-    for filepath in Path("processed_radar").rglob("*.nc"):
-        radargram = parse_radargram(filepath)
 
-        radargrams[radargram["radar_key"]] = radargram
+
+    for glacier_dir in tqdm.tqdm(list(Path("processed_radar").glob("*")), disable=(not progress)):
+        if not glacier_dir.is_dir():
+            continue
+        radargrams[glacier_dir.stem] = {}
+        for filepath in glacier_dir.rglob("*.nc"):
+            radargram = parse_radargram(filepath)
+            radargrams[glacier_dir.stem][radargram["radar_key"]] = radargram
 
     return radargrams
     

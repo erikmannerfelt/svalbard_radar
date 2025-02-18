@@ -1,25 +1,36 @@
 {% extends "base.html.jinja2" %}
 {% block content %}
-    <h1>Hello</h1>
+    <h1>The Svalbard radar digitization experiment</h1>
 
     <p>
     {% if user != None %}
         Logged in as <b>{{user}}</b>
         <button id="logout-button">Log out</button>
     {% else %}
-        <button id="login-button">Log in</button>
+        <!--<button id="login-button">Log in</button>-->
+        <a href="/login">Log in</a>
     {% endif %}
     </p>
-    <div class="radargram-index">
-    {% for radar_key, values in all_radargrams.items() %}
-        <a href="/digitize/{{radar_key}}" class="radargram-choice" style="background-color: {{ '#ccffcc' if values.n_submitted_by_user > 0 else '#ffcccc' }};">
-            <b>{{radar_key}}</b><br>
-            Done by {{values.n_total_submissions}} people.<br>
-            {{ 'Not done by you' if values.n_submitted_by_user == 0 else 'Done (' + values.n_submitted_by_user | string + "x) by you!" }}<br>
-            Length: {{values.length_km_rounded}} km.</br>
-            <img src="{{values.thumbnail}}" style="max-height: 100px; max-width: 200px;"></img>
-        </a>
+    <!-- <div class="radargram-index"> -->
+    {% for glacier_key, glacier_radargrams in all_radargrams.items() %}
+        <div class="radargram-perglacier">
+            <h2>{{glacier_key}}</h2>
+            <p>Done by {{glacier_radargrams._meta.n_total_submissions}} people</p>
+            <div class="radargram-index">
+                {% for radar_key, values in glacier_radargrams.items() %}
+                    {% if radar_key != "_meta" %}
+
+                    <a href="/digitize/{{radar_key}}" class="radargram-choice" style="background-color: {{ '#ccffcc' if values.n_submitted_by_user > 0 else '#ffcccc' }};">
+                        <b>{{radar_key}}</b><br>
+                        Done by {{values.n_total_submissions}} people.<br>
+                        {{ 'Not done by you' if values.n_submitted_by_user == 0 else 'Done (' + values.n_submitted_by_user | string + "x) by you!" }}<br>
+                        Length: {{values.length_km_rounded}} km.</br>
+                        <img src="{{values.thumbnail}}" style="max-height: 100px; max-width: 300px;"></img>
+                    </a>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
     {% endfor %}
-    </div>
     <script src="{{ url_for('static', filename='index.js') }}"></script>
 {% endblock content %}

@@ -13,8 +13,36 @@ def get_paths():
             "20240207": [gpr_dir / "2024/GPR_20240207_A-ScottTurnerbreen-100MHz/"],
         },
         "bergmesterbreen": {
-            "20230222": [gpr_dir / "2023/GPR_230222_D-Bergmesterbreen-100MHz/"],
+            "20230222": [
+                gpr_dir / "2023/GPR_230222_D-Bergmesterbreen-100MHz/",
+                gpr_dir / "2023/GPR_230222_E-BergmesterbreenSlakbreen-100MHz/",
+            ],
+        },
+        "kroppbreen": {
+            "20230228": [gpr_dir / "2023/GPR_230228_A-Kroppbreen-100MHz/"]
+        },
+        # "mettebreen": {
+        #     "20230305": [gpr_dir / "2023/temp/GPR_230305_A-Mettebreen-100MHz"],
+        # },
+        "dronbreen": {
+            "20230220": [gpr_dir / "2023/GPR_230220_B-Slakbreen-100MHz"],  # It's misnamed as slakbreen
+            "20230221": [gpr_dir / "2023/GPR_230221_B-Slakbreen-100MHz"],  # It's misnamed as slakbreen
+            "20240209": [gpr_dir / "2024/GPR_20240209_A-Dronbreen-100MHz"],
+        },
+        "slakbreen": {
+            "20230320": [gpr_dir / "2023/GPR_230320_A-Slakbreen-100MHz"],
+            "20240310": [gpr_dir / "2024/GPR_20240310_A-Slakbreen-25MHz"],
+        },
+        "jinnbreen": {
+            "20240206": [
+                gpr_dir / "2024/GPR_20240206_A-Jinnbreen-100MHz",
+                gpr_dir / "2024/GPR_20240206_C-Jinnbreen-25MHz",
+            ],
+        },
+        "ragna_mariebreen": {
+            "20240405": [gpr_dir / "2024/GPR_20240405_A-RagnaMariebreen-100MHz"]
         }
+        
     }
 
 RSGPR_PATH = "/home/erikmann/Projects/UiO/rsgpr/target/release/rsgpr"
@@ -45,11 +73,18 @@ def run_rsgpr(input_filepath: Path | str, output_filepath: Path | str, merge: st
     ] + (["--merge", merge]) if merge is not None else []
     
 
+    
     result = subprocess.run(
         cmds,
-        check=True,
-        stdout=subprocess.PIPE,
+        # check=True,
+        capture_output=True,
     )
+    if result.returncode != 0:
+        raise ValueError(f"rsgpr failed: {result.stderr}")
+
+    log_filepath = Path(output_filepath).with_suffix(".log")
+
+    log_filepath.write_text(f"stdout:\n{result.stdout.decode()}\n\n\nstderr:\n{result.stderr.decode()}")
 
 
 class GprInfo:
@@ -98,9 +133,10 @@ class GprInfo:
                 "--filepath",
                 str(filepath),
             ],
-            check=True,
-            stdout=subprocess.PIPE,
+            capture_output=True,
         )
+        if result.returncode != 0:
+            raise ValueError(f"rsgpr failed: {result.stderr.decode()}")
         new = cls()
 
         def parse(line: str, key: str, constructor: Callable, unit: str | None = None):
@@ -150,31 +186,41 @@ def run_all():
         for date_str, paths in per_date.items():
 
             for file_dir in paths:
-                with tempfile.TemporaryDirectory() as temp_dir:
+                if not file_dir.is_dir():
+                    raise ValueError(f"Could not find {file_dir}")
 
-                    # infos: list[GprInfo] = []
-                    groups: list[list[GprInfo]] = [[]]
-                    for filepath in sorted(file_dir.rglob("*.rad")):
+                # infos: list[GprInfo] = []
+                groups: list[list[GprInfo]] = [[]]
+                for filepath in sorted(file_dir.rglob("*.rad")):
+                    try:
                         gpr_info = GprInfo.from_rsgpr(filepath)
-
-                        if (gpr_info.traces < 100) or (gpr_info.track_length < 100):
+                    except ValueError as exception:
+                        if "Could not parse location data" in str(exception):
+                            print(f"Skipped {filepath} (invalid location)")
                             continue
-                        # infos.append(gpr_info)
+                        raise
 
-                        if len(groups) == 1 and len(groups[-1]) == 0:
-                            groups[-1].append(gpr_info)
-                            continue
+                    if (gpr_info.traces < 100) or (gpr_info.track_length < 100):
+                        continue
+                    # infos.append(gpr_info)
 
-
-                        # print(infos[-2].time_between(gpr_info))
-                        if gpr_info.is_compatible(groups[-1][-1]) and (groups[-1][-1].time_between(gpr_info) < datetime.timedelta(minutes=30)):
-                            groups[-1].append(gpr_info)
-
-                        else:
-                            groups.append([gpr_info]) 
+                    if len(groups) == 1 and len(groups[-1]) == 0:
+                        groups[-1].append(gpr_info)
+                        continue
 
 
-                    for group in groups:
+                    # print(infos[-2].time_between(gpr_info))
+                    if gpr_info.is_compatible(groups[-1][-1]) and (groups[-1][-1].time_between(gpr_info) < datetime.timedelta(minutes=30)):
+                        groups[-1].append(gpr_info)
+
+                    else:
+                        groups.append([gpr_info]) 
+
+
+                for group in groups:
+                    if len(group) == 0: # TODO: Find out why this can happen
+                        continue
+                    with tempfile.TemporaryDirectory() as temp_dir:
                         group_name = Path(group[0].filepath).stem + f"_{len(group)}"
 
                         if len(group) > 1:
@@ -188,32 +234,23 @@ def run_all():
 
                             filepath = "" + str(input_dir) + "/*.rad"
 
-                                
+                            
                         else:
                             filepath = group[-1].filepath
 
+                        out_path = Path(f"processed_radar/{glacier}/{date_str}/{group_name}.nc")
+                        out_path.parent.mkdir(exist_ok=True, parents=True)
+
+                        if out_path.is_file():
+                            continue
+
+                        print(f"Processing {out_path}")
                         try:
-                            out_path = Path(f"temp/{glacier}/{date_str}/{group_name}.nc")
-                            out_path.parent.mkdir(exist_ok=True, parents=True)
                             run_rsgpr(
                                 filepath,
                                 out_path,
                             )
                         except subprocess.CalledProcessError as exception:
+                            raise
                             print(exception)
 
-                        print(group_name)
-                # i0 = -3
-                # i1 = -2
-
-                # print(infos[i0].start_time, infos[i0].stop_time)
-                # print(infos[i1].start_time, infos[i1].stop_time)
-                # print(infos[i0].time_between(infos[i1]))
-
-                # run_rsgpr(filepath, f"{temp_dir}/")
-
-                # print(list(Path(temp_dir).iterdir()))
-            
-
-
-        
