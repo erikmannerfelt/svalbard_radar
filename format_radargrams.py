@@ -6,14 +6,35 @@ from PIL import Image
 import geopandas as gpd
 import shapely
 import scipy.interpolate
+import scipy
 import warnings
 
 def normalize(data: np.ndarray):
 
-    minval, maxval = np.percentile(data, [1, 99])
+    butter = scipy.signal.butter(4,[0.08, 0.999], "bandpass", output="sos")
+    data = scipy.signal.sosfilt(butter, data, axis=0)
 
+    data -= np.median(data)
+
+    data_abslog = np.log10(np.abs(data + 1e-4))
+
+    minval_10, maxval_10 = np.percentile(np.abs(data_abslog[50:]), [5, 99])
+
+    data_abslog = np.clip((data_abslog - minval_10) / (maxval_10 - minval_10), 0, 1)
+    sign = np.sign(data)
+    data = np.clip(np.log10(np.abs(data + 1e-9)) - 1, 0, None) * sign
+    # plt.hist(data.ravel(), bins=50)
+    # plt.show()
+
+    # minval, maxval = np.percentile(data, [1, 99])
+    maxval = np.percentile(np.abs(data[50:]), 99)
+    minval = -maxval
     data = np.clip((data - minval) / (maxval - minval), 0, 1)
-    return (data * 255).astype("uint8")
+
+    return {
+        "classic": (data * 255).astype("uint8"),
+        "abslog": (data_abslog * 255).astype("uint8"),
+    }
 
 def parse_radargram(src_filepath: Path, chunksize: int = 1000):
     src_filepath = Path(src_filepath)
@@ -21,6 +42,15 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000):
     cache_dir = (Path("static/radargrams/") / "/".join(src_filepath.parts[-3:])).with_suffix("")
 
     with xr.open_dataset(src_filepath) as data:
+
+        # vals = normalize(data["data"].values)
+        # plt.hist(vals, bins=100)
+        # plt.show()
+
+        # plt.figure(figsize=(12, 6))
+        # plt.imshow(vals, cmap="Grays")
+        # plt.show()
+        # return
 
         # distances = np.arange(0, data.attrs["total-distance"].item(), 5)
         with warnings.catch_warnings():
@@ -32,25 +62,29 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000):
 
         track = shapely.geometry.LineString(track)
 
-        image: np.ndarray | None = None
+        images: dict[str, np.ndarray] | None = None
         # image = normalize(data["data"].values)
         tiles = []
         for row in range(0, data["data"].shape[0], chunksize):
             row_slice = slice(row, min(row + chunksize, data["data"].shape[0]))
             for col in range(0, data["data"].shape[1], chunksize):
                 col_slice = slice(col, min(col + chunksize, data["data"].shape[1]))
-                filepath = cache_dir / f"tiles/tile_{str(row).zfill(5)}_{str(col).zfill(5)}.jpg"
 
-                if not filepath.is_file():
-                    if image is None:
-                        image = normalize(data["data"].values)
-                    tile_arr = image[row_slice, col_slice]
-                    filepath.parent.mkdir(exist_ok=True, parents=True)
+                filepaths = {}
+                for key in ["abslog", "classic"]:
+                    filepath = cache_dir / f"tiles/{key}/tile_{str(row).zfill(5)}_{str(col).zfill(5)}.jpg"
 
-                    Image.fromarray(tile_arr).save(filepath)
+                    if not filepath.is_file():
+                        if images is None:
+                            images = normalize(data["data"].values)
+                        tile_arr = images[key][row_slice, col_slice]
+                        filepath.parent.mkdir(exist_ok=True, parents=True)
+
+                        Image.fromarray(tile_arr).save(filepath)
+                    filepaths[key] = "/" + str(filepath)
 
                 tiles.append({
-                    "filepath": "/" + str(filepath),
+                    "filepaths": filepaths,
                     "minx": col,
                     "maxx": col_slice.stop,
                     "miny": data["data"].shape[0] - row_slice.stop,
@@ -60,8 +94,10 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000):
         thumbnail_path = cache_dir / "thumbnail.jpg"
 
         if not thumbnail_path.is_file():
-            if image is None:
-                image = normalize(data["data"].values)
+            if images is None:
+                images = normalize(data["data"].values)
+
+            image = images["abslog"]
 
             max_height = 512
             if image.shape[0] <= max_height:

@@ -243,6 +243,9 @@ async function load_digitized(event, meta, drawn_items) {
 }
 
 async function setup_map() {
+
+  let data_saved = true;
+
 	const search_string = window.location.search.slice(1);
 	const search_params = new URLSearchParams(search_string);
 
@@ -257,15 +260,58 @@ async function setup_map() {
   // let imageUrl = 'static/images/ragna-mariebreen_20230305_lighter.jpg';
   var bounds = [[0, 0], [meta["height"], meta["width"]]]; // Assuming origin (0, 0) at top-left
 
-  meta["tiles"].forEach(function (tile) {
-    L.imageOverlay(tile["filepath"], [[tile["miny"], tile["minx"]],[tile["maxy"], tile["maxx"]]]).addTo(map);
-  });
+  let tiles = {};
+  for (kind of ["abslog", "classic"]) {
+
+    let new_tiles = [];
+    for (tile of meta["tiles"]) {
+      new_tiles.push(L.imageOverlay(tile["filepaths"][kind], [[tile["miny"], tile["minx"]],[tile["maxy"], tile["maxx"]]]));
+
+    };
+    // let new_tiles = meta["tiles"].forEach(function (tile) {
+    //     return ;
+    // });
+    tiles[kind] = new_tiles;
+  };
+
+  function show_tiles(new_kind) {
+    for (kind in tiles) {
+      if (kind != new_kind) {
+        tiles[kind].forEach(function (tile) {
+          map.removeLayer(tile);
+        });
+      } else {
+        tiles[kind].forEach(function (tile) {
+          tile.addTo(map);
+        });
+      };
+    };
+  };
+
+  show_tiles("abslog");
+
+  document.getElementById("display-abslog").onclick = function (_event) {show_tiles("abslog")};
+  document.getElementById("display-classic").onclick = function (_event) {show_tiles("classic")};
+
+  // console.log(meta["tiles"]);
+  // meta["tiles"].forEach(function (tile) {
+  //   L.imageOverlay(tile["filepaths"]["abslog"], [[tile["miny"], tile["minx"]],[tile["maxy"], tile["maxx"]]]).addTo(map);
+  // });
   // L.imageOverlay(meta["img_path"], bounds).addTo(map);
 
   map.fitBounds(bounds);
 
   let drawn_items = setup_draw_features(map);
 
+  map.on(L.Draw.Event.CREATED, function (event) {
+      data_saved = false;
+  });
+  map.on(L.Draw.Event.EDITED, function (event) {
+      data_saved = false;
+  });
+  map.on(L.Draw.Event.DELETED, function (event) {
+      data_saved = false;
+  });
 
   let overview_map = L.map("overview-map", {
     maxZoom: 15,
@@ -317,11 +363,14 @@ async function setup_map() {
     document.body.appendChild(downloadAnchorNode); // required for firefox
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
+
+    data_saved = true;
   }
 
   document.getElementById("load-button").addEventListener("change", async function (event) {
     console.log("Load activated");
     await load_digitized(event, meta, drawn_items);
+    data_saved = false;
   });
 
   /*
@@ -345,6 +394,12 @@ async function setup_map() {
   let submit_button = document.getElementById("submit-button");
   submit_button.onclick = function (event) {
 
+    let confirmed = confirm("Are you sure you want to submit your interpretation?");
+    if (!confirmed) {
+      event.preventDefault();
+      return;
+    };
+
     if (drawn_items.getLayers().length == 0) {
       document.getElementById("response-text").innerText = "Submit failed: project is empty";
       return;
@@ -352,11 +407,25 @@ async function setup_map() {
 
     let output = make_feature_save_json(drawn_items, meta);
     submit_digitized(output);
+
+    data_saved = true;
   }
 
   document.getElementById("user-comment").addEventListener("change", async function (event) {
     meta["comment"] = event.target.value;
   });
+
+
+  window.addEventListener("beforeunload", function (event) {
+
+    console.log("unloading");
+
+    if (!data_saved) {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+  });
+
 
 }
 

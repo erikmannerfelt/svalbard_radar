@@ -14,22 +14,41 @@
         <input type="text" id="user-name" name="name">
     </form>
     -->
-    <button id="save-button">Save progress</button>
-    <!-- <button id="load-button">Load data</button> -->
-    <input type="file" id="load-button" accept=".json,application/json">
-    <button id="submit-button">Submit data</button>
+    <div class="digitize-widgets-container">
+        <div class="digitize-widgets-item">
+            <button id="save-button" class="button">Save progress</button>
+            <input type="file" id="load-button" accept=".json,application/json">
+        </div>
+        <!-- <button id="load-button">Load data</button> -->
+        <div class="digitize-widgets-item">
+            <button id="submit-button" class="button">Submit data</button>
+        </div>
 
-    <form id="comment-form" onSubmit="return false;">
-        <label for="comment">Comment</label>
-        <textarea id="user-comment" name="comment" rows=4 cols=50></textarea>
-    </form>
+        <div class="digitize-widgets-item">
+            <form id="comment-form" onSubmit="return false;" style="max-width: 100%; display: flex; flex-direction: column;">
+                <label for="comment">Comment</label>
+                <textarea id="user-comment" name="comment" rows=4 cols=50></textarea>
+            </form>
+        </div>
+        <div id="overview-map"></div>
 
-    <p id="response-text" style="color: red;"></p>
+    </div>
+    <div>
+        <p id="response-text" style="color: red;"></p>
+    </div>
 
-    <div id="overview-map"></div>
+    <div class="digitize-widgets-container">
+        <div style="margin: 10px; border: 2px solid black; background-color: #ffffaa; max-width: 100px; display: flex; flex-direction: column;">
+            <p>GPR display options</p>
+            <button id="display-abslog">Abslog</button>
+            <button id="display-classic">Classic</button>
+        </div>
+        <form id="interp-class-select"></form>
+    </div>
 
-    <form id="interp-class-select"></form>
-    <div id="map"></div>
+    <div style="width: 90vw; left: 0px;">
+        <div id="map"></div>
+    </div>
 
     <script src="{{ url_for('static', filename='plugins/node_modules/leaflet/dist/leaflet.js') }}"></script>
     <script src="{{ url_for('static', filename='plugins/node_modules/leaflet-draw/dist/leaflet.draw.js') }}"></script>

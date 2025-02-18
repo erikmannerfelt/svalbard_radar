@@ -15,7 +15,7 @@ p {
 
 #map {
   height: 800px;
-  width: 80vw;
+  width: 100%;
   left: 0px;
 
 }
@@ -49,13 +49,58 @@ input[type="radio"] {
   margin-right: 5px;
 }
 
+.radargram-index {
+  display: grid;
+  max-width: 90vw;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 20vw));
+  grid-auto-rows: minmax(50px, auto);
+}
+
 .radargram-choice {
   border: 2px solid black;
   border-radius: 15px;
   display: flex;
+  flex-direction: column;
   max-width: 400px;
   min-height: 10vw;
   align-items: center;
   justify-content: center;
   text-align: center;
+  margin: 20px;
+}
+
+.digitize-widgets-container {
+  display: grid;
+  max-width: 100vw;
+  width: 100vw;
+  left: 0px;
+  /* height: 500px; */
+  grid-template-columns: repeat(auto-fill, minmax(150px, 20vw));
+  grid-auto-rows: minmax(50px, auto);
+  /* Sets flexible row heights */
+  /* Adjust min size & columns */
+  gap: 10px;
+}
+
+.digitize-widgets-item {
+  /* background-color: lightcoral; */
+  padding: 10px;
+  /* border: 1px solid #ddd; */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.button {
+  padding: 5px 10px;
+  /* Adjust padding as needed */
+  border: 1px solid #ccc;
+  background-color: #f0f0f0;
+  cursor: pointer;
+  display: inline-block;
+  /* Ensures the button sizes to its content */
+  text-align: center;
+  white-space: nowrap;
+  /* Prevents text from wrapping */
 }

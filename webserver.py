@@ -60,28 +60,6 @@ def verify(username: str, password: str) -> bool:
 
 def get_all_radargrams():
 
-    # radargrams = {
-    #     "test": {
-    #         "width": 8400,
-    #         "height": 4200,
-    #         "radar_key": "test",
-    #         "thumbnail": "/static/images/ragna-mariebreen_20230305_lighter.jpg",
-    #         "tiles": [
-    #             {
-    #                 "minx": 0,
-    #                 "miny": 0,
-    #                 "maxx": 8400,
-    #                 "maxy": 4200,
-    #                 "filepath": "/static/images/ragna-mariebreen_20230305_lighter.jpg"
-    #             }
-    #         ],
-    #     }
-    # }
-    # radargrams = {}
-
-    # real_radar = format_radargrams.main()
-
-    # radargrams[real_radar["radar_key"]] = real_radar
     radargrams = format_radargrams.parse_all_radargrams()
     user = get_username()
     for key in radargrams:

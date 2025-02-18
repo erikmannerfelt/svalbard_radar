@@ -10,6 +10,7 @@
         <button id="login-button">Log in</button>
     {% endif %}
     </p>
+    <div class="radargram-index">
     {% for radar_key, values in all_radargrams.items() %}
         <a href="/digitize/{{radar_key}}" class="radargram-choice" style="background-color: {{ '#ccffcc' if values.n_submitted_by_user > 0 else '#ffcccc' }};">
             <b>{{radar_key}}</b><br>
@@ -19,5 +20,6 @@
             <img src="{{values.thumbnail}}" style="max-height: 100px; max-width: 200px;"></img>
         </a>
     {% endfor %}
+    </div>
     <script src="{{ url_for('static', filename='index.js') }}"></script>
 {% endblock content %}
