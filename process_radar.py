@@ -40,7 +40,11 @@ def get_paths():
             ],
         },
         "ragna_mariebreen": {
-            "20240405": [gpr_dir / "2024/GPR_20240405_A-RagnaMariebreen-100MHz"]
+            "20240405": [gpr_dir / "2024/GPR_20240405_A-RagnaMariebreen-100MHz"],
+            "20240412": [gpr_dir / "input/GPR_20240412_C-RagnaMariebreen-25MHz"],
+        },
+        "edvardbreen": {
+            "20240411": [gpr_dir / "input/GPR_20240411_A-Edvardbreen-25MHz"],
         }
         
     }
@@ -254,3 +258,6 @@ def run_all():
                             raise
                             print(exception)
 
+
+if __name__ == "__main__":
+    run_all()

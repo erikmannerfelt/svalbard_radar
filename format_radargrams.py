@@ -57,7 +57,7 @@ def get_radargram_cache_path(src_filepath: Path) -> tuple[Path, Path]:
 
     
 
-def parse_radargram(src_filepath: Path, chunksize: int = 1000) -> dict[str, object]:
+def parse_radargram(src_filepath: Path, chunksize: int = 1000, override_cache: bool = False) -> dict[str, object]:
     src_filepath = Path(src_filepath)
 
     # static_dir = (Path("static/radargrams/") / "/".join(src_filepath.parts[-3:])).with_suffix("")
@@ -65,21 +65,11 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000) -> dict[str, obje
 
     meta_cache_path = cache_dir / "meta.json"
 
-    if meta_cache_path.is_file():
+    if meta_cache_path.is_file() and not override_cache:
         return json.loads(meta_cache_path.read_text())
 
     with xr.open_dataset(src_filepath) as data:
 
-        # vals = normalize(data["data"].values)
-        # plt.hist(vals, bins=100)
-        # plt.show()
-
-        # plt.figure(figsize=(12, 6))
-        # plt.imshow(vals, cmap="Grays")
-        # plt.show()
-        # return
-
-        # distances = np.arange(0, data.attrs["total-distance"].item(), 5)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             x_inds = scipy.interpolate.interp1d(data["distance"].values, np.arange(data["data"].shape[1]))(np.r_[np.arange(0, data["distance"].values.max(), step=5), [data["distance"].max().item()]])
@@ -196,4 +186,4 @@ def parse_all_radargrams(progress: bool = False):
     
 
 if __name__ == "__main__":
-    parse_radargram(Path("./processed_radar/amenfonna/20240507/DAT_0042_A1.nc"))
+    parse_radargram(Path("./processed_radar/amenfonna/20240507/DAT_0042_A1.nc"), override_cache=True)
