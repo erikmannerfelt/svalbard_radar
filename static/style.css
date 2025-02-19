@@ -1,3 +1,8 @@
+:root {
+  --digitize-option-color: #d0d0e0;
+  --text-color: #666;
+}
+
 body {
   font-family: Arial, sans-serif;
   margin-top: 20px;
@@ -10,7 +15,11 @@ h1 {
 }
 
 p {
-  color: #666;
+  color: var(--text-color);
+}
+
+li {
+  color: var(--text-color);
 }
 
 #map {
@@ -27,7 +36,7 @@ p {
 
 form {
   display: flex;
-  width: 80vw;
+  flex-wrap: wrap;
 }
 
 
@@ -41,8 +50,10 @@ form {
 .color-box {
   width: 20px;
   height: 20px;
-  margin-right: 10px;
+  margin-right: 3px;
+  margin-left: 3px;
   border: 1px solid #000;
+  display: inline-block;
 }
 
 input[type="radio"] {
@@ -59,6 +70,7 @@ input[type="radio"] {
 .radargram-perglacier {
   border: 1px solid #000;
   margin: 20px;
+  padding: 10px;
   display: inline-block;
 }
 
@@ -73,6 +85,30 @@ input[type="radio"] {
   justify-content: center;
   text-align: center;
   margin: 20px;
+  color: black;
+  text-decoration: none;
+}
+
+.radargram-choice-finished {
+  background-color: #ccffcc;
+}
+
+.radargram-choice-unfinished {
+  background-color: #ffcccc;
+}
+
+.radargram-choice-anonymous {
+  background-color: #cccccc;
+}
+
+.radargram-choice img {
+  max-width: 90%;
+  height: auto;
+  max-height: 200px;
+  display: block;
+  padding: 10px;
+  clip-path: polygon(10% 0%, 90% 0%, 100% 10%, 100% 90%, 90% 100%, 10% 100%, 0% 90%, 0% 10%);
+
 }
 
 .digitize-widgets-container {
@@ -81,11 +117,24 @@ input[type="radio"] {
   width: 90vw;
   left: 0px;
   /* height: 500px; */
-  grid-template-columns: repeat(auto-fill, minmax(150px, 20vw));
+  /* grid-template-columns: repeat(auto-fill, minmax(150px, 20vw)); */
+  grid-template-columns: repeat(3, 1fr);
   grid-auto-rows: minmax(50px, auto);
   /* Sets flexible row heights */
   /* Adjust min size & columns */
   gap: 10px;
+}
+
+.digitize-buttons-container {
+  border: 2px solid black;
+  background-color: var(--digitize-option-color);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  margin: 10px;
+  width: 20vw;
 }
 
 .digitize-widgets-item {
@@ -98,6 +147,17 @@ input[type="radio"] {
   justify-content: center;
 }
 
+.digitize-display-options-container {
+  margin: 10px;
+  padding: 5px;
+  border: 2px solid black;
+  background-color: var(--digitize-option-color);
+  max-width: 100px;
+  display: flex;
+  flex-direction: column;
+}
+
+
 .button {
   padding: 5px 10px;
   /* Adjust padding as needed */
@@ -109,4 +169,70 @@ input[type="radio"] {
   text-align: center;
   white-space: nowrap;
   /* Prevents text from wrapping */
+}
+
+button.submit-button {
+  margin-top: 40px;
+  background-color: #ffffaa;
+  border: 1px solid black;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #ccc;
+  font-family: Arial, sans-serif;
+}
+
+th {
+  background-color: #f4f4f4;
+  text-align: left;
+  padding: 8px;
+  font-weight: bold;
+  border-top: 1px solid #ccc;
+}
+
+td {
+  text-align: center;
+  padding: 8px;
+  border-top: 1px solid #ccc;
+}
+
+tr:hover {
+  background-color: #cccccc;
+}
+
+.howto-content-container {
+  border-bottom: 2px solid black;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin: 30px;
+  padding-top: 10px;
+  padding-bottom: 20px;
+
+}
+
+.howto-text-content {
+  flex: 1;
+  /* Take up the remaining space, roughly 1/3 */
+  padding: 20px;
+  /* Optional padding for spacing */
+
+}
+
+.howto-image-content {
+  flex: 2;
+  /* Take up 2/3 of the width */
+}
+
+.howto-image-content img {
+  max-width: 100%;
+  /* Scale image to fit container */
+  height: auto;
+  /* Maintain aspect ratio */
+  display: block;
+  /* Prevent unexpected gaps below images */
+
 }

@@ -9,6 +9,12 @@ import scipy.interpolate
 import scipy
 import warnings
 import tqdm
+import hashlib
+import json
+import functools
+
+def checksum(objects: list[object]) -> str:
+    return hashlib.sha256("".join(map(str, objects)).encode()).hexdigest()
 
 def normalize(data: np.ndarray):
 
@@ -37,10 +43,30 @@ def normalize(data: np.ndarray):
         "abslog": (data_abslog * 255).astype("uint8"),
     }
 
-def parse_radargram(src_filepath: Path, chunksize: int = 1000):
+def get_radargram_cache_path(src_filepath: Path) -> tuple[Path, Path]:
+
+    filename_for_key = "/".join(src_filepath.parts[-3:])
+    with xr.open_dataset(src_filepath) as data:
+        
+        checksum = hashlib.md5((filename_for_key + data.attrs["processing-datetime"]).encode()).hexdigest()
+
+    static_path = (Path("static/radargrams/") / filename_for_key).with_suffix("")
+    cache_path = Path(f"cache/radargrams/{filename_for_key.replace('/', '-')}-{checksum}/")
+
+    return static_path, cache_path
+
+    
+
+def parse_radargram(src_filepath: Path, chunksize: int = 1000) -> dict[str, object]:
     src_filepath = Path(src_filepath)
 
-    cache_dir = (Path("static/radargrams/") / "/".join(src_filepath.parts[-3:])).with_suffix("")
+    # static_dir = (Path("static/radargrams/") / "/".join(src_filepath.parts[-3:])).with_suffix("")
+    static_dir, cache_dir = get_radargram_cache_path(src_filepath)
+
+    meta_cache_path = cache_dir / "meta.json"
+
+    if meta_cache_path.is_file():
+        return json.loads(meta_cache_path.read_text())
 
     with xr.open_dataset(src_filepath) as data:
 
@@ -73,7 +99,7 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000):
 
                 filepaths = {}
                 for key in ["abslog", "classic"]:
-                    filepath = cache_dir / f"tiles/{key}/tile_{str(row).zfill(5)}_{str(col).zfill(5)}.jpg"
+                    filepath = static_dir / f"tiles/{key}/tile_{str(row).zfill(5)}_{str(col).zfill(5)}.jpg"
 
                     if not filepath.is_file():
                         if images is None:
@@ -92,7 +118,7 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000):
                     "maxy": data["data"].shape[0] - row,
                 })
 
-        thumbnail_path = cache_dir / "thumbnail.jpg"
+        thumbnail_path = static_dir / "thumbnail.jpg"
 
         if not thumbnail_path.is_file():
             if images is None:
@@ -108,28 +134,55 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000):
                 new_shape = (max_height, new_width)
             Image.fromarray(image).resize(new_shape, resample=Image.Resampling.BILINEAR).save(thumbnail_path)
 
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message=".*invalid value encountered in divide.*")
+            warnings.filterwarnings("ignore", message=".*divide by zero encountered in divide.*")
+            warnings.filterwarnings("ignore", message=".*All-NaN slice*")
+
+            speeds = np.diff(data.distance.values) / np.diff(data.time.values)
+            speeds[~np.isfinite(speeds)] = np.nan
+
+            speed = round(np.nanmedian(speeds), 3)
+
+            if not np.isfinite(speed):
+                speed = "-"
+            else:
+                speed = round(float(speed), 2)
+
         meta = {
             "radar_key": "-".join(src_filepath.with_suffix("").parts[-3:]),
             "width": data["data"].shape[1],
             "height": data["data"].shape[0],
             "thumbnail": str(thumbnail_path),
-            "track": shapely.geometry.mapping(track),
             "length": data.attrs["total-distance"],
             "length_km_rounded": round(data.attrs["total-distance"] / 1000, 1),
+            "max_depth": round(data.depth.max().item(), 2),
+            "max_time": round(data["return-time"].max().item(), 2),
+            "antenna": data.attrs["antenna"],
+            "depth_resolution_m": round(float(np.diff(data.depth.values[-2:])[0]), 3),
+            "trace_resolution_s": round(float(np.median(np.diff(data.time.values))), 3),
+            "average_speed": speed,
             "bounds": {
                 "minlat": track.bounds[1],
                 "maxlat": track.bounds[3],
                 "minlon": track.bounds[0],
                 "maxlon": track.bounds[2],
             },
-            "max_depth": data.depth.max().item(),
+            "track": shapely.geometry.mapping(track),
             "tiles": tiles,
         }
+        # for key in meta:
+        #     if key not in ["track", "tiles"]:
+        #         print(key, meta[key])
+        # raise NotImplementedError()
+
+        meta_cache_path.parent.mkdir(exist_ok=True, parents=True)
+        meta_cache_path.write_text(json.dumps(meta, indent=2))
         return meta
 
+# @functools.cache
 def parse_all_radargrams(progress: bool = False):
     radargrams = {}
-
 
     for glacier_dir in tqdm.tqdm(list(Path("processed_radar").glob("*")), disable=(not progress)):
         if not glacier_dir.is_dir():

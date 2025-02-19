@@ -165,8 +165,17 @@ function make_feature_save_json(drawn_items, meta) {
   return output;
 }
 
-function user_message(message) {
-    document.getElementById('response-text').textContent = message;
+function user_message(message, error = false) {
+
+    let response_text = document.getElementById('response-text')
+
+    if (error) {
+      response_text.style.color = "red";
+    } else {
+      response_text.style.color = "#333";
+    }
+
+    response_text.textContent = message;
 }
 
 async function submit_digitized(data) {
@@ -180,7 +189,7 @@ async function submit_digitized(data) {
       });
 
       if (response.status == 401) {
-        user_message("Not logged in! Please save the data, log in, and try again.");
+        user_message("Not logged in! Please save the data, log in, and try again.", user_message);
         return;
       }
 
@@ -189,7 +198,7 @@ async function submit_digitized(data) {
       user_message(result.message);
   } catch (error) {
       console.error('Error:', error);
-      user_message("An erorr occurred submitting!");
+      user_message("An erorr occurred submitting!", true);
   }
 }
 
@@ -207,12 +216,10 @@ async function load_digitized(event, meta, drawn_items) {
   reader.onload = function (e) {
     try {
       const data = JSON.parse(e.target.result);
-      // Store the GeoJSON data in a JavaScript variable
-      console.log('Parsed JSON:', data);
 
-      for (key in ["key", "width", "height"]) {
+      for (key of ["radar_key", "width", "height"]) {
         if (data[key] != meta[key]) {
-          user_message(`Error loading data: data ${key} (${data[key]}) does not align with data ${key} (${meta[key]})`);
+          user_message(`Error loading data: ${key} (${data[key]}) does not align with expected ${key} (${meta[key]})`, true);
           return;
         };
       };
@@ -406,7 +413,7 @@ async function setup_map() {
     };
 
     if (drawn_items.getLayers().length == 0) {
-      document.getElementById("response-text").innerText = "Submit failed: project is empty";
+      user_message("Submit failed: project is empty", true);
       return;
     };
 

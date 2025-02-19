@@ -4,9 +4,15 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='plugins/node_modules/leaflet-draw/dist/leaflet.draw.css') }}">
 
     <meta name="radarkey" content="{{radar_key}}">
+    <title>Digitizing "{{radar_key}}" - {{base_title}}</title>
 {% endblock extrahead %}
 {% block content %}
     <a href="/" id="home-button">Home</a>
+    {% if user == None %}
+        <b>Not logged in. Log in on the home page.</b>
+    {% else %}
+        <p>Logged in as <b>{{user}}</b></p>
+    {% endif %}
     <h1>Digitizing "{{radar_key}}"</h1>
     <!--
     <form id="name-form" onSubmit="return false;">
@@ -16,34 +22,54 @@
     -->
     <div class="digitize-widgets-container">
         <div class="digitize-widgets-item">
-            <button id="save-button" class="button">Save progress</button>
-            <input type="file" id="load-button" accept=".json,application/json">
+            <div class="digitize-buttons-container">
+                <h3 style="margin-top: 3px;">Load / save / submit</h3>
+                <button id="save-button" class="button">Save progress</button>
+                <p>Load data:</p>
+                <input type="file" id="load-button" accept=".json,application/json" style="max-width: 99%;">
+                <button id="submit-button" class="button submit-button">SUBMIT DATA</button>
+            </div>
+            <div class="digitize-buttons-container">
+                <h3 style="margin-top: 5px;">Message box</h3>
+                <p id="response-text"></p>
+            </div>
         </div>
         <!-- <button id="load-button">Load data</button> -->
         <div class="digitize-widgets-item">
-            <button id="submit-button" class="button">Submit data</button>
+            <table>
+                <tr><th>Antenna</th><td>{{meta.antenna}}</td></tr>
+                <tr><th>Width (traces)</th><td>{{meta.width}}</td></tr>
+                <tr><th>Height (samples)</th><td>{{meta.height}}</td></tr>
+                <tr><th>Track length</th><td>{{meta.length_km_rounded}} km</td></tr>
+                <tr><th>Max TWT</th><td>{{meta.max_time}} ns</td></tr>
+                <tr><th>Max depth</th><td>{{meta.max_depth}} m</td></tr>
+                <tr><th>Vertical resolution</th><td>{{meta.depth_resolution_m}} m</td></tr>
+                <tr><th>Horizontal resolution</th><td>{{meta.trace_resolution_s}} s</td></tr>
+                <tr><th>Average speed</th><td>{{meta.average_speed}} m/s</td> </tr>
+            </table>
         </div>
 
-        <div class="digitize-widgets-item">
-            <form id="comment-form" onSubmit="return false;" style="max-width: 100%; display: flex; flex-direction: column;">
-                <label for="comment">Comment</label>
-                <textarea id="user-comment" name="comment" rows=4 cols=50></textarea>
-            </form>
-        </div>
         <div id="overview-map"></div>
 
     </div>
-    <div>
-        <p id="response-text" style="color: red;"></p>
-    </div>
 
     <div class="digitize-widgets-container">
-        <div style="margin: 10px; border: 2px solid black; background-color: #ffffaa; max-width: 100px; display: flex; flex-direction: column;">
-            <p>GPR display options</p>
-            <button id="display-abslog">Abslog</button>
-            <button id="display-classic">Classic</button>
+        <div class="digitize-widgets-item" style="min-width: 100px;">
+            <div class="digitize-display-options-container" style="width: 100%;">
+                <p>GPR display options</p>
+                <button id="display-abslog">Abslog</button>
+                <button id="display-classic">Classic</button>
+            </div>
         </div>
-        <form id="interp-class-select"></form>
+        <div class="digitize-widgets-item" style="width: 40vw;">
+            <form id="interp-class-select" style="width: 100%;"></form>
+        </div>
+        <div class="digitize-widgets-item" style="width: 20vw;">
+            <form id="comment-form" onSubmit="return false;" style="width: 100%; display: flex; flex-direction: column;">
+                <label for="comment">Comment (added in the submission)</label>
+                <textarea id="user-comment" name="comment" rows=6 cols=50></textarea>
+            </form>
+        </div>
     </div>
 
     <div style="width: 90vw; left: 0px;">

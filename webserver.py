@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 
 import format_radargrams
+import functools
 
 APP = flask.Flask(__name__)
 APP.secret_key = "addonekeyhere"
@@ -14,7 +15,8 @@ AUTH_OLD = flask_httpauth.HTTPBasicAuth()
 LOGIN_MANAGER = flask_login.LoginManager(APP)
 
 USER_DATA_OLD = {
-    "admin": "SuperSecretPwd"
+    "admin": "SuperSecretPwd",
+    "elias": "alilat",
 }
 
 USER_DATA = {k: werkzeug.security.generate_password_hash(v) for k, v in USER_DATA_OLD.items()}
@@ -97,6 +99,12 @@ def verify(username: str, password: str) -> bool:
         return False
     return USER_DATA_OLD.get(username) == password
 
+def nice_name(glacier_key: str) -> str:
+    if glacier_key == "dronbreen":
+        return "Drønbreen"
+
+    return " ".join(map(lambda part: part.capitalize(), glacier_key.replace("_", " ").split(" ")))
+
 def get_all_radargrams():
     radargrams = format_radargrams.parse_all_radargrams(progress=False)
     user = get_username()
@@ -110,7 +118,10 @@ def get_all_radargrams():
             )
 
         radargrams[glacier_key] = {k: v for k, v in sorted(radargrams[glacier_key].items(), key=lambda item: item[1]["n_total_submissions"])}
-        radargrams[glacier_key]["_meta"] = {"n_total_submissions": sum(r["n_total_submissions"] for r in radargrams[glacier_key].values())}
+        radargrams[glacier_key]["_meta"] = {
+            "n_total_submissions": sum(r["n_total_submissions"] for r in radargrams[glacier_key].values()),
+            "nice_name": nice_name(glacier_key),
+        }
 
     radargrams = {k: v for k, v in sorted(radargrams.items(), key=lambda item: item[1]["_meta"]["n_total_submissions"])}
 
@@ -131,24 +142,7 @@ def get_username() -> str | None:
     if hasattr(user, "username"):
         return user.username
 
-    return
-    if user is None:
-        return
-
-    return user.username
-    req = flask.request
-
-    auth = req.authorization
-
-    if auth is None:
-        return
-
-    user = req.authorization.username
-
-    if user not in USER_DATA_OLD:
-        return
-
-    return user
+    return None
 
 @APP.route("/")
 def index():
@@ -162,8 +156,9 @@ def index():
 def radargram(radar_key: str):
     all_radargrams = get_all_radargrams()
     meta = all_radargrams[radar_key.split("-")[0]][radar_key]
+    user = get_username()
 
-    return flask.render_template("digitize.html.jinja2", meta=meta, radar_key=radar_key)
+    return flask.render_template("digitize.html.jinja2", meta=meta, radar_key=radar_key, user=user)
 
 
 @APP.route("/submit-digitized", methods=["POST"])
@@ -193,6 +188,10 @@ def submit_digitized():
         return flask.jsonify({"error": "Internal error occurred"}, 500)
 
 
+@APP.route("/howto")
+def howto():
+    return flask.render_template("howto.html.jinja2")
+
 # @APP.route('/login', methods=["GET", "POST"])
 # @AUTH_OLD.login_required
 # def force_login():
@@ -209,7 +208,7 @@ def main():
     # Set a maximum upload file size
     APP.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 MB
 
-    APP.run(debug=True)
+    APP.run(host="0.0.0.0", debug=True)
     ...
 
 

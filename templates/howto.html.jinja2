@@ -1,0 +1,223 @@
+{% extends "base.html.jinja2" %}
+{% block extrahead %}
+  <title>Instructions - {{base_title}}</title>
+
+{% endblock extrahead %}
+{% macro colored_box(color) %}
+    <span class="color-box" style="background-color: {{color}};"></span>
+{% endmacro %}
+{% macro annotated_box(color, annotation) %}
+    <span style="white-space: nowrap">{{ colored_box(color) }}<b>{{annotation}}</b></span>
+{% endmacro %}
+{% set temperate_ice = annotated_box("red", "Temperate ice") %}
+{% set bed_cold = annotated_box("blue", "Cold glacier bed") %}
+{% set bed_unspecified = annotated_box('purple', "Glacier bed") %}
+{% set bed_missing = annotated_box('green', "Glacier bed not visible") %}
+{% block content %}
+  <a href="/">Home</a>
+
+  <div style="margin-left: 100px; width: 80vw;">
+  <div class="howto-content-container">
+    <div class="howto-text-content">
+    <h1>How to use the website</h1>
+    <b>Please read the instructions thoroughly before starting!</b>
+    <p>
+    Thank you for participating in this experiment.
+    Its primary purpose is to evaluate the subjective nature of delineating radargrams of glaciers.
+    Therefore, this instruction set is as limited as possible, to avoid the transfer of subjective biases!
+    </p>
+
+    <h2>What we want</h2>
+    <p>
+    We want to extract two things: the cold/warm transition (<b>temperate ice</b>) and the <b>glacier bed</b>.
+    How?
+    By drawing lines to mark boundaries for the cold/warm ice interface, or the ice/bed interface.
+    There are of course many other features within these radargrams, such as englacial channels and debris.
+    The study is currently not aimed to these features, but comments can be added for features of interest.
+    </p>
+    </div>
+  </div>
+
+
+  <div class="howto-content-container">
+    <div class="howto-text-content">
+    <h2 style="margin-bottom: 40px;">What to look for (1/4)</h2>
+    <h3>{{bed_cold}}</h3>
+  
+    <p>
+    The arguably easiest thing to look for is the bed of a cold-based glacier.
+    As seen in the picture, there is a quite sharp line with relatively clean ice above.
+    In the picture, there are some englacial features (thust features perhaps) which is this case also is expressed at the surface.
+    </p>
+
+    <p>
+    If we don't want to assume that the bed is cold-based, we can instead use the {{bed_unspecified}} class to delineate it.
+    </p>
+    </div>
+
+    <div class="howto-image-content">
+      <img src="/static/images/examples/dronbreen_cold_bed.png"></img>
+    </div>
+
+  </div>
+
+  <div class="howto-content-container">
+    <div class="howto-text-content">
+      <h2 style="margin-bottom: 40px;">What to look for (2/4)</h2>
+      <h3>{{temperate_ice}}</h3>
+      <p>
+      Temperate ice (ice with water inclusions) shows up as very noisy data in an almost raincloud-like effect.
+      We want to map the upper boundary of this.
+      From the picture, it is probably immediately evident how subjective mapping the boundary is.
+      That's the point of the experiment!
+      Make sure to <b>map the upper boundary even when the temperate ice reaches the top</b> of the radargram.
+      Otherwise, the data (temperate/cold) will be inconclusive.
+      </p>
+      <p>
+      The bed cannot be assumed to be cold underneath temperate ice, so we instead use the {{bed_unspecified}} class to delineate the bed.
+       </p>
+    </div>
+    <div class="howto-image-content">
+      <image src="/static/images/examples/dronbreen_temperate_ice.png"></image>
+    </div>
+  </div>
+
+  <div class="howto-content-container">
+    <div class="howto-text-content">
+      <h2 style="margin-bottom: 40px;">What to look for (3/4)</h2>
+      <h3>{{bed_unspecified}}</h3>
+      <p>
+      As previously mentioned, we cannot always assume that a glacier bed is cold.
+      If there is temperate ice above the bed, it's very likely (or granted?) that the bed is temperate too.
+      Thus, for every bed with temperate ice, we use the unspecified glacier bed class instead to not include the assumption of a cold base.
+      </p>
+      <p>
+      In the picture, we see scattering indicative of temperate ice, which would deserve its own {{temperate_ice}} delineation.
+      Underneath is a clear bed reflection, which is most likely not cold-based.
+      The vertical stripes are artefacts of crevasses that we drove over.
+      Oops!
+      </p>
+    </div>
+    <div class="howto-image-content">
+      <image src="/static/images/examples/bergmesterbreen_temperate_bed.png"></image>
+    </div>
+  </div>
+
+
+  <div class="howto-content-container">
+    <div class="howto-text-content">
+      <h2 style="margin-bottom: 40px;">What to look for (4/4)</h2>
+      <h3>{{bed_missing}}</h3>
+
+      <p>
+      In some cases, the bed is simply not visible.
+      Either it's because the bed is deeper down than the radar is set-up to observe, or because there is so much temperate ice that it completely hides the bed.
+      In that case, there is a special class to signify that the bed is invisible.
+      It is added as a normal line, but the depth does not matter (only the x-coordinate is read).
+      </p>
+      <p>
+      In the picture below, the bed is only clear in the middle of the radargram. Therefore, a {{bed_unspecified}} or {{bed_cold}} could be added where it is visible.
+      Every other part can be flagged as not visible.
+      The upper {{temperate_ice}} boundary should be added too!
+   
+       </p>
+    </div>
+    <div class="howto-image-content">
+      <image src="/static/images/examples/ragnamariebreen_no_bed.png"></image>
+    </div>
+  </div>
+
+  
+  <div class="howto-content-container">
+    <div class="howto-text-content">
+    <h2>How to add interpretations</h2>
+      <p>
+      Interpretations are added as lines.
+      The starting point, endpoint and everything in between counts, so take care!
+      </p>
+      <p>
+      - <span style="color: red">1</span>: Interpretations are added in the radargram toolbar.
+      The icons below are for editing/deleting lines.
+      </p>
+      <p>
+      - <span style="color: red">2</span>: They are assigned whatever color/class that is chosen above, so make sure to use the right one!
+      </p>
+      <p>
+      - <span style="color: red">3</span>: The display style of the radargram can be chosen; <i>abslog</i> (the logarithm of absolute values) suits most needs, but the <i>classic</i> view has more fine-grained detail.
+      </p>
+      <p>
+      <b>Please be brave</b>; map a line even if you're a bit unsure!
+      The ensemble spread will tell if what you mapped out was uncertain.
+      </p>
+      <p>
+      <b>Please avoid overhangs</b>; During evaluation, the line y-coordinate will be evaluated as y(x). 
+      If multiple y's exist for the same x (i.e. a line that passes over itself), there will be trouble (for us).
+
+      </p>
+
+    <h3>Saving/loading</h3>
+    <p>
+    It is possible to save and load progress with the associated buttons.
+    Saving means downloading the progress as a file, which can be uploaded (loading) again.
+    <b>Nothing is saved on the server or your browser</b>, so saving is important!
+    </p>
+    <h3>Submitting</h3>
+    <p>
+    When finished, submit the interpretations with the submit button.
+    Please only do so when ready, as <b>submitted data cannot be modified later</b> (at least easily).
+
+    </p>
+
+    
+
+
+    </div>
+    <div class="howto-image-content">
+      <image src="/static/images/howto_add_lines.png"></image>
+    </div>
+  </div>
+
+
+  <div class="howto-content-container">
+    <div class="howto-text-content">
+    <h2>How the data are aggregated</h2>
+    <p>
+      Once we have all interpretations, we will use this as an ensemble dataset to aggregate into one line (one for temperate ice and one for the bed) with a spread.
+      How this will be done exactly is still being designed, but it will most likely include Gaussian Process Regression.
+      Each user's contribution will be weighed against their relative agreement with the others; a consistent user will be given a large certainty flag, while an inconsistent user will be more uncertain.
+      Note that we cannot assess absolute accuracy, only relative consistency!
+      Therefore, your contribution might be the most correct (even if it's not consistent with the others'), but there is no way for us to tell.
+    </p>
+    </div>
+  </div>
+
+  <div class="howto-content-container">
+    <div class="howto-text-content">
+    <h2>Final notes on the radargrams</h2>
+    <p>
+      <list>
+        <li>
+        All data are batch-processed with the same settings.
+        Some data will look great and some mediocre.
+        If they look really bad, a comment about it is appreciated!
+        </li>
+        <li>
+        It may look like too much gain has been applied in some radargrams.
+        This is because the gain function is applied before bandpass filtering due to a software constraint, so noise is exaggerated as well.
+        It's a difficult fix, so the radargrams come as-is for now.
+        </li>
+        <li>
+        Migration has not been applied, both to better identify temperate ice, and because the GPS data are sometimes quite bad.
+        </li>
+        <li>
+        Horizontal resampling (equidistant traces) has also not been applied due to the sometimes bad GPS data. Therefore, a few standstills exist in the data.
+        </li>
+
+      </list>
+
+    </p>
+    </div>
+  </div>
+  </div>
+
+{% endblock content %}
