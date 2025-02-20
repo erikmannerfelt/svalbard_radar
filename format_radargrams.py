@@ -171,7 +171,7 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000, override_cache: b
         return meta
 
 # @functools.cache
-def parse_all_radargrams(progress: bool = False):
+def _parse_all_radargrams_inner(progress: bool = False):
     radargrams = {}
 
     for glacier_dir in tqdm.tqdm(list(Path("processed_radar").glob("*")), disable=(not progress)):
@@ -183,6 +183,15 @@ def parse_all_radargrams(progress: bool = False):
             radargrams[glacier_dir.stem][radargram["radar_key"]] = radargram
 
     return radargrams
+
+def parse_all_radargrams(progress: bool = False, cached: bool = False):
+    func =_parse_all_radargrams_inner
+    func_cached = functools.cache(func)
+    if cached:
+        return func_cached(progress=progress)
+
+    func_cached.cache_clear()
+    return func(progress=progress)
     
 
 if __name__ == "__main__":

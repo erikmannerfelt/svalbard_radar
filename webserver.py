@@ -1,4 +1,5 @@
 import flask
+from pandas.errors import ParserWarning
 import flask_httpauth
 import flask_login
 import werkzeug.security
@@ -12,6 +13,7 @@ from gevent.pywsgi import WSGIServer
 
 import format_radargrams
 import functools
+import itertools
 
 APP = flask.Flask(__name__)
 
@@ -23,6 +25,14 @@ USER_DATA_OLD = {
     "admin": "SuperSecretPwd",
     "elias": "alilat",
 }
+
+class Debug:
+    def __init__(self, debug: bool):
+        self.debug = debug
+    def __bool__(self):
+        return self.debug
+
+DEBUG = Debug(False)
 
 
 @functools.cache
@@ -136,19 +146,38 @@ def make_digitize_schema():
 def nice_name(glacier_key: str) -> str:
     if glacier_key == "dronbreen":
         return "Drønbreen"
+    elif glacier_key == "vallakrabreen":
+        return "Vallåkrabreen"
 
     return " ".join(map(lambda part: part.capitalize(), glacier_key.replace("_", " ").split(" ")))
 
 
-def get_all_radargrams():
-    radargrams = format_radargrams.parse_all_radargrams(progress=False)
+def get_user_dirs() -> list[Path]:
+    return list(filter(lambda p: p.is_dir(), get_submitted_path().glob("*")))
+
+def get_user_submissions(user_dir: Path, key: str) -> list[Path]:
+    return list(user_dir.glob(f"{key}/*.json"))
+
+def get_all_submissions(key: str):
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        res = list(itertools.chain(*executor.map(functools.partial(get_user_submissions, key=key), get_user_dirs())))
+    return res
+
+def get_all_radargrams(cached: bool = False):
+    radargrams = format_radargrams.parse_all_radargrams(progress=False, cached=cached)
     user = get_username()
     for glacier_key in radargrams:
         for key in radargrams[glacier_key]:
+            submissions = get_all_submissions(key)
+            if user is not None:
+                user_submissions = [s for s in submissions if str(get_submitted_path() / user) in str(s)] 
+            else:
+                user_submissions = []
+
             radargrams[glacier_key][key].update(
                 {
-                    "n_total_submissions": len(list(get_submitted_path().glob(f"*/{key}"))),
-                    "n_submitted_by_user": len(list((get_submitted_path() / f"{user}/{key}").glob("*.json")))
+                    "n_total_submissions": len(submissions),
+                    "n_submitted_by_user": len(user_submissions)
                     if user is not None
                     else 0,
                 }
@@ -170,7 +199,7 @@ def get_all_radargrams():
 @APP.route("/all_radargrams.json")
 def all_radargrams():
     radargrams = {}
-    for value in get_all_radargrams().values():
+    for value in get_all_radargrams(cached=(not DEBUG)).values():
         radargrams.update(value)
     return flask.jsonify(radargrams)
 
@@ -186,7 +215,7 @@ def get_username() -> str | None:
 
 @APP.route("/")
 def index():
-    all_radargrams = get_all_radargrams()
+    all_radargrams = get_all_radargrams(cached=(not DEBUG))
 
     user = get_username()
     return flask.render_template(
@@ -196,12 +225,23 @@ def index():
 
 @APP.route("/digitize/<radar_key>")
 def radargram(radar_key: str):
-    all_radargrams = get_all_radargrams()
+    all_radargrams = get_all_radargrams(cached=not DEBUG)
     meta = all_radargrams[radar_key.split("-")[0]][radar_key]
     user = get_username()
 
     return flask.render_template("digitize.html.jinja2", meta=meta, radar_key=radar_key, user=user)
 
+@APP.route("/force-reload")
+@flask_login.login_required
+def force_clear_cache():
+    user = get_username()
+
+    if user != "admin":
+        return "Unauthorized", 401
+
+    get_all_radargrams(cached=False)
+
+    
 
 @APP.route("/submit-digitized", methods=["POST"])
 @flask_login.login_required
@@ -243,10 +283,17 @@ def main(debug: bool = False):
     with concurrent.futures.ProcessPoolExecutor() as executor:
         pwds = list(executor.map(gen_password_hash, usernames))
 
+    DEBUG.debug = debug
     USER_DATA.update(dict(zip(usernames, pwds, strict=True)))
 
     print("Preprocessing...")
-    format_radargrams.parse_all_radargrams(progress=True)
+    format_radargrams.parse_all_radargrams(progress=True, cached=debug)
+
+    import time
+    for _ in range(10):
+        start_time = time.time()
+        get_all_radargrams(cached=True)
+        print(f"Time: {time.time() - start_time:.2f}s")
 
     if debug:
         APP.run(debug=True)

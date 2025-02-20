@@ -3,7 +3,7 @@
     <title>Home - {{base_title}}</title>
 {% endblock extrahead %}
 {% block content %}
-    <h1>The Svalbard radar digitization experiment</h1>
+    <h1>{{base_title}}</h1>
 
     <p>
     {% if user != None %}
@@ -36,7 +36,7 @@
                         {% endif %}
                         <li>Length: {{values.length_km_rounded}} km.</li>
                         </list>
-                        <img src="{{values.thumbnail}}"></img>
+                        <img loading="lazy" src="{{values.thumbnail}}"></img>
                     </a>
                     {% endif %}
                 {% endfor %}

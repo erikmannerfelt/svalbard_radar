@@ -7,6 +7,7 @@ from typing import Self, Callable
 def get_paths():
 
     gpr_dir = Path("/home/erikmann/GPR/")
+    gpr_dir2 = Path("/remotes/nornan/Erik/Data/GPR")
 
     return {
         "scott_turnerbreen": {
@@ -20,6 +21,15 @@ def get_paths():
         },
         "kroppbreen": {
             "20230228": [gpr_dir / "2023/GPR_230228_A-Kroppbreen-100MHz/"]
+        },
+        "rugaasfonna": {
+            "20220218": [gpr_dir2/ "2022/Svalbard/GPR_220218_A-Kokbreen-100MHz"],
+        },
+        "fimbulisen": {
+            "20220430": [gpr_dir2 / "2022/Svalbard/GPR_220430_B-Fimbulisen-100MHz"]
+        },
+        "vallakrabreen": {
+            "20220419": [gpr_dir2 / "2022/Svalbard/GPR_220419_C-Vallakrabreen-100MHz"],
         },
         # "mettebreen": {
         #     "20230305": [gpr_dir / "2023/temp/GPR_230305_A-Mettebreen-100MHz"],
@@ -40,6 +50,7 @@ def get_paths():
             ],
         },
         "ragna_mariebreen": {
+            # "20240317": [gpr_dir / "2024/Input/Radar_16-17.3.24/MALAGS/GPR_20240317_A-RagnaMariebreen-100MHz"],  # This doesn't have proper GPS
             "20240405": [gpr_dir / "2024/GPR_20240405_A-RagnaMariebreen-100MHz"],
             "20240412": [gpr_dir / "input/GPR_20240412_C-RagnaMariebreen-25MHz"],
         },
