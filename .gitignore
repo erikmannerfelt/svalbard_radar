@@ -5,3 +5,4 @@ static/radargrams/
 __pycache__/
 temp/
 cache/
+.privatekey

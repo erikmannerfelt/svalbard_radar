@@ -5,13 +5,18 @@ import werkzeug.security
 import jsonschema
 import json
 from pathlib import Path
+import hashlib
+import string
+import concurrent.futures
+from gevent.pywsgi import WSGIServer
 
 import format_radargrams
 import functools
 
 APP = flask.Flask(__name__)
-APP.secret_key = "addonekeyhere"
-AUTH_OLD = flask_httpauth.HTTPBasicAuth()
+
+PRIVATE_KEY_PATH = Path("./.privatekey")
+APP.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 MB
 LOGIN_MANAGER = flask_login.LoginManager(APP)
 
 USER_DATA_OLD = {
@@ -19,12 +24,46 @@ USER_DATA_OLD = {
     "elias": "alilat",
 }
 
-USER_DATA = {k: werkzeug.security.generate_password_hash(v) for k, v in USER_DATA_OLD.items()}
+
+@functools.cache
+def read_privatekey():
+    return PRIVATE_KEY_PATH.read_text()
+
+
+APP.secret_key = read_privatekey()
+
+
+def gen_password(username: str):
+    length = 10
+
+    password = ""
+    checksum = hashlib.sha256((read_privatekey() + username).encode())
+    letters = string.ascii_letters
+    digits = string.digits
+
+    all_chars = [*letters, *digits]
+
+    for i in list(checksum.digest()):
+        letter = all_chars[i % len(all_chars)]
+        if len(password) >= length:
+            continue
+        password += letter
+
+    return password
+
+
+def gen_password_hash(username: str):
+    return werkzeug.security.generate_password_hash(gen_password(username))
+
+
+USER_DATA = {}
+
 
 class User(flask_login.UserMixin):
     def __init__(self, username: str):
         self.id = username
         self.username = username
+
 
 @LOGIN_MANAGER.user_loader
 def load_user(username: str):
@@ -32,34 +71,36 @@ def load_user(username: str):
         return User(username=username)
     return None
 
-@APP.route('/login', methods=['GET', 'POST'])
+
+@APP.route("/login", methods=["GET", "POST"])
 def login():
-    if flask.request.method == 'POST':
-        username = flask.request.form['username']
-        password = flask.request.form['password']
-    
+    if flask.request.method == "POST":
+        username = flask.request.form["username"]
+        password = flask.request.form["password"]
+
         if username in USER_DATA and werkzeug.security.check_password_hash(USER_DATA[username], password):
             user_obj = User(username=username)
             flask_login.login_user(user_obj)
-            return flask.redirect(flask.url_for('index'))
+            return flask.redirect(flask.url_for("index"))
         else:
             flask.flash("Incorrect username or password.", "danger")
-    
-    return flask.render_template('login.html.jinja2')
 
-@APP.route('/logout', methods=["GET", "POST"])
+    return flask.render_template("login.html.jinja2")
+
+
+@APP.route("/logout", methods=["GET", "POST"])
 @flask_login.login_required
 def logout():
     flask_login.logout_user()
     flask.flash("Logged out successfully.", "success")
-    return flask.redirect(flask.url_for('login'))
+    return flask.redirect(flask.url_for("login"))
+
 
 def get_submitted_path() -> Path:
     return Path("submitted/")
 
 
 def make_digitize_schema():
-
     geojson_schema = {
         "type": "object",
         "properties": {
@@ -71,13 +112,13 @@ def make_digitize_schema():
                     "properties": {
                         "type": {"type": "string"},
                         "geometry": {"type": "object"},
-                        "properties": {"type": "object"}
+                        "properties": {"type": "object"},
                     },
-                    "required": ["type", "geometry"]
-                }
-            }
+                    "required": ["type", "geometry"],
+                },
+            },
         },
-        "required": ["type", "features"]
+        "required": ["type", "features"],
     }
     schema = {
         "date_modified": {"type": "string"},
@@ -91,19 +132,13 @@ def make_digitize_schema():
     }
     return schema
 
-    
-
-@AUTH_OLD.verify_password
-def verify(username: str, password: str) -> bool:
-    if not (username and password):
-        return False
-    return USER_DATA_OLD.get(username) == password
 
 def nice_name(glacier_key: str) -> str:
     if glacier_key == "dronbreen":
         return "Drønbreen"
 
     return " ".join(map(lambda part: part.capitalize(), glacier_key.replace("_", " ").split(" ")))
+
 
 def get_all_radargrams():
     radargrams = format_radargrams.parse_all_radargrams(progress=False)
@@ -113,11 +148,15 @@ def get_all_radargrams():
             radargrams[glacier_key][key].update(
                 {
                     "n_total_submissions": len(list(get_submitted_path().glob(f"*/{key}"))),
-                    "n_submitted_by_user": len(list((get_submitted_path() / f"{user}/{key}").glob("*.json"))) if user is not None else 0,
+                    "n_submitted_by_user": len(list((get_submitted_path() / f"{user}/{key}").glob("*.json")))
+                    if user is not None
+                    else 0,
                 }
             )
 
-        radargrams[glacier_key] = {k: v for k, v in sorted(radargrams[glacier_key].items(), key=lambda item: item[1]["n_total_submissions"])}
+        radargrams[glacier_key] = {
+            k: v for k, v in sorted(radargrams[glacier_key].items(), key=lambda item: item[1]["n_total_submissions"])
+        }
         radargrams[glacier_key]["_meta"] = {
             "n_total_submissions": sum(r["n_total_submissions"] for r in radargrams[glacier_key].values()),
             "nice_name": nice_name(glacier_key),
@@ -135,8 +174,8 @@ def all_radargrams():
         radargrams.update(value)
     return flask.jsonify(radargrams)
 
-def get_username() -> str | None:
 
+def get_username() -> str | None:
     user = flask_login.current_user
 
     if hasattr(user, "username"):
@@ -144,12 +183,15 @@ def get_username() -> str | None:
 
     return None
 
+
 @APP.route("/")
 def index():
     all_radargrams = get_all_radargrams()
 
     user = get_username()
-    return flask.render_template("index.html.jinja2", all_keys=all_radargrams.keys(), all_radargrams=all_radargrams, user=user)
+    return flask.render_template(
+        "index.html.jinja2", all_keys=all_radargrams.keys(), all_radargrams=all_radargrams, user=user
+    )
 
 
 @APP.route("/digitize/<radar_key>")
@@ -174,7 +216,10 @@ def submit_digitized():
     try:
         jsonschema.validate(data, make_digitize_schema())
 
-        filename = get_submitted_path() / f"{user}/{data['radar_key']}/digitized-{data['radar_key']}-{data['date_modified'].replace(':', '-').replace('-', '_')}.json"
+        filename = (
+            get_submitted_path()
+            / f"{user}/{data['radar_key']}/digitized-{data['radar_key']}-{data['date_modified'].replace(':', '-').replace('-', '_')}.json"
+        )
         filename.parent.mkdir(exist_ok=True, parents=True)
         filename.write_text(json.dumps(data))
 
@@ -192,24 +237,22 @@ def submit_digitized():
 def howto():
     return flask.render_template("howto.html.jinja2")
 
-# @APP.route('/login', methods=["GET", "POST"])
-# @AUTH_OLD.login_required
-# def force_login():
-#     user = get_username()
-#     return flask.jsonify({"message": f"Hello, {user}!"})
 
+def main(debug: bool = False):
+    usernames = Path("usernames.txt").read_text().splitlines()
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        pwds = list(executor.map(gen_password_hash, usernames))
 
-
-def main():
+    USER_DATA.update(dict(zip(usernames, pwds, strict=True)))
 
     print("Preprocessing...")
     format_radargrams.parse_all_radargrams(progress=True)
 
-    # Set a maximum upload file size
-    APP.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 MB
-
-    APP.run(host="0.0.0.0", debug=True)
-    ...
+    if debug:
+        APP.run(debug=True)
+    else:
+        http_server = WSGIServer(("0.0.0.0", 5000), APP)
+        http_server.serve_forever()
 
 
 if __name__ == "__main__":
