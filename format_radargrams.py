@@ -106,7 +106,7 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000, override_cache: b
                 warnings.simplefilter("ignore")
                 x_ind_model = scipy.interpolate.interp1d(distances[interval_slice], x_indexes[interval_slice], fill_value="extrapolate")
 
-                x_x = np.r_[np.arange(0, distances[interval_slice].max(), step=5), [distances[interval_slice].max()]]
+                x_x = np.r_[np.arange(distances[interval_slice].min(), distances[interval_slice].max(), step=5), [distances[interval_slice].max()]]
 
                 if len(x_x) == 1:
                     continue
@@ -121,7 +121,6 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000, override_cache: b
             # Lazy way of measuring the length in native units
             length += shapely.geometry.LineString(points).length
 
-        track = shapely.geometry.MultiLineString(track)
         images: dict[str, np.ndarray] | None = None
         # image = normalize(data["data"].values)
         tiles = []
@@ -181,6 +180,8 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000, override_cache: b
             else:
                 speed = round(float(speed), 2)
 
+        track_merged = shapely.geometry.MultiLineString(track)
+
         meta = {
             "radar_key": "-".join(src_filepath.with_suffix("").parts[-3:]),
             "width": data["data"].shape[1],
@@ -196,12 +197,12 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000, override_cache: b
             "interval_indicators": interval_indicators,
             "average_speed": speed,
             "bounds": {
-                "minlat": track.bounds[1],
-                "maxlat": track.bounds[3],
-                "minlon": track.bounds[0],
-                "maxlon": track.bounds[2],
+                "minlat": track_merged.bounds[1],
+                "maxlat": track_merged.bounds[3],
+                "minlon": track_merged.bounds[0],
+                "maxlon": track_merged.bounds[2],
             },
-            "track": shapely.geometry.mapping(track),
+            "track": [shapely.geometry.mapping(t) for t in track],
             "tiles": tiles,
         }
         # for key in meta:
@@ -235,5 +236,6 @@ def parse_all_radargrams(progress: bool = False):
 if __name__ == "__main__":
     # parse_radargram(Path("./processed_radar/amenfonna/20240507/DAT_0042_A1.nc"), override_cache=True)
     # parse_radargram(Path("./processed_radar/ragna_mariebreen/20230305/DAT_0050_A1_6.nc"), override_cache=True)
-    parse_radargram(Path("./processed_radar/bergmesterbreen/20230222/DAT_0033_A1_3.nc"), override_cache=True)
+    # parse_radargram(Path("./processed_radar/bergmesterbreen/20230222/DAT_0033_A1_3.nc"), override_cache=True)
+    parse_radargram(Path("./processed_radar/bergmesterbreen/20230222/DAT_0017_A1_4.nc"), override_cache=True)
     # parse_radargram(Path("./processed_radar/edvardbreen/20240411/DAT_0396_A1_1.nc"), override_cache=True)

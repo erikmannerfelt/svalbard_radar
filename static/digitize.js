@@ -169,6 +169,12 @@ function user_message(message, error = false) {
 
     if (error) {
       response_text.style.color = "red";
+
+      let response_div = document.getElementById('response-text-div');
+      response_div.classList.add("response-text-highlight");
+      setTimeout(function() {
+            response_div.classList.remove('response-text-highlight');
+        }, 1000);
     } else {
       response_text.style.color = "#333";
     }
@@ -380,22 +386,30 @@ async function setup_map() {
     minZoom: 3,
   });
 
-  let lines = L.geoJSON(meta["track"], {color: "black"}).addTo(overview_map);
+  let colors = ["black", "green", "red", "yellow", "orange"];
+  meta["track"].forEach(function (track_json, i) {
+    let lines = L.geoJSON(track_json, {color: colors[i % colors.length]}).bindPopup(function (layer) {
+      return `Line interval nr ${i}`;
+      
+    }).addTo(overview_map);
 
-  lines.getLayers().forEach(function (line) {
-    L.polylineDecorator(line, {
-          patterns: [
-              {
-                  // offset: '100%',          // Start the pattern from the end
-                  repeat: 100,               // No repeat for arrow
-                  symbol: L.Symbol.arrowHead({
-                      pixelSize: 10,       // Size of the arrow
-                      polygon: false,
-                      pathOptions: { stroke: true, color: 'black' } // Arrow style
-                  })
-              }
-          ]
-      }).addTo(overview_map);
+    lines.getLayers().forEach(function (line) {
+      L.polylineDecorator(line, {
+            patterns: [
+                {
+                    // offset: '100%',          // Start the pattern from the end
+                    repeat: 100,               // No repeat for arrow
+                    symbol: L.Symbol.arrowHead({
+                        pixelSize: 10,       // Size of the arrow
+                        polygon: false,
+                        pathOptions: { stroke: true, color: 'black' } // Arrow style
+                    })
+                }
+            ]
+        }).addTo(overview_map);
+    });
+
+
   });
   
 	L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
@@ -455,6 +469,10 @@ async function setup_map() {
 
   let submit_button = document.getElementById("submit-button");
   submit_button.onclick = function (event) {
+    if (drawn_items.getLayers().length == 0) {
+      user_message("Submit failed: project is empty", true);
+      return;
+    };
 
     let confirmed = confirm("Are you sure you want to submit your interpretation?");
     if (!confirmed) {
@@ -462,10 +480,6 @@ async function setup_map() {
       return;
     };
 
-    if (drawn_items.getLayers().length == 0) {
-      user_message("Submit failed: project is empty", true);
-      return;
-    };
 
     let output = make_feature_save_json(drawn_items, meta);
     submit_digitized(output);

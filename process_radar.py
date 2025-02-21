@@ -286,9 +286,6 @@ def run_all():
                             print(f"Skipped {filepath} (invalid location)")
                             continue
                         raise
-
-                    if (gpr_info.traces < 100) or (gpr_info.track_length < 100):
-                        continue
                     # infos.append(gpr_info)
 
                     if len(groups) == 1 and len(groups[-1]) == 0:
@@ -305,10 +302,20 @@ def run_all():
 
 
                 for group in groups:
+
                     if len(group) == 0: # TODO: Find out why this can happen
                         continue
+                    group_traces = sum(i.traces for i in group)
+                    group_name = Path(group[0].filepath).stem + f"_{len(group)}"
+                    if (group_traces < 300):
+                        print(f"Skipped {glacier}/{date_str}/{group_name} (width={group_traces})")
+                        continue
+
+                    group_length = sum(i.track_length for i in group)
+                    if (group_length < 100):
+                        print(f"Skipped {glacier}/{date_str}/{group_name} (length={group_length:.1f}m)")
+                        continue
                     with tempfile.TemporaryDirectory() as temp_dir:
-                        group_name = Path(group[0].filepath).stem + f"_{len(group)}"
 
                         if len(group) > 1:
                             input_dir = Path(temp_dir) / "input"
