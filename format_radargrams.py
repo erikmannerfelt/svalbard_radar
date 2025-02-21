@@ -1,3 +1,4 @@
+from numpy._core.multiarray import set_datetimeparse_function
 import xarray as xr
 import matplotlib.pyplot as plt
 from pathlib import Path
@@ -18,7 +19,7 @@ def checksum(objects: list[object]) -> str:
 
 def normalize(data: np.ndarray, gain_strength: float = 0.02):
 
-    butter = scipy.signal.butter(4,[0.08, 0.999], "bandpass", output="sos")
+    butter = scipy.signal.butter(4,[0.10, 0.9], "bandpass", output="sos")
     data = scipy.signal.sosfilt(butter, data, axis=0)
 
     data *= (10 ** ((np.arange(data.shape[0]) ** 0.5) * gain_strength))[:, None]
@@ -71,19 +72,27 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000, override_cache: b
         return json.loads(meta_cache_path.read_text())
 
     with xr.open_dataset(src_filepath) as data:
-
         # plt.imshow(normalize(data["data"])["abslog"], cmap="Greys_r")
         # plt.show()
         # return
 
-        d_t = data["time"].diff("x")
+        d_t = data["time"].diff("x").values
+        d_t[d_t == 0] = np.nan
 
-        break_mask = (data["distance"].diff("x") > 100) | (d_t > (d_t.median("x") * 5))
+        if not np.any(np.isfinite(d_t)):
+            median_dt = 0.2
+        else:
+            median_dt = np.nanmedian(d_t)
+
+        break_mask = (data["distance"].diff("x") > 100) | (d_t > (median_dt * 50))
         break_idx = np.unique(np.r_[[0, break_mask.values.shape[0]], np.argwhere(break_mask.values).ravel()])
 
         length = 0.
         track = []
 
+        distances = data["distance"].values
+        x_indexes = np.arange(data["data"].shape[1])
+        
         interval_indicators = []
         for i, upper in enumerate(break_idx[1:], start=1):
             lower = break_idx[i - 1]
@@ -91,9 +100,18 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000, override_cache: b
                 continue
             interval_indicators.append([int(lower), int(upper)])
 
+            interval_slice = slice(lower, upper)
+
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                x_inds = scipy.interpolate.interp1d(data["distance"].values, np.arange(data["data"].shape[1]))(np.r_[np.arange(0, data["distance"].values.max(), step=5), [data["distance"].max().item()]])
+                x_ind_model = scipy.interpolate.interp1d(distances[interval_slice], x_indexes[interval_slice], fill_value="extrapolate")
+
+                x_x = np.r_[np.arange(0, distances[interval_slice].max(), step=5), [distances[interval_slice].max()]]
+
+                if len(x_x) == 1:
+                    continue
+                x_inds = x_ind_model(x_x)
+
                 x_inds = np.clip(np.where(np.isfinite(x_inds), x_inds, 0), 0, data["data"].shape[1] - 1).astype(int)
 
             # Construct interpolated points for the track in the native crs
@@ -102,17 +120,15 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000, override_cache: b
             track.append(shapely.geometry.LineString(points.to_crs(4326)))
             # Lazy way of measuring the length in native units
             length += shapely.geometry.LineString(points).length
-            
 
         track = shapely.geometry.MultiLineString(track)
         images: dict[str, np.ndarray] | None = None
         # image = normalize(data["data"].values)
         tiles = []
-        for row in range(0, data["data"].shape[0], chunksize):
-            row_slice = slice(row, min(row + chunksize, data["data"].shape[0]))
-            for col in range(0, data["data"].shape[1], chunksize):
-                col_slice = slice(col, min(col + chunksize, data["data"].shape[1]))
-
+        for col in range(0, data["data"].shape[1], chunksize):
+            col_slice = slice(col, min(col + chunksize, data["data"].shape[1]))
+            for row in range(0, data["data"].shape[0], chunksize):
+                row_slice = slice(row, min(row + chunksize, data["data"].shape[0]))
                 filepaths = {}
                 for key in ["abslog", "classic"]:
                     filepath = static_dir / f"tiles/{key}/tile_{str(row).zfill(5)}_{str(col).zfill(5)}.jpg"
@@ -200,13 +216,18 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000, override_cache: b
 
 def parse_all_radargrams(progress: bool = False):
     radargrams = {}
-    for glacier_dir in tqdm.tqdm(list(Path("processed_radar").glob("*")), disable=(not progress)):
-        if not glacier_dir.is_dir():
-            continue
-        radargrams[glacier_dir.stem] = {}
-        for filepath in glacier_dir.rglob("*.nc"):
-            radargram = parse_radargram(filepath)
-            radargrams[glacier_dir.stem][radargram["radar_key"]] = radargram
+
+    glacier_dirs = list(Path("processed_radar").glob("*"))
+    with tqdm.tqdm(total=len(glacier_dirs), disable=(not progress)) as progress_bar:
+        for glacier_dir in glacier_dirs:
+            if not glacier_dir.is_dir():
+                continue
+            radargrams[glacier_dir.stem] = {}
+            for filepath in glacier_dir.rglob("*.nc"):
+                progress_bar.set_description("/".join(filepath.parts[-3:]))
+                radargram = parse_radargram(filepath)
+                radargrams[glacier_dir.stem][radargram["radar_key"]] = radargram
+            progress_bar.update()
 
     return radargrams
     
@@ -215,3 +236,4 @@ if __name__ == "__main__":
     # parse_radargram(Path("./processed_radar/amenfonna/20240507/DAT_0042_A1.nc"), override_cache=True)
     # parse_radargram(Path("./processed_radar/ragna_mariebreen/20230305/DAT_0050_A1_6.nc"), override_cache=True)
     parse_radargram(Path("./processed_radar/bergmesterbreen/20230222/DAT_0033_A1_3.nc"), override_cache=True)
+    # parse_radargram(Path("./processed_radar/edvardbreen/20240411/DAT_0396_A1_1.nc"), override_cache=True)
