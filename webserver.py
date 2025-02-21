@@ -213,14 +213,23 @@ class Submissions:
             return []
         return self.user_submission_funcs[username](key=key)
 
-    def get_latest_user_submission(self, username: str, key: str) -> Path | None:
-        """Get the most recent user submission for the given key."""
+    def get_latest_user_submission_path(self, username: str, key: str) -> Path | None:
+        """Get the most recent user submission path for the given key."""
         submissions = self.get_user_submissions(username=username, key=key)
 
         if len(submissions) == 0:
             return
 
         return sorted(submissions, key=lambda fp: fp.stem.split("-")[-1])[-1]
+
+    def read_latest_user_submission(self, username: str, key: str) -> dict[str, object] | None:
+
+        latest_submission = self.get_latest_user_submission_path(username=username, key=key)
+
+        if latest_submission is None:
+            return None
+
+        return json.loads(latest_submission.read_text())
 
     def get_n_users_submitted(self, key: str) -> int:
         """Get the count of users that have submitted under this key."""
@@ -274,6 +283,20 @@ def radargram_meta(radar_key: str):
     except KeyError:
         return flask.jsonify({"error": "Key not valid"}), 400 
 
+
+@APP.route("/radargram_latest_submission/<radar_key>.json")
+@flask_login.login_required
+def radargram_latest_submission(radar_key: str):
+    username = get_username()
+    if username is None:
+        return flask.jsonify({})
+    latest = SUBMISSIONS.read_latest_user_submission(username=username, key=radar_key)
+
+    if latest is None:
+        return flask.jsonify({})
+    return flask.jsonify(latest)
+
+    
 
 
 def get_username() -> str | None:

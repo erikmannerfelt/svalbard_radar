@@ -200,21 +200,9 @@ async function submit_digitized(data) {
   }
 }
 
-async function load_digitized(event, meta, drawn_items) {
-
-  const file = event.target.files[0];
+async function load_digitized_inner(data, meta, drawn_items) {
   const classes = get_layer_classes();
-
-  if (!file) {
-    return;
-  };
-
-  const reader = new FileReader();
-
-  reader.onload = function (e) {
-    try {
-      const data = JSON.parse(e.target.result);
-
+  try {
       for (key of ["radar_key", "width", "height"]) {
         if (data[key] != meta[key]) {
           user_message(`Error loading data: ${key} (${data[key]}) does not align with expected ${key} (${meta[key]})`, true);
@@ -241,15 +229,46 @@ async function load_digitized(event, meta, drawn_items) {
       // geojsonOutput.textContent = JSON.stringify(data, null, 2);
     } catch (error) {
       console.error('Error parsing JSON:', error);
-      document.getElementById('response-text').textContent = 'Error parsing data. Please check your file.';
+      user_message("Error parsing data. Please check your file", true);
     };
+}
+
+async function load_digitized(event, meta, drawn_items) {
+
+  const file = event.target.files[0];
+
+  if (!file) {
+    return;
+  };
+
+  const reader = new FileReader();
+
+  reader.onload = function (e) {
+      try {
+        const data = JSON.parse(e.target.result);
+        load_digitized_inner(data, meta, drawn_items);
+      } catch (error) {
+        user_message("Error parsing loaded JSON. Please check your file", true);
+      }
   };
   reader.onerror = function() {
       console.error('File reading error:', reader.error);
-      document.getElementById('response-text').textContent = 'Error reading file. Please try again.';
+      user_message("Error reading file. Please try again", true);
   };
-
   reader.readAsText(file);
+}
+
+async function load_latest(meta, drawn_items) {
+
+  try {
+    let latest = await fetch(`/radargram_latest_submission/${meta.radar_key}.json`).then(response => response.json())
+    console.log(latest);
+    await load_digitized_inner(latest, meta, drawn_items)
+    user_message(`Loaded the last submission (${drawn_items.getLayers().length} line(s))`);
+  } catch (error) {
+    console.log(error);
+    return;
+  }
 }
 
 async function setup_map() {
@@ -260,6 +279,7 @@ async function setup_map() {
 	const search_params = new URLSearchParams(search_string);
 
   const meta = await get_metadata();
+
 
   console.log(meta);
   var map = L.map('map', {
@@ -312,6 +332,8 @@ async function setup_map() {
   map.fitBounds(bounds);
 
   let drawn_items = setup_draw_features(map);
+
+  await load_latest(meta, drawn_items);
 
   map.on(L.Draw.Event.CREATED, function (event) {
       data_saved = false;
