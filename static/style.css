@@ -60,6 +60,22 @@ input[type="radio"] {
   margin-right: 5px;
 }
 
+.home-link {
+  text-decoration: none;
+  font-size: large;
+  color: black;
+  font-weight: bold;
+  border: 1px solid #666;
+  background-color: #eee;
+  border-radius: 5px;
+  padding: 5px;
+  margin-right: 20px;
+}
+
+.home-link:hover {
+  background-color: #cccccc;
+}
+
 .radargram-index {
   display: grid;
   max-width: 90vw;
@@ -243,7 +259,118 @@ tr:hover {
   /* Scale image to fit container */
   height: auto;
   /* Maintain aspect ratio */
-  display: block;
+  /* display: block; */
   /* Prevent unexpected gaps below images */
+}
 
+.index-location-group {
+  margin-bottom: 40px;
+  border-radius: 10px;
+  background-color: #ffffff;
+  padding: 20px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+
+
+}
+
+.index-location-title {
+  font-size: 24px;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #eee;
+  padding-bottom: 10px;
+  color: #333;
+}
+
+.index-dataset-container {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+
+.index-card {
+  background-color: #fff;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  overflow: hidden;
+  text-decoration: none;
+}
+
+.index-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.index-card img {
+  width: 98%;
+  height: 150px;
+  object-fit: contain;
+  clip-path: polygon(10% 0%, 90% 0%, 100% 10%, 100% 90%, 90% 100%, 10% 100%, 0% 90%, 0% 10%);
+  margin: 1%;
+}
+
+.index-card-info {
+  margin: 20px;
+  border-bottom: 1px solid #666;
+}
+
+.index-card-title {
+  font-size: 18px;
+  margin: 0 0 10px;
+}
+
+.index-card-description {
+  font-size: 14px;
+  color: #555;
+}
+
+.index-card-finished {
+  background: linear-gradient(135deg, #bbffbb 0%, #ddffdd 100%);
+}
+
+.index-card-unfinished {
+  background: linear-gradient(135deg, #fff9e3 0%, #ffe6b3 100%);
+}
+
+.index-instructions-link {
+  font-size: 14px;
+  color: #1a73e8;
+  /* Google Blue for visibility */
+  text-decoration: none;
+  background-color: #e7f0fd;
+  /* Light blue background */
+  padding: 10px 15px;
+  border-radius: 5px;
+  margin-left: 20px;
+  margin-right: 20px;
+  transition: background-color 0.3s ease;
+}
+
+.index-instructions-link:hover {
+  background-color: #d4e6fb;
+}
+
+.header {
+  background-color: #fff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+}
+
+.header-title {
+  font-size: 28px;
+  font-weight: bold;
+  color: #333;
+  margin: 0;
+}
+
+.user-info {
+  font-size: 14px;
+  color: #666;
+  margin: 0;
 }

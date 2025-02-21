@@ -7,12 +7,21 @@
     <title>Digitizing "{{radar_key}}" - {{base_title}}</title>
 {% endblock extrahead %}
 {% block content %}
-    <a href="/" id="home-button">Home</a>
-    {% if user == None %}
-        <b>Not logged in. Log in on the home page.</b>
-    {% else %}
-        <p>Logged in as <b>{{user}}</b></p>
-    {% endif %}
+    <div class="header">
+        <a class="home-link" href="/" id="home-button">Home</a>
+        <h1 class="header-title">{{base_title}}</h1>
+
+        <a href="/howto" class="index-instructions-link">Please read the instructions before starting!</a>
+
+        <p class="user-info">
+        {% if user != None %}
+            Logged in as <b>{{user}}</b>
+            <button id="logout-button">Log out</button>
+        {% else %}
+            Not logged in. Log in on the home page.
+        {% endif %}
+        </p>
+    </div>
     <h1>Digitizing "{{radar_key}}"</h1>
     <!--
     <form id="name-form" onSubmit="return false;">

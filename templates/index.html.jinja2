@@ -3,45 +3,47 @@
     <title>Home - {{base_title}}</title>
 {% endblock extrahead %}
 {% block content %}
-    <h1>{{base_title}}</h1>
 
-    <p>
-    {% if user != None %}
-        Logged in as <b>{{user}}</b>
-        <button id="logout-button">Log out</button>
-    {% else %}
-        <!--<button id="login-button">Log in</button>-->
-        <a href="/login">Log in</a>
-    {% endif %}
+    <div class="header">
+        <h1 class="header-title">{{base_title}}</h1>
 
-    </p>
-    <p style="font-size: 18pt;">
-    <b>Please read the <a href="/howto">instructions</a> before starting!</b>
-    </p>
+        <a href="/howto" class="index-instructions-link">Please read the instructions before starting!</a>
+
+        <p class="user-info">
+        {% if user != None %}
+            Logged in as <b>{{user}}</b>
+            <button id="logout-button">Log out</button>
+        {% else %}
+            <!--<button id="login-button">Log in</button>-->
+            <a href="/login" style="font-weight: bold; text-decoration: none; color: black;">Login</a>
+        {% endif %}
+        </p>
+    </div>
     <!-- <div class="radargram-index"> -->
     {% for glacier_key, glacier_radargrams in all_radargrams.items() %}
-        <div class="radargram-perglacier">
-            <h2>{{glacier_radargrams._meta.nice_name}}</h2>
+        <div class="index-location-group">
+            <h2 class="index-location-title">{{glacier_radargrams._meta.nice_name}}</h2>
             <p>This glacier has a total of {{glacier_radargrams._meta.n_total_submissions}}  {{"submission" if glacier_radargrams._meta.n_total_submissions == 1 else "submissions"}}</p>
-            <div class="radargram-index">
+            <div class="index-dataset-container">
                 {% for radar_key, values in glacier_radargrams.items() %}
                     {% if radar_key != "_meta" %}
 
-                    <a href="/digitize/{{radar_key}}" class="radargram-choice radargram-choice-{% if user == None %}anonymous{% elif values.n_submitted_by_user > 0 %}finished{% else %}unfinished{% endif %}">
-                        <b>{{radar_key}}</b><br>
-                        <list>
-                            <li>Done by {{values.n_total_submissions}} {{"person" if values.n_total_submissions == 1 else "people"}}.</li>
-                            {% if user != None %}
+                    <a href="/digitize/{{radar_key}}" class="index-card index-card-{% if user == None %}anonymous{% elif values.n_submitted_by_user > 0 %}finished{% else %}unfinished{% endif %}">
+                        <div class="index-card-info">
+                            <h3 class="index-card-title">{{radar_key}}</h3>
+                            <p class="index-card-description">Done by {{values.n_total_submissions}} {{"person" if values.n_total_submissions == 1 else "people"}}.</p>
+                            <p class="index-card-description">
                                 {% if values.n_submitted_by_user >= 2 %}
-                                    <li>Done by you ({{values.n_submitted_by_user}}x)!</li>
+                                    Done by you ({{values.n_submitted_by_user}}x)!
                                 {% elif values.n_submitted_by_user == 1 %}
-                                    <li>Done by you!</li>
+                                    Done by you!
                                 {% else %}
-                                    <li>Not done by you</li>
+                                    Not done by you
                                 {% endif %}
-                            {% endif %}
-                            <li>Length: {{values.length_km_rounded}} km.</li>
-                        </list>
+                            </p>
+                            <p class="index-card-description">Length: {{values.length_km_rounded}} km.</p>
+
+                        </div>
                         <img loading="lazy" src="{{values.thumbnail}}"></img>
                     </a>
                     {% endif %}

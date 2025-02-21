@@ -14,10 +14,11 @@
 {% set bed_unspecified = annotated_box('purple', "Glacier bed") %}
 {% set bed_missing = annotated_box('green', "Glacier bed not visible") %}
 {% block content %}
-  <a href="/">Home</a>
-
+  <div class="header">
+      <a class="home-link" href="/" id="home-button">Home</a>
+      <h1 class="header-title">{{base_title}}</h1>
+  </div>
   <div style="margin-left: 100px; width: 80vw;">
-  <h1>{{base_title}}</h1>
   <div class="howto-content-container">
     <div class="howto-text-content">
     <h1>How to use the website</h1>
