@@ -150,6 +150,8 @@ def nice_name(glacier_key: str) -> str:
         return "Drønbreen"
     elif glacier_key == "vallakrabreen":
         return "Vallåkrabreen"
+    elif glacier_key == "moysalbreen":
+        return "Møysalbreen"
 
     return " ".join(map(lambda part: part.capitalize(), glacier_key.replace("_", " ").split(" ")))
 
@@ -200,7 +202,6 @@ class Submissions:
         if not user_dir.is_dir():
             return []
 
-        print(f"Checking submissions for {key} from  {user_dir.stem}")
         return list(user_dir.glob(f"{key}/*.json"))
 
     def clear_user_cache(self, username: str) -> None:
@@ -236,7 +237,6 @@ class Submissions:
         n = 0
         for username in self.all_users:
             if len(self.get_user_submissions(username=username, key=key)) > 0:
-                print(username)
                 n += 1
         return n
 

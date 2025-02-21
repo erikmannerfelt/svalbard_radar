@@ -4,7 +4,7 @@ import tempfile
 import datetime
 from typing import Self, Callable
 
-def get_paths(offline: bool = True):
+def get_paths(offline: bool = False):
 
     gpr_dir = Path("/home/erikmann/GPR/")
     gpr_dir2 = Path("/remotes/nornan/Erik/Data/GPR")
