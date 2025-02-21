@@ -28,9 +28,7 @@ function get_layer_classes() {
 async function get_metadata() {
   let radar_key = document.querySelector('meta[name="radarkey"]').content;
 
-	const all_meta = await fetch("/all_radargrams.json").then(response => response.json());
-
-	let meta = all_meta[radar_key];
+	let meta = await fetch(`/radargram_meta/${radar_key}.json`).then(response => response.json());
 	meta["radar_key"] = radar_key;
 
 	return meta;

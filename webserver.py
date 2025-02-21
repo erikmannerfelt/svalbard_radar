@@ -1,3 +1,4 @@
+from typing import Callable
 import flask
 from pandas.errors import ParserWarning
 import flask_httpauth
@@ -10,6 +11,7 @@ import hashlib
 import string
 import concurrent.futures
 from gevent.pywsgi import WSGIServer
+import time
 
 import format_radargrams
 import functools
@@ -152,34 +154,96 @@ def nice_name(glacier_key: str) -> str:
     return " ".join(map(lambda part: part.capitalize(), glacier_key.replace("_", " ").split(" ")))
 
 
-def get_user_dirs() -> list[Path]:
-    return list(filter(lambda p: p.is_dir(), get_submitted_path().glob("*")))
+# def get_user_dirs() -> list[Path]:
+#     return list(filter(lambda p: p.is_dir(), get_submitted_path().glob("*")))
 
-def get_user_submissions(user_dir: Path, key: str) -> list[Path]:
-    return list(user_dir.glob(f"{key}/*.json"))
+# def get_user_submissions(user_dir: Path, key: str) -> list[Path]:
+#     return list(user_dir.glob(f"{key}/*.json"))
 
-def get_all_submissions(key: str):
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        res = list(itertools.chain(*executor.map(functools.partial(get_user_submissions, key=key), get_user_dirs())))
-    return res
+# def get_all_submissions(key: str):
+#     with concurrent.futures.ThreadPoolExecutor() as executor:
+#         res = list(itertools.chain(*executor.map(functools.partial(get_user_submissions, key=key), get_user_dirs())))
+#     return res
 
-def get_all_radargrams(cached: bool = False):
-    radargrams = format_radargrams.parse_all_radargrams(progress=False, cached=cached)
+
+
+class Submissions:
+    all_users: list[str]
+    user_submission_funcs: dict[str, Callable]
+
+    def __init__(self):
+        self._refresh()
+
+    def _refresh(self):
+        """Reload the submissions database."""
+        self.all_users = list(USER_DATA.keys()) + ["elias"]
+
+        self.user_submission_funcs = {}
+        for user in self.all_users:
+            user_dir = self.get_user_dir(username=user)
+            func = functools.partial(self._get_user_submissions_inner,user_dir=user_dir)
+            func = functools.cache(func)
+            func.cache_clear()
+            self.user_submission_funcs[user] = func
+
+    def get_user_dirs(self) -> list[Path]:
+        """Get directories of all users (existing or not)."""
+        return [self.get_user_dir(username) for username in USER_DATA]
+
+    def get_user_dir(self, username: str) -> Path:
+        """Get directories of a specific user."""
+        return get_submitted_path() / username
+
+    @staticmethod
+    def _get_user_submissions_inner(user_dir: Path, key: str) -> list[Path]:
+        """Time-consuming I/O call to get all JSON paths in the directory.""" 
+        if not user_dir.is_dir():
+            return []
+
+        print(f"Checking submissions for {key} from  {user_dir.stem}")
+        return list(user_dir.glob(f"{key}/*.json"))
+
+    def clear_user_cache(self, username: str) -> None:
+        """Clear the cache of the submissions for a user."""
+        self.user_submission_funcs[username].cache_clear()
+
+    def get_user_submissions(self, username: str, key: str) -> list[Path]:
+        """Get all submissions made by a user for the given key."""
+        if username not in self.user_submission_funcs:
+            return []
+        return self.user_submission_funcs[username](key=key)
+
+    def get_latest_user_submission(self, username: str, key: str) -> Path | None:
+        """Get the most recent user submission for the given key."""
+        submissions = self.get_user_submissions(username=username, key=key)
+
+        if len(submissions) == 0:
+            return
+
+        return sorted(submissions, key=lambda fp: fp.stem.split("-")[-1])[-1]
+
+    def get_n_users_submitted(self, key: str) -> int:
+        """Get the count of users that have submitted under this key."""
+        n = 0
+        for username in self.all_users:
+            n += len(self.get_user_submissions(username=username, key=key))
+
+        return n
+
+SUBMISSIONS = Submissions()
+    
+parse_all_radargrams = functools.cache(format_radargrams.parse_all_radargrams)
+
+@functools.cache
+def get_all_radargrams():
+    radargrams = parse_all_radargrams()
     user = get_username()
     for glacier_key in radargrams:
         for key in radargrams[glacier_key]:
-            submissions = get_all_submissions(key)
-            if user is not None:
-                user_submissions = [s for s in submissions if str(get_submitted_path() / user) in str(s)] 
-            else:
-                user_submissions = []
-
             radargrams[glacier_key][key].update(
                 {
-                    "n_total_submissions": len(submissions),
-                    "n_submitted_by_user": len(user_submissions)
-                    if user is not None
-                    else 0,
+                    "n_total_submissions": SUBMISSIONS.get_n_users_submitted(key=key),
+                    "n_submitted_by_user": len(SUBMISSIONS.get_user_submissions(username=user or "", key=key))
                 }
             )
 
@@ -199,9 +263,17 @@ def get_all_radargrams(cached: bool = False):
 @APP.route("/all_radargrams.json")
 def all_radargrams():
     radargrams = {}
-    for value in get_all_radargrams(cached=(not DEBUG)).values():
+    for value in get_all_radargrams().values():
         radargrams.update(value)
     return flask.jsonify(radargrams)
+
+@APP.route("/radargram_meta/<radar_key>.json")
+def radargram_meta(radar_key: str):
+    try:
+        return flask.jsonify(get_all_radargrams()[radar_key.split("-")[0]][radar_key])
+    except KeyError:
+        return flask.jsonify({"error": "Key not valid"}), 400 
+
 
 
 def get_username() -> str | None:
@@ -215,7 +287,7 @@ def get_username() -> str | None:
 
 @APP.route("/")
 def index():
-    all_radargrams = get_all_radargrams(cached=(not DEBUG))
+    all_radargrams = get_all_radargrams()
 
     user = get_username()
     return flask.render_template(
@@ -225,7 +297,7 @@ def index():
 
 @APP.route("/digitize/<radar_key>")
 def radargram(radar_key: str):
-    all_radargrams = get_all_radargrams(cached=not DEBUG)
+    all_radargrams = get_all_radargrams()
     meta = all_radargrams[radar_key.split("-")[0]][radar_key]
     user = get_username()
 
@@ -239,7 +311,10 @@ def force_clear_cache():
     if user != "admin":
         return "Unauthorized", 401
 
-    get_all_radargrams(cached=False)
+    get_all_radargrams.cache_clear()
+    parse_all_radargrams.cache_clear()
+
+    return "OK", 200
 
     
 
@@ -250,9 +325,11 @@ def submit_digitized():
 
     user = get_username()
 
+    if user is None:
+        return flask.jsonify({"error": "Must be logged in"}), 401
+
     data = req.get_json()
     data["user"] = user
-
     try:
         jsonschema.validate(data, make_digitize_schema())
 
@@ -262,6 +339,11 @@ def submit_digitized():
         )
         filename.parent.mkdir(exist_ok=True, parents=True)
         filename.write_text(json.dumps(data))
+
+        # What this does is it first clears the user submission cache. I.e. it has to be recalculated when requested.
+        SUBMISSIONS.clear_user_cache(username=user or "")
+        # Then, the full index has to be recalculated (but all values except the one above are probably cached so it's fast)
+        get_all_radargrams.cache_clear()
 
         return flask.jsonify({"message": "Data submitted successfully", "data": data}), 200
 
@@ -285,15 +367,10 @@ def main(debug: bool = False):
 
     DEBUG.debug = debug
     USER_DATA.update(dict(zip(usernames, pwds, strict=True)))
+    SUBMISSIONS._refresh()
 
     print("Preprocessing...")
-    format_radargrams.parse_all_radargrams(progress=True, cached=debug)
-
-    import time
-    for _ in range(10):
-        start_time = time.time()
-        get_all_radargrams(cached=True)
-        print(f"Time: {time.time() - start_time:.2f}s")
+    format_radargrams.parse_all_radargrams(progress=True)
 
     if debug:
         APP.run(debug=True)
