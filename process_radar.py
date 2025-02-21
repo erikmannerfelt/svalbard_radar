@@ -143,7 +143,7 @@ def run_rsgpr(input_filepath: Path | str, output_filepath: Path | str, merge: st
         "normalize_horizontal_magnitudes(0.3)",
         "dewow(5)",
         # "kirchhoff_migration2d",
-        "gain(0.043412704)",
+        # "gain(0.043412704)",
     ]
 
     cmds = [

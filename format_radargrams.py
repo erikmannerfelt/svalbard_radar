@@ -16,10 +16,12 @@ import functools
 def checksum(objects: list[object]) -> str:
     return hashlib.sha256("".join(map(str, objects)).encode()).hexdigest()
 
-def normalize(data: np.ndarray):
+def normalize(data: np.ndarray, gain_strength: float = 0.02):
 
     butter = scipy.signal.butter(4,[0.08, 0.999], "bandpass", output="sos")
     data = scipy.signal.sosfilt(butter, data, axis=0)
+
+    data *= (10 ** ((np.arange(data.shape[0]) ** 0.5) * gain_strength))[:, None]
 
     data -= np.median(data)
 
@@ -70,6 +72,10 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000, override_cache: b
 
     with xr.open_dataset(src_filepath) as data:
 
+        # plt.imshow(normalize(data["data"])["abslog"], cmap="Greys_r")
+        # plt.show()
+        # return
+
         d_t = data["time"].diff("x")
 
         break_mask = (data["distance"].diff("x") > 100) | (d_t > (d_t.median("x") * 5))
@@ -90,9 +96,12 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000, override_cache: b
                 x_inds = scipy.interpolate.interp1d(data["distance"].values, np.arange(data["data"].shape[1]))(np.r_[np.arange(0, data["distance"].values.max(), step=5), [data["distance"].max().item()]])
                 x_inds = np.clip(np.where(np.isfinite(x_inds), x_inds, 0), 0, data["data"].shape[1] - 1).astype(int)
 
-            new_track = shapely.geometry.LineString(gpd.points_from_xy(data["easting"].isel(x=x_inds), data["northing"].isel(x=x_inds), crs=data.attrs["crs"]).to_crs(4326))
-            track.append(new_track)
-            length += new_track.length
+            # Construct interpolated points for the track in the native crs
+            points = gpd.points_from_xy(data["easting"].isel(x=x_inds), data["northing"].isel(x=x_inds), crs=data.attrs["crs"])
+            # Append the track to the output in WGS84
+            track.append(shapely.geometry.LineString(points.to_crs(4326)))
+            # Lazy way of measuring the length in native units
+            length += shapely.geometry.LineString(points).length
             
 
         track = shapely.geometry.MultiLineString(track)
@@ -204,4 +213,5 @@ def parse_all_radargrams(progress: bool = False):
 
 if __name__ == "__main__":
     # parse_radargram(Path("./processed_radar/amenfonna/20240507/DAT_0042_A1.nc"), override_cache=True)
-    parse_radargram(Path("./processed_radar/ragna_mariebreen/20230305/DAT_0050_A1_6.nc"), override_cache=True)
+    # parse_radargram(Path("./processed_radar/ragna_mariebreen/20230305/DAT_0050_A1_6.nc"), override_cache=True)
+    parse_radargram(Path("./processed_radar/bergmesterbreen/20230222/DAT_0033_A1_3.nc"), override_cache=True)
