@@ -323,16 +323,28 @@ async function setup_map() {
   };
 
   if (meta["interval_indicators"] != null) {
-    meta["interval_indicators"].forEach(function (pair, i) {
-      L.rectangle(
-        [[meta["height"], pair[0]], [meta["height"] + meta["height"] / 5, pair[1]]],
-        {
-          color: ((i % 2 == 0) ? "black" : "white"),
-          weight: 0,
-          interactive: false,
-        }
-      ).addTo(map);
-    });
+    if (meta["interval_indicators"].length > 1) {
+      let rect_height = meta["height"] / 5
+      meta["interval_indicators"].forEach(function (pair, i) {
+
+        L.rectangle(
+          [[meta["height"], pair[0]], [meta["height"] + rect_height, pair[1]]],
+          {
+            color: ((i % 2 == 0) ? "black" : "white"),
+            weight: 0,
+            interactive: false,
+          }
+        ).addTo(map);
+      });
+
+      // TODO: Center this vertically and to the right. Doesn't seem to work right now.
+      let icon = L.divIcon({
+          className: 'digitize-breakpoint-text-div',
+          html: '<b>Breakpoints:</b>',
+          iconSize: [100, 40]
+      });
+      L.marker([meta["height"] + rect_height / 2, -rect_height / 2], { icon: icon, interactive: false, }).addTo(map);
+    };
   }
 
 
