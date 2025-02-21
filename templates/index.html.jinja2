@@ -22,7 +22,7 @@
     {% for glacier_key, glacier_radargrams in all_radargrams.items() %}
         <div class="radargram-perglacier">
             <h2>{{glacier_radargrams._meta.nice_name}}</h2>
-            <p>Done by {{glacier_radargrams._meta.n_total_submissions}}  {{"person" if glacier_radargrams._meta.n_total_submissions == 1 else "people"}}</p>
+            <p>This glacier has a total of {{glacier_radargrams._meta.n_total_submissions}}  {{"submission" if glacier_radargrams._meta.n_total_submissions == 1 else "submissions"}}</p>
             <div class="radargram-index">
                 {% for radar_key, values in glacier_radargrams.items() %}
                     {% if radar_key != "_meta" %}
@@ -31,10 +31,16 @@
                         <b>{{radar_key}}</b><br>
                         <list>
                             <li>Done by {{values.n_total_submissions}} {{"person" if values.n_total_submissions == 1 else "people"}}.</li>
-                        {% if user != None %}
-                            <li>{{ 'Not done by you' if values.n_submitted_by_user == 0 else 'Done (' + values.n_submitted_by_user | string + "x) by you!" }}</li>
-                        {% endif %}
-                        <li>Length: {{values.length_km_rounded}} km.</li>
+                            {% if user != None %}
+                                {% if values.n_submitted_by_user >= 2 %}
+                                    <li>Done by you ({{values.n_submitted_by_user}}x)!</li>
+                                {% elif values.n_submitted_by_user == 1 %}
+                                    <li>Done by you!</li>
+                                {% else %}
+                                    <li>Not done by you</li>
+                                {% endif %}
+                            {% endif %}
+                            <li>Length: {{values.length_km_rounded}} km.</li>
                         </list>
                         <img loading="lazy" src="{{values.thumbnail}}"></img>
                     </a>

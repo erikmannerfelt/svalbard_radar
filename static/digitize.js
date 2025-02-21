@@ -262,6 +262,10 @@ async function load_latest(meta, drawn_items) {
 
   try {
     let latest = await fetch(`/radargram_latest_submission/${meta.radar_key}.json`).then(response => response.json())
+    // If it's emtpy, then there is no submission yet.
+    if (Object.keys(latest).length == 0) {
+      return;
+    };
     console.log(latest);
     await load_digitized_inner(latest, meta, drawn_items)
     user_message(`Loaded the last submission (${drawn_items.getLayers().length} line(s))`);
@@ -317,6 +321,20 @@ async function setup_map() {
       };
     };
   };
+
+  if (meta["interval_indicators"] != null) {
+    meta["interval_indicators"].forEach(function (pair, i) {
+      L.rectangle(
+        [[meta["height"], pair[0]], [meta["height"] + meta["height"] / 5, pair[1]]],
+        {
+          color: ((i % 2 == 0) ? "black" : "white"),
+          weight: 0,
+          interactive: false,
+        }
+      ).addTo(map);
+    });
+  }
+
 
   show_tiles("abslog");
 

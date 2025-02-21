@@ -235,8 +235,9 @@ class Submissions:
         """Get the count of users that have submitted under this key."""
         n = 0
         for username in self.all_users:
-            n += len(self.get_user_submissions(username=username, key=key))
-
+            if len(self.get_user_submissions(username=username, key=key)) > 0:
+                print(username)
+                n += 1
         return n
 
 SUBMISSIONS = Submissions()
