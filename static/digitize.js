@@ -402,19 +402,17 @@ async function setup_map() {
       L.polylineDecorator(line, {
             patterns: [
                 {
-                    // offset: '100%',          // Start the pattern from the end
+                    offset: '5%',          
                     repeat: 100,               // No repeat for arrow
                     symbol: L.Symbol.arrowHead({
                         pixelSize: 10,       // Size of the arrow
                         polygon: false,
-                        pathOptions: { stroke: true, color: 'black' } // Arrow style
+                        pathOptions: { stroke: true, color: track_interval_colors[i % track_interval_colors.length] } // Arrow style
                     })
                 }
             ]
         }).addTo(overview_map);
     });
-
-
   });
   
 	L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
@@ -424,7 +422,6 @@ async function setup_map() {
 
 	let overview_bounds = [[meta["bounds"]["minlat"], meta["bounds"]["minlon"]], [meta["bounds"]["maxlat"], meta["bounds"]["maxlon"]]]
   overview_map.fitBounds(overview_bounds);
-  console.log(overview_bounds);
 
   document.getElementById("save-button").onclick = function(event) {
     if (drawn_items.getLayers().length == 0) {
