@@ -2,6 +2,33 @@
 {% block extrahead %}
     <title>Home - {{base_title}}</title>
 {% endblock extrahead %}
+
+{% macro radargram(radar_key, values, addref=True) %}
+    <a 
+        href="/digitize/{{radar_key}}"
+        class="index-card index-card-{% if user == None %}anonymous{% elif values.n_submitted_by_user > 0 %}finished{% else %}unfinished{% endif %}"
+        {% if addref %}id="card-{{radar_key}}"{% endif %}
+    >
+        <div class="index-card-info">
+            <h3 class="index-card-title">{{radar_key}}</h3>
+            <p class="index-card-description">Done by {{values.n_total_submissions}} {{"person" if values.n_total_submissions == 1 else "people"}}.
+                {% if values.n_submitted_by_user >= 2 %}
+                    Done by you ({{values.n_submitted_by_user}}x)!
+                {% elif values.n_submitted_by_user == 1 %}
+                    Done by you!
+                {% else %}
+                    Not done by you
+                {% endif %}
+            </p>
+            <p class="index-card-description">Length: {{values.length_km_rounded}} km.</p>
+
+        </div>
+        <div class="index-card-img-container">
+              <img loading="lazy" src="{{values.thumbnail}}"></img>
+        </div>
+    </a>
+{% endmacro %}
+
 {% block content %}
 
     <div class="header">
@@ -19,37 +46,41 @@
         {% endif %}
         </p>
     </div>
+
+    <div style="display: flex;">
+    
+        <div style="min-width: 49%; margin-right: 5px;">
+            <div class="index-location-group">
+                <h2 class="index-location-title">All glaciers</h2>
+                <div class="index-location-list">
+                    {% for glacier_key, glacier_radargrams in all_radargrams.items() %}
+                        {% set n_total = glacier_radargrams | length - 1 %}
+                        {% set n_done = glacier_radargrams["_meta"]["n_done_by_user"] %}
+                        <a href="#group-{{glacier_key}}" class="index-card-{% if n_done == n_total %}finished{% elif n_done > 0 %}unfinished{% else %}anonymous{%endif%}">{{glacier_radargrams._meta.nice_name}} (done {{n_done}} / {{n_total}})</a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="index-location-group index-recommended-container" style="">
+            <h2 class="index-location-title">Recommended radargrams</h2>
+            <div class="index-dataset-container">
+                {% for glacier_key, radar_key in recommendations %}
+                    {{ radargram(radar_key, all_radargrams[glacier_key][radar_key], False) }}
+                {% endfor %}
+            </div>
+        </div>
+
+    </div>
     <!-- <div class="radargram-index"> -->
     {% for glacier_key, glacier_radargrams in all_radargrams.items() %}
-        <div class="index-location-group">
-            <h2 class="index-location-title">{{glacier_radargrams._meta.nice_name}}</h2>
+        <div class="index-location-group" id="group-{{glacier_key}}">
+            <h2 class="index-location-title">Glacier: {{glacier_radargrams._meta.nice_name}}</h2>
             <p>This glacier has a total of {{glacier_radargrams._meta.n_total_submissions}}  {{"submission" if glacier_radargrams._meta.n_total_submissions == 1 else "submissions"}}</p>
             <div class="index-dataset-container">
                 {% for radar_key, values in glacier_radargrams.items() %}
                     {% if radar_key != "_meta" %}
-
-                    <a 
-                        href="/digitize/{{radar_key}}"
-                        class="index-card index-card-{% if user == None %}anonymous{% elif values.n_submitted_by_user > 0 %}finished{% else %}unfinished{% endif %}"
-                        id="card-{{radar_key}}"
-                    >
-                        <div class="index-card-info">
-                            <h3 class="index-card-title">{{radar_key}}</h3>
-                            <p class="index-card-description">Done by {{values.n_total_submissions}} {{"person" if values.n_total_submissions == 1 else "people"}}.</p>
-                            <p class="index-card-description">
-                                {% if values.n_submitted_by_user >= 2 %}
-                                    Done by you ({{values.n_submitted_by_user}}x)!
-                                {% elif values.n_submitted_by_user == 1 %}
-                                    Done by you!
-                                {% else %}
-                                    Not done by you
-                                {% endif %}
-                            </p>
-                            <p class="index-card-description">Length: {{values.length_km_rounded}} km.</p>
-
-                        </div>
-                        <img loading="lazy" src="{{values.thumbnail}}"></img>
-                    </a>
+                        {{ radargram(radar_key, values) }}
                     {% endif %}
                 {% endfor %}
             </div>

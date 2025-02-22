@@ -239,26 +239,32 @@ SUBMISSIONS = Submissions()
     
 parse_all_radargrams = functools.cache(format_radargrams.parse_all_radargrams)
 
-@functools.cache
-def get_all_radargrams():
+@functools.lru_cache(maxsize=10)
+def get_all_radargrams(username: str):
     radargrams = parse_all_radargrams()
-    user = get_username()
     for glacier_key in radargrams:
+        radargrams[glacier_key]["_meta"] = {"n_done_by_user": 0}
         for key in radargrams[glacier_key]:
+            n_user_submissions = len(SUBMISSIONS.get_user_submissions(username=username, key=key))
             radargrams[glacier_key][key].update(
                 {
                     "n_total_submissions": SUBMISSIONS.get_n_users_submitted(key=key),
-                    "n_submitted_by_user": len(SUBMISSIONS.get_user_submissions(username=user or "", key=key))
+                    "n_submitted_by_user": n_user_submissions,
                 }
             )
+            if n_user_submissions > 0:
+                radargrams[glacier_key]["_meta"]["n_done_by_user"] += 1
+
 
         radargrams[glacier_key] = {
             k: v for k, v in sorted(radargrams[glacier_key].items(), key=lambda item: item[1]["n_total_submissions"])
         }
-        radargrams[glacier_key]["_meta"] = {
-            "n_total_submissions": sum(r["n_total_submissions"] for r in radargrams[glacier_key].values()),
-            "nice_name": nice_name(glacier_key),
-        }
+        radargrams[glacier_key]["_meta"].update(
+            {
+                "n_total_submissions": sum(r["n_total_submissions"] for r in radargrams[glacier_key].values()),
+                "nice_name": nice_name(glacier_key),
+            }
+        )
 
     radargrams = {k: v for k, v in sorted(radargrams.items(), key=lambda item: item[1]["_meta"]["n_total_submissions"])}
 
@@ -268,14 +274,14 @@ def get_all_radargrams():
 @APP.route("/all_radargrams.json")
 def all_radargrams():
     radargrams = {}
-    for value in get_all_radargrams().values():
+    for value in get_all_radargrams(get_username() or "").values():
         radargrams.update(value)
     return flask.jsonify(radargrams)
 
 @APP.route("/radargram_meta/<radar_key>.json")
 def radargram_meta(radar_key: str):
     try:
-        return flask.jsonify(get_all_radargrams()[radar_key.split("-")[0]][radar_key])
+        return flask.jsonify(get_all_radargrams(get_username() or "")[radar_key.split("-")[0]][radar_key])
     except KeyError:
         return flask.jsonify({"error": "Key not valid"}), 400 
 
@@ -306,17 +312,25 @@ def get_username() -> str | None:
 
 @APP.route("/")
 def index():
-    all_radargrams = get_all_radargrams()
+    all_radargrams = get_all_radargrams(get_username() or "")
+
+    recommendations = [
+        "dronbreen-20230221-DAT_0013_A1_1",
+        "bergmesterbreen-20230222-DAT_0033_A1_3",
+        "ragna_mariebreen-20240412-DAT_0404_A1_1",
+    ]
+    # Extract the glacier name such that it's glacier/radar_key
+    recommendations = [[s.split("-")[0], s] for s in recommendations]
 
     user = get_username()
     return flask.render_template(
-        "index.html.jinja2", all_keys=all_radargrams.keys(), all_radargrams=all_radargrams, user=user
+        "index.html.jinja2", all_keys=all_radargrams.keys(), all_radargrams=all_radargrams, user=user, recommendations=recommendations,
     )
 
 
 @APP.route("/digitize/<radar_key>")
 def radargram(radar_key: str):
-    all_radargrams = get_all_radargrams()
+    all_radargrams = get_all_radargrams(get_username() or "")
     meta = all_radargrams[radar_key.split("-")[0]][radar_key]
     user = get_username()
 

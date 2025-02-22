@@ -329,8 +329,29 @@ tr:hover {
   background-color: #ffffff;
   padding: 20px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
 
+.index-location-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+}
 
+.index-location-list a {
+  text-decoration: none;
+  background-color: #ddd;
+  border-radius: 5px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  color: black;
+  margin: 10px;
+  padding-left: 5px;
+  padding-right: 5px;
+  text-align: center;
+}
+
+.index-location-list a:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
 }
 
 .index-location-title {
@@ -361,12 +382,23 @@ tr:hover {
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
 }
 
+.index-card-img-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 10px;
+  margin-top: 0px;
+  align-items: center;
+}
+
 .index-card img {
-  width: 98%;
-  height: 150px;
+  max-width: 95%;
+  /* height: 100%; */
+  max-height: 150px;
   object-fit: contain;
+  object-position: center;
   clip-path: polygon(10% 0%, 90% 0%, 100% 10%, 100% 90%, 90% 100%, 10% 100%, 0% 90%, 0% 10%);
-  margin: 1%;
+  /* position: absolute; */
 }
 
 .index-card-info {
@@ -382,6 +414,10 @@ tr:hover {
 .index-card-description {
   font-size: 14px;
   color: #555;
+}
+
+.index-recommended-container {
+  background: linear-gradient(135deg, #ffbbbb 0%, #fff9e3 100%);
 }
 
 .index-card-finished {

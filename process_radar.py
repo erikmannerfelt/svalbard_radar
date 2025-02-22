@@ -15,9 +15,6 @@ def get_paths(offline: bool = False):
         "Rieper 2019",
         "Vallakra 2021",
         "Mette 2024",
-        "Dron 20190227",
-        "Dron 2022",
-        "Dron 2024",
         "Ragna 20240317",
     ]
 

@@ -215,6 +215,8 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000, override_cache: b
             "moysalbreen-20220222-DAT_0760_A1_1": 5,
             "moysalbreen-20220222-DAT_0750_A1_6": 5,
             "moysalbreen-20220222-DAT_0749_A1_1": 5,
+            "dronbreen-20200226-DAT_0086_A1_1": 0.3,
+            "amenfonna-20240510-DAT_0044_A1_1": 3,
         }
 
         meta = {
