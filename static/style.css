@@ -29,6 +29,28 @@ li {
 
 }
 
+#map .leaflet-div-icon {
+  width: 0;
+  height: 0;
+  border: 0;
+  padding: 0;
+}
+
+#map .leaflet-div-icon span {
+  display: inline-block;
+  padding: 3px;
+  transform: translate(-50%, -50%);
+}
+
+#map .leaflet-div-icon b {
+  display: inline-block;
+  padding: 3px;
+  border: 1px solid #666;
+  border-radius: 3px;
+  background: #fff;
+  transform: translate(-100%, -50%);
+}
+
 #overview-map {
   height: 400px;
   width: 400px;
@@ -171,13 +193,6 @@ input[type="radio"] {
   max-width: 100px;
   display: flex;
   flex-direction: column;
-}
-
-.digitize-breakpoint-text-div {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
 }
 
 .response-text-highlight {

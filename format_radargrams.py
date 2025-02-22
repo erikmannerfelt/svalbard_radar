@@ -88,7 +88,7 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000, override_cache: b
         break_idx = np.unique(np.r_[[0, break_mask.values.shape[0]], np.argwhere(break_mask.values).ravel()])
 
         length = 0.
-        track = []
+        tracks = []
 
         distances = data["distance"].values
         x_indexes = np.arange(data["data"].shape[1])
@@ -96,30 +96,41 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000, override_cache: b
         interval_indicators = []
         for i, upper in enumerate(break_idx[1:], start=1):
             lower = break_idx[i - 1]
-            if (upper - lower) < 3:
+            if (upper - lower) < 10:
                 continue
             interval_indicators.append([int(lower), int(upper)])
 
             interval_slice = slice(lower, upper)
 
+            dist_subset = distances[interval_slice]
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                x_ind_model = scipy.interpolate.interp1d(distances[interval_slice], x_indexes[interval_slice], fill_value="extrapolate")
+                x_ind_model = scipy.interpolate.interp1d(dist_subset, x_indexes[interval_slice], fill_value="extrapolate")
 
-                x_x = np.r_[np.arange(distances[interval_slice].min(), distances[interval_slice].max(), step=5), [distances[interval_slice].max()]]
+                x_x = np.r_[np.arange(dist_subset.min(), dist_subset.max(), step=5), [dist_subset.max()]]
 
                 if len(x_x) == 1:
                     continue
                 x_inds = x_ind_model(x_x)
 
-                x_inds = np.clip(np.where(np.isfinite(x_inds), x_inds, 0), 0, data["data"].shape[1] - 1).astype(int)
+                x_inds = np.clip(np.where(np.isfinite(x_inds), x_inds, 0), lower, upper - 1).astype(int)
 
             # Construct interpolated points for the track in the native crs
             points = gpd.points_from_xy(data["easting"].isel(x=x_inds), data["northing"].isel(x=x_inds), crs=data.attrs["crs"])
+
+            track_length = np.sum(np.sqrt(np.sum(np.power([np.diff(points.x), np.diff(points.y)], 2), axis=0)))
+
             # Append the track to the output in WGS84
-            track.append(shapely.geometry.LineString(points.to_crs(4326)))
+            tracks.append(
+                {
+                    "i": len(interval_indicators) - 1,
+                    "n_traces": int(upper - lower),
+                    "length": round(track_length, 2),
+                    "geometry": shapely.geometry.LineString(points.to_crs(4326))
+                }
+            )
             # Lazy way of measuring the length in native units
-            length += shapely.geometry.LineString(points).length
+            length += track_length
 
         images: dict[str, np.ndarray] | None = None
         # image = normalize(data["data"].values)
@@ -180,7 +191,17 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000, override_cache: b
             else:
                 speed = round(float(speed), 2)
 
-        track_merged = shapely.geometry.MultiLineString(track)
+        track_merged = shapely.geometry.MultiLineString([t["geometry"] for t in tracks])
+
+        tracks_geojson = []
+        for track in tracks:
+            tracks_geojson.append(
+                {
+                    "type": "Feature",
+                    "geometry": shapely.geometry.mapping(track["geometry"]),
+                    "properties": {k: v for k, v in track.items() if k != "geometry"}
+                }
+            )
 
         meta = {
             "radar_key": "-".join(src_filepath.with_suffix("").parts[-3:]),
@@ -202,7 +223,7 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000, override_cache: b
                 "minlon": track_merged.bounds[0],
                 "maxlon": track_merged.bounds[2],
             },
-            "track": [shapely.geometry.mapping(t) for t in track],
+            "track": tracks_geojson,
             "tiles": tiles,
         }
         # for key in meta:

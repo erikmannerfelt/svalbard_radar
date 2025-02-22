@@ -327,6 +327,7 @@ async function setup_map() {
       };
     };
   };
+  let track_interval_colors = ["black", "green", "red", "yellow", "orange"];
 
   if (meta["interval_indicators"] != null) {
     if (meta["interval_indicators"].length > 1) {
@@ -336,20 +337,26 @@ async function setup_map() {
         L.rectangle(
           [[meta["height"], pair[0]], [meta["height"] + rect_height, pair[1]]],
           {
-            color: ((i % 2 == 0) ? "black" : "white"),
+            color: track_interval_colors[i % (track_interval_colors.length - 1)],
             weight: 0,
             interactive: false,
           }
         ).addTo(map);
+        let icon = L.divIcon({
+            html: `<span>${i}</span>`,
+            iconSize: "auto",
+        });
+        L.marker([meta["height"] + rect_height / 2, (pair[0] + pair[1]) / 2], { icon: icon, interactive: false, }).addTo(map);
       });
 
-      // TODO: Center this vertically and to the right. Doesn't seem to work right now.
       let icon = L.divIcon({
-          className: 'digitize-breakpoint-text-div',
-          html: '<b>Breakpoints:</b>',
-          iconSize: [100, 40]
+          html: '<b>Intervals:</b>',
+          iconSize: "auto",
       });
-      L.marker([meta["height"] + rect_height / 2, -rect_height / 2], { icon: icon, interactive: false, }).addTo(map);
+      L.marker([meta["height"] + rect_height / 2, 0], { icon: icon}).bindPopup(function (layer) {
+        return "Intervals are detected events where the radar may have been stopped and resumed at irregular times/places";
+        
+      }).addTo(map);
     };
   }
 
@@ -386,10 +393,10 @@ async function setup_map() {
     minZoom: 3,
   });
 
-  let colors = ["black", "green", "red", "yellow", "orange"];
   meta["track"].forEach(function (track_json, i) {
-    let lines = L.geoJSON(track_json, {color: colors[i % colors.length]}).bindPopup(function (layer) {
-      return `Line interval nr ${i}`;
+    let lines = L.geoJSON(track_json, {color: track_interval_colors[i % (track_interval_colors.length - 1)]}).bindPopup(function (layer) {
+      let props = layer.feature.properties;
+      return `Interval nr ${props.i}<br>Num traces: ${props.n_traces}<br>Length: ${props.length} m`;
       
     }).addTo(overview_map);
 
