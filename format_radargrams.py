@@ -204,6 +204,19 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000, override_cache: b
                 }
             )
 
+        # These are run with slower settings and need stretching to be usable.
+        xscale = {
+            "rugaasfonna-20220222-DAT_0738_A1_9": 5,
+            "rugaasfonna-20220218-DAT_0728_A1_3": 5,
+            "rugaasfonna-20220218-DAT_0723_A1_1": 5,
+            "rugaasfonna-20220218-DAT_0727_A1_1": 5,
+            "svellnosbreen-20220218-DAT_0735_A1_2": 5,
+            "winsnesbreen-20240503-DAT_0013_A1_1": 3,
+            "moysalbreen-20220222-DAT_0760_A1_1": 5,
+            "moysalbreen-20220222-DAT_0750_A1_6": 5,
+            "moysalbreen-20220222-DAT_0749_A1_1": 5,
+        }
+
         meta = {
             "radar_key": "-".join(src_filepath.with_suffix("").parts[-3:]),
             "width": data["data"].shape[1],
@@ -227,11 +240,7 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000, override_cache: b
             "track": tracks_geojson,
             "tiles": tiles,
         }
-        # for key in meta:
-        #     if key not in ["track", "tiles"]:
-        #         print(key, meta[key])
-        # raise NotImplementedError()
-
+        meta["xscale"] = xscale.get(meta["radar_key"], 1.)
         meta_cache_path.parent.mkdir(exist_ok=True, parents=True)
         meta_cache_path.write_text(json.dumps(meta, indent=2))
         return meta

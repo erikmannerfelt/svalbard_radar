@@ -31,6 +31,10 @@ async function get_metadata() {
 	let meta = await fetch(`/radargram_meta/${radar_key}.json`).then(response => response.json());
 	meta["radar_key"] = radar_key;
 
+	if (meta["xscale"] == undefined) {
+	  meta["xscale"] = 1.;
+	};
+
 	return meta;
 }
 
@@ -150,6 +154,18 @@ function make_feature_save_json(drawn_items, meta) {
 
   let date = new Date().toJSON();
 
+  let drawn_items_geojson = drawn_items.toGeoJSON();
+
+  // Apply xscaling
+  if (meta["xscale"] != 1.) {
+    drawn_items_geojson.features = drawn_items_geojson.features.map(function (feature) {
+      feature.geometry.coordinates = feature.geometry.coordinates.map(function (coords) {
+        return [coords[0] / meta["xscale"], coords[1]];
+      });
+      return feature;
+    });
+  };
+
   let output = {
     "date_modified": date,
     "height": meta["height"],
@@ -157,7 +173,7 @@ function make_feature_save_json(drawn_items, meta) {
     // "user": meta.user || null,
     "comment": meta.comment || null,
     "radar_key": meta["radar_key"],
-    "features": drawn_items.toGeoJSON(),
+    "features": drawn_items_geojson,
   };
 
   return output;
@@ -225,6 +241,14 @@ async function load_digitized_inner(data, meta, drawn_items) {
       L.geoJSON(data["features"], {
         style: function (feature) {return {color: classes[feature.properties.kind].color};},
         onEachFeature: function (feature, layer) {
+
+            if (meta["xscale"] != 1.) {
+              let new_coords = [];
+              layer.getLatLngs().forEach(function (pair) {
+                new_coords.push([pair["lat"], pair["lng"] * meta["xscale"]]);
+              });
+              layer.setLatLngs(new_coords);
+            };
             drawn_items.addLayer(layer);
         }
       });
@@ -296,14 +320,14 @@ async function setup_map() {
     minZoom: -3
   });
   // let imageUrl = 'static/images/ragna-mariebreen_20230305_lighter.jpg';
-  var bounds = [[0, 0], [meta["height"], meta["width"]]]; // Assuming origin (0, 0) at top-left
+  var bounds = [[0, 0], [meta["height"], meta["width"] * meta["xscale"]]]; // Assuming origin (0, 0) at top-left
 
   let tiles = {};
   for (kind of ["abslog", "classic"]) {
 
     let new_tiles = [];
     for (tile of meta["tiles"]) {
-      new_tiles.push(L.imageOverlay(tile["filepaths"][kind], [[tile["miny"], tile["minx"]],[tile["maxy"], tile["maxx"]]]));
+      new_tiles.push(L.imageOverlay(tile["filepaths"][kind], [[tile["miny"], tile["minx"] * meta["xscale"]],[tile["maxy"], tile["maxx"] * meta["xscale"]]]));
 
     };
     // let new_tiles = meta["tiles"].forEach(function (tile) {
@@ -333,7 +357,7 @@ async function setup_map() {
       meta["interval_indicators"].forEach(function (pair, i) {
 
         L.rectangle(
-          [[meta["height"], pair[0]], [meta["height"] + rect_height, pair[1]]],
+          [[meta["height"], pair[0] * meta["xscale"]], [meta["height"] + rect_height, pair[1] * meta["xscale"]]],
           {
             color: track_interval_colors[i % track_interval_colors.length],
             weight: 0,
@@ -344,7 +368,7 @@ async function setup_map() {
             html: `<span>${i}</span>`,
             iconSize: "auto",
         });
-        L.marker([meta["height"] + rect_height / 2, (pair[0] + pair[1]) / 2], { icon: icon, interactive: false, }).addTo(map);
+        L.marker([meta["height"] + rect_height / 2, (pair[0] * meta["xscale"] + pair[1] * meta["xscale"]) / 2], { icon: icon, interactive: false, }).addTo(map);
       });
 
       let icon = L.divIcon({
