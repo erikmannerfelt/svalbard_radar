@@ -31,20 +31,21 @@
     -->
     <div class="digitize-widgets-container">
         <div class="digitize-widgets-item">
-            <div class="digitize-buttons-container">
+            <div class="digitize-widget-card">
                 <h3 style="margin-top: 3px;">Load / save / submit</h3>
                 <button id="save-button" class="button">Save progress</button>
-                <p>Load data:</p>
+                <p>Load data: </p>
                 <input type="file" id="load-button" accept=".json,application/json" style="max-width: 99%;">
+                
                 <button id="submit-button" class="button submit-button">SUBMIT DATA</button>
             </div>
-            <div class="digitize-buttons-container" id="response-text-div">
+            <div class="digitize-widget-card" style="width: 100%;" id="response-text-div">
                 <h3 style="margin-top: 5px;">Message box</h3>
                 <p id="response-text"></p>
             </div>
         </div>
         <!-- <button id="load-button">Load data</button> -->
-        <div class="digitize-widgets-item">
+        <div class="digitize-widget-card">
             <table>
                 <tr><th>Antenna</th><td>{{meta.antenna}}</td></tr>
                 <tr><th>Width (traces)</th><td>{{meta.width}}</td></tr>
@@ -58,25 +59,33 @@
             </table>
         </div>
 
-        <div id="overview-map"></div>
+        <div class="digitize-widget-card">
+            <div id="overview-map"></div>
+        </div>
 
     </div>
 
     <div class="digitize-widgets-container">
-        <div class="digitize-widgets-item" style="min-width: 100px;">
+        <div class="digitize-widgets-item">
+        <!--
             <div class="digitize-display-options-container" style="width: 100%;">
-                <p>GPR display options</p>
-                <button id="display-abslog">Abslog</button>
-                <button id="display-classic">Classic</button>
+        -->
+            <div class="digitize-widget-card" style="max-width: 150px;">
+                <p style="margin-top: 0px;">GPR display options</p>
+                <button id="display-abslog" class="button" style="margin-bottom: 5px;">Abslog</button>
+                <button id="display-classic" class="button">Classic</button>
             </div>
         </div>
-        <div class="digitize-widgets-item" style="width: 40vw;">
+        <!--
+        </div>
+        -->
+        <div class="digitize-widget-card">
             <form id="interp-class-select" style="width: 100%;"></form>
         </div>
-        <div class="digitize-widgets-item" style="width: 20vw;">
+        <div class="digitize-widget-card">
             <form id="comment-form" onSubmit="return false;" style="width: 100%; display: flex; flex-direction: column;">
                 <label for="comment">Comment (added in the submission)</label>
-                <textarea id="user-comment" name="comment" rows=6 cols=50></textarea>
+                <textarea id="user-comment" name="comment" rows=6></textarea>
             </form>
         </div>
     </div>

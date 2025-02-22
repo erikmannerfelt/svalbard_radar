@@ -52,8 +52,8 @@ li {
 }
 
 #overview-map {
-  height: 400px;
-  width: 400px;
+  height: 99%;
+  width: 99%;
 }
 
 form {
@@ -195,6 +195,21 @@ input[type="radio"] {
   flex-direction: column;
 }
 
+.digitize-widget-card {
+  background-color: #fff;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  padding: 10px;
+  margin: 10px;
+  overflow: hidden;
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
 .response-text-highlight {
   border: 4px solid red;
   /* font-size: 14pt; */
@@ -213,8 +228,13 @@ input[type="radio"] {
   /* Prevents text from wrapping */
 }
 
+.button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
 button.submit-button {
-  margin-top: 40px;
+  margin-top: 20px;
   background-color: #ffffaa;
   border: 1px solid black;
 }

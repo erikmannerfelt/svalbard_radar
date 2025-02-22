@@ -139,7 +139,7 @@ function setup_draw_features(map) {
     drawnItems.addLayer(layer);
   });
 
-  document.getElementById('interp-class-select').addEventListener('change', function(event) {
+  document.getElementById('interp-class-select').addEventListener('change', function(_event) {
     updateDrawControl();
   })
 
@@ -290,8 +290,6 @@ async function setup_map() {
 
   const meta = await get_metadata();
 
-
-  console.log(meta);
   var map = L.map('map', {
     crs: L.CRS.Simple,
     maxZoom: 4,
@@ -327,7 +325,7 @@ async function setup_map() {
       };
     };
   };
-  let track_interval_colors = ["black", "green", "red", "yellow", "orange"];
+  let track_interval_colors = ["black", "green", "red", "purple", "orange", "blue"];
 
   if (meta["interval_indicators"] != null) {
     if (meta["interval_indicators"].length > 1) {
@@ -337,7 +335,7 @@ async function setup_map() {
         L.rectangle(
           [[meta["height"], pair[0]], [meta["height"] + rect_height, pair[1]]],
           {
-            color: track_interval_colors[i % (track_interval_colors.length - 1)],
+            color: track_interval_colors[i % track_interval_colors.length],
             weight: 0,
             interactive: false,
           }
@@ -394,7 +392,7 @@ async function setup_map() {
   });
 
   meta["track"].forEach(function (track_json, i) {
-    let lines = L.geoJSON(track_json, {color: track_interval_colors[i % (track_interval_colors.length - 1)]}).bindPopup(function (layer) {
+    let lines = L.geoJSON(track_json, {color: track_interval_colors[i % track_interval_colors.length]}).bindPopup(function (layer) {
       let props = layer.feature.properties;
       return `Interval nr ${props.i}<br>Num traces: ${props.n_traces}<br>Length: ${props.length} m`;
       
