@@ -28,7 +28,11 @@
                 {% for radar_key, values in glacier_radargrams.items() %}
                     {% if radar_key != "_meta" %}
 
-                    <a href="/digitize/{{radar_key}}" class="index-card index-card-{% if user == None %}anonymous{% elif values.n_submitted_by_user > 0 %}finished{% else %}unfinished{% endif %}">
+                    <a 
+                        href="/digitize/{{radar_key}}"
+                        class="index-card index-card-{% if user == None %}anonymous{% elif values.n_submitted_by_user > 0 %}finished{% else %}unfinished{% endif %}"
+                        id="card-{{radar_key}}"
+                    >
                         <div class="index-card-info">
                             <h3 class="index-card-title">{{radar_key}}</h3>
                             <p class="index-card-description">Done by {{values.n_total_submissions}} {{"person" if values.n_total_submissions == 1 else "people"}}.</p>

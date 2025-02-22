@@ -8,7 +8,7 @@
 {% endblock extrahead %}
 {% block content %}
     <div class="header">
-        <a class="home-link" href="/" id="home-button">Home</a>
+        <a class="home-link" href="/#card-{{radar_key}}" id="home-button">Home</a>
         <h1 class="header-title">{{base_title}}</h1>
 
         <a href="/howto" class="index-instructions-link">Please read the instructions before starting!</a>
@@ -84,7 +84,7 @@
         </div>
         <div class="digitize-widget-card">
             <form id="comment-form" onSubmit="return false;" style="width: 100%; display: flex; flex-direction: column;">
-                <label for="comment">Comment (added in the submission)</label>
+                <label for="comment">Comment (registered when submitted)</label>
                 <textarea id="user-comment" name="comment" rows=6></textarea>
             </form>
         </div>
