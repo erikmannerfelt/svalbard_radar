@@ -138,7 +138,8 @@ def run_rsgpr(input_filepath: Path | str, output_filepath: Path | str, merge: st
 
     rsgpr_steps = [
         # "subset(0 3500)",
-        "zero_corr_max_peak",
+        # "zero_corr_max_peak",
+        "zero_corr",
         "correct_antenna_separation",
         "normalize_horizontal_magnitudes(0.3)",
         "dewow(5)",
