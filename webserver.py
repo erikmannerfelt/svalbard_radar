@@ -23,11 +23,6 @@ PRIVATE_KEY_PATH = Path("./.privatekey")
 APP.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 MB
 LOGIN_MANAGER = flask_login.LoginManager(APP)
 
-USER_DATA_OLD = {
-    "admin": "SuperSecretPwd",
-    "elias": "alilat",
-}
-
 class Debug:
     def __init__(self, debug: bool):
         self.debug = debug
@@ -178,7 +173,7 @@ class Submissions:
 
     def _refresh(self):
         """Reload the submissions database."""
-        self.all_users = list(USER_DATA.keys()) + ["elias"]
+        self.all_users = list(USER_DATA.keys())
 
         self.user_submission_funcs = {}
         for user in self.all_users:
