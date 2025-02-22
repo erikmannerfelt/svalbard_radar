@@ -72,6 +72,7 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000, override_cache: b
         return json.loads(meta_cache_path.read_text())
 
     with xr.open_dataset(src_filepath) as data:
+
         # plt.imshow(normalize(data["data"])["abslog"], cmap="Greys_r")
         # plt.show()
         # return
@@ -85,7 +86,7 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000, override_cache: b
             median_dt = np.nanmedian(d_t)
 
         break_mask = (data["distance"].diff("x") > 100) | (d_t > (median_dt * 50))
-        break_idx = np.unique(np.r_[[0, break_mask.values.shape[0]], np.argwhere(break_mask.values).ravel()])
+        break_idx = np.unique(np.r_[[0, break_mask.values.shape[0]], np.argwhere(break_mask.values).ravel() + 1])
 
         length = 0.
         tracks = []
@@ -258,5 +259,6 @@ if __name__ == "__main__":
     # parse_radargram(Path("./processed_radar/amenfonna/20240507/DAT_0042_A1.nc"), override_cache=True)
     # parse_radargram(Path("./processed_radar/ragna_mariebreen/20230305/DAT_0050_A1_6.nc"), override_cache=True)
     # parse_radargram(Path("./processed_radar/bergmesterbreen/20230222/DAT_0033_A1_3.nc"), override_cache=True)
-    parse_radargram(Path("./processed_radar/bergmesterbreen/20230222/DAT_0017_A1_4.nc"), override_cache=True)
+    # parse_radargram(Path("./processed_radar/bergmesterbreen/20230222/DAT_0017_A1_4.nc"), override_cache=True)
+    parse_radargram(Path("./processed_radar/rugaasfonna/20220222/DAT_0738_A1_9.nc"), override_cache=True)
     # parse_radargram(Path("./processed_radar/edvardbreen/20240411/DAT_0396_A1_1.nc"), override_cache=True)
