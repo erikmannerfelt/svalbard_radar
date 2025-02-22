@@ -31,13 +31,33 @@
     -->
     <div class="digitize-widgets-container">
         <div class="digitize-widgets-item">
-            <div class="digitize-widget-card">
-                <h3 style="margin-top: 3px;">Load / save / submit</h3>
-                <button id="save-button" class="button">Save progress</button>
-                <p>Load data: </p>
-                <input type="file" id="load-button" accept=".json,application/json" style="max-width: 99%;">
+            <div style="display: flex;">
+                <div class="digitize-widget-card" style="min-width: 50%;">
+                    <h3 style="margin-top: 5px;">Load / save / submit</h3>
+                    <button id="save-button" class="button">Save progress</button>
+                    <p>Load data: </p>
+                    <input type="file" id="load-button" accept=".json,application/json" style="max-width: 99%;">
                 
-                <button id="submit-button" class="button submit-button">SUBMIT DATA</button>
+                    <button id="submit-button" class="button submit-button">SUBMIT DATA</button>
+                </div>
+                <div class="digitize-widget-card">
+                    <h3 style="margin-top: 5px; margin-bottom: 5px;">Difficulty rating</h2>
+                    <form class="digitize-difficulty" id="digitize-difficulty-form">
+                        <p>How difficult was this radargram to interpret?</p>
+                        <label>
+                            <input type="radio" name="digitize-difficulty-choice" value="easy">
+                            Easy
+                        </label><br>
+                        <label>
+                            <input type="radio" name="digitize-difficulty-choice" value="medium">
+                            Medium
+                        </label><br>
+                        <label>
+                            <input type="radio" name="digitize-difficulty-choice" value="hard">
+                            Hard
+                        </label><br>
+                    </form>
+                </div>
             </div>
             <div class="digitize-widget-card" style="width: 100%;" id="response-text-div">
                 <h3 style="margin-top: 5px;">Message box</h3>
@@ -90,7 +110,7 @@
         </div>
     </div>
 
-    <div style="width: 90vw; left: 0px;">
+    <div class="digitize-widget-card" style="width: 98%;">
         <div id="map"></div>
     </div>
 

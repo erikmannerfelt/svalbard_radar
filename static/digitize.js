@@ -171,6 +171,7 @@ function make_feature_save_json(drawn_items, meta) {
     "height": meta["height"],
     "width": meta["width"],
     // "user": meta.user || null,
+    "difficulty": meta.difficulty,
     "comment": meta.comment || null,
     "radar_key": meta["radar_key"],
     "features": drawn_items_geojson,
@@ -233,6 +234,7 @@ async function load_digitized_inner(data, meta, drawn_items) {
       };
 
       meta["comment"] = data["comment"];
+      meta["difficulty"] = data["difficulty"];
 
       if (drawn_items.getLayers().length > 0) {
         drawn_items.clearLayers();
@@ -305,6 +307,26 @@ async function load_latest(meta, drawn_items) {
   }
 }
 
+function get_user_difficulty() {
+  let radios = document.getElementsByName("digitize-difficulty-choice");
+
+  for (radio of radios) {
+    if (radio.checked) {
+      return radio.value;
+    };
+  };
+
+  return null;
+}
+
+function set_user_difficulty(difficulty) {
+  let radios = document.getElementsByName("digitize-difficulty-choice");
+
+  for (radio of radios) {
+    radio.checked = (radio.value == difficulty);
+  };
+}
+
 async function setup_map() {
 
   let data_saved = true;
@@ -313,6 +335,7 @@ async function setup_map() {
 	const search_params = new URLSearchParams(search_string);
 
   const meta = await get_metadata();
+
 
   var map = L.map('map', {
     crs: L.CRS.Simple,
@@ -399,6 +422,14 @@ async function setup_map() {
   let drawn_items = setup_draw_features(map);
 
   await load_latest(meta, drawn_items);
+
+  if (meta["difficulty"] == undefined) {
+    meta["difficulty"] = get_user_difficulty();
+  }
+
+  if (meta["difficulty"] != null) {
+    set_user_difficulty(meta["difficulty"]);
+  }
 
   map.on(L.Draw.Event.CREATED, function (event) {
       data_saved = false;
@@ -495,6 +526,11 @@ async function setup_map() {
 
   let submit_button = document.getElementById("submit-button");
   submit_button.onclick = function (event) {
+    if (meta["difficulty"] === null) {
+      user_message("Please choose a difficulty before submitting", true);
+      return;
+    };
+
     if (drawn_items.getLayers().length == 0) {
       user_message("Submit failed: project is empty", true);
       return;
@@ -515,6 +551,10 @@ async function setup_map() {
 
   document.getElementById("user-comment").addEventListener("change", async function (event) {
     meta["comment"] = event.target.value;
+  });
+
+  document.getElementById("digitize-difficulty-form").addEventListener("change", function (_event) {
+    meta["difficulty"] = get_user_difficulty();
   });
 
 
