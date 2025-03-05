@@ -465,10 +465,14 @@ def main(debug: bool = False):
     print("Preprocessing...")
     format_radargrams.parse_all_radargrams(progress=True)
 
+    port = 5000
+    if "yggdrasil" in socket.gethostname():
+        port = 8081
+
     if debug:
         APP.run(debug=True)
     else:
-        http_server = WSGIServer(("0.0.0.0", 5000), APP)
+        http_server = WSGIServer(("0.0.0.0", port), APP)
         http_server.serve_forever()
 
 
