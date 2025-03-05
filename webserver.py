@@ -12,6 +12,8 @@ import string
 import concurrent.futures
 from gevent.pywsgi import WSGIServer
 import time
+import api_analytics.flask
+import socket
 
 import format_radargrams
 import functools
@@ -401,6 +403,10 @@ def main(debug: bool = False):
     DEBUG.debug = debug
     USER_DATA.update(dict(zip(usernames, pwds, strict=True)))
     SUBMISSIONS._refresh()
+
+    api_key = Path(".apianalytics_key")
+    if api_key.is_file():
+        api_analytics.flask.add_middleware(APP, api_key.read_text())
 
     print("Preprocessing...")
     format_radargrams.parse_all_radargrams(progress=True)

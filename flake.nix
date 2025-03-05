@@ -9,7 +9,8 @@
   outputs = {self, nixpkgs, nixrik}: {
     devShells = nixrik.extra.lib.for_all_systems(pkgs_pre: (
       let
-        pkgs = pkgs_pre.extend nixrik.overlays.python_extra;
+        # pkgs = (pkgs_pre.extend nixrik.overlays.default);
+        pkgs = pkgs_pre.lib.foldl' (acc: overlay: acc.extend overlay) pkgs_pre nixrik.overlays.default;
         my-python = pkgs.python312PackagesExtra.from_requirements ./requirements.txt;
       in {
         default = pkgs.mkShell {
@@ -18,6 +19,7 @@
             my-python
             zsh
             nodejs
+            rsgpr
           ];
         };
       }
