@@ -30,8 +30,8 @@
     </form>
     -->
     <div class="digitize-widgets-container">
-        <div class="digitize-widgets-item">
-            <div style="display: flex;">
+        <div class="digitize-widgets-item" style="max-width: 80 vw;flex: 1 1 auto;">
+            <div style="display: flex; flex-wrap: wrap; flex-direction: rows; width: 100%;">
                 <div class="digitize-widget-card" style="min-width: 50%;">
                     <h3 style="margin-top: 5px;">Load / save / submit</h3>
                     <button id="save-button" class="button">Save progress</button>
@@ -79,7 +79,9 @@
             </table>
         </div>
 
-        <div class="digitize-widget-card">
+        <div class="digitize-widget-card" style="min-height: 300px; max-width: 80vw;">
+  
+  
             <div id="overview-map"></div>
         </div>
 
@@ -110,7 +112,7 @@
         </div>
     </div>
 
-    <div class="digitize-widget-card" style="width: 98%;">
+    <div class="digitize-widget-card">
         <div id="map"></div>
     </div>
 

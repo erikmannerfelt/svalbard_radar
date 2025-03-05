@@ -6,7 +6,7 @@
 body {
   font-family: Arial, sans-serif;
   margin-top: 20px;
-  padding: 20px;
+  padding: 1vw;
   background-color: #f2f2f2;
 }
 
@@ -151,7 +151,7 @@ input[type="radio"] {
 
 .digitize-widgets-container {
   display: grid;
-  width: 98%;
+  width: 100%;
   /* height: 500px; */
   /* grid-template-columns: repeat(auto-fill, minmax(150px, 20vw)); */
   grid-template-columns: repeat(3, 1fr);
@@ -159,6 +159,18 @@ input[type="radio"] {
   /* Sets flexible row heights */
   /* Adjust min size & columns */
   gap: 10px;
+}
+
+@media (max-width: 768px) {
+  .digitize-widgets-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 400px) {
+  .digitize-widgets-container {
+    grid-template-columns: repeat(1, 1fr);
+  }
 }
 
 .digitize-buttons-container {
@@ -292,13 +304,21 @@ tr:hover {
 .howto-content-container {
   border-bottom: 2px solid black;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  margin: 30px;
+  margin: 2vw;
   padding-top: 10px;
   padding-bottom: 20px;
 
+}
+
+@media (max-width: 600px) {
+  .howto-content-container {
+    flex-direction: column;
+
+  }
 }
 
 .howto-text-content {
@@ -312,6 +332,14 @@ tr:hover {
 .howto-image-content {
   flex: 2;
   /* Take up 2/3 of the width */
+}
+
+@media (max-width: 600px) {
+  .howto-image-content {
+    flex: 3;
+    width: 100%;
+
+  }
 }
 
 .howto-image-content img {
@@ -451,6 +479,7 @@ tr:hover {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   padding: 20px;
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   border-radius: 10px;
@@ -462,11 +491,13 @@ tr:hover {
   font-size: 28px;
   font-weight: bold;
   color: #333;
+  padding-bottom: 10px;
   margin: 0;
 }
 
 .user-info {
   font-size: 14px;
+  padding: 10px;
   color: #666;
   margin: 0;
 }
