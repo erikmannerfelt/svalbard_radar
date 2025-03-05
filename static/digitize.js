@@ -38,6 +38,34 @@ async function get_metadata() {
 	return meta;
 }
 
+function get_current_class() {
+  let form = document.getElementById('interp-class-select');
+  let selected_key = form.querySelector('input[name="key"]:checked'); 
+  const classes = get_layer_classes();
+  return classes[selected_key.value];
+};
+function get_current_color() {
+  return get_current_class().color;
+
+};
+
+function get_draw_control_options() {
+  let color = get_current_color();
+  return {
+    polyline: {
+      allowIntersection: false,
+      shapeOptions: {
+        color: color
+      }
+    },
+    polygon: false,
+    rectangle: false,
+    circle: false, // Disable circle
+    circlemarker: false,
+    marker: false,
+  }
+}
+
 function make_color_selector() {
   const selector = document.getElementById("interp-class-select");
 
@@ -74,7 +102,6 @@ function make_color_selector() {
   };
 };
 
-
 function setup_draw_features(map) {
 
   make_color_selector();
@@ -85,32 +112,7 @@ function setup_draw_features(map) {
   map.addLayer(drawnItems);
 
 
-  function get_current_class() {
-    let form = document.getElementById('interp-class-select');
-    let selected_key = form.querySelector('input[name="key"]:checked'); 
-    return classes[selected_key.value];
-  };
-  function get_current_color() {
-    return get_current_class().color;
 
-  };
-
-  function get_draw_control_options() {
-    let color = get_current_color();
-    return {
-      polyline: {
-        allowIntersection: false,
-        shapeOptions: {
-          color: color
-        }
-      },
-      polygon: false,
-      rectangle: false,
-      circle: false, // Disable circle
-      circlemarker: false,
-      marker: false,
-    }
-  }
   // Set initial color and drawing control
   var initialColor = get_current_color();
 
@@ -119,13 +121,13 @@ function setup_draw_features(map) {
     edit: {
       featureGroup: drawnItems
     },
-    draw: get_draw_control_options(initialColor),
+    draw: get_draw_control_options(),
   });
 
   map.addControl(drawControl);
 
   function updateDrawControl(color) {
-    drawControl.setDrawingOptions(get_draw_control_options(color));
+    drawControl.setDrawingOptions(get_draw_control_options());
   }
 
   // Add event listener for when new shapes are drawn
@@ -240,21 +242,24 @@ async function load_digitized_inner(data, meta, drawn_items) {
         drawn_items.clearLayers();
       }
 
-      L.geoJSON(data["features"], {
-        style: function (feature) {return {color: classes[feature.properties.kind].color};},
-        onEachFeature: function (feature, layer) {
+      for (feature_geojson of data["features"]["features"]) {
+        let feature;
+        if (feature_geojson["geometry"]["type"] == "LineString") {
+          let coords = [];
 
-            if (meta["xscale"] != 1.) {
-              let new_coords = [];
-              layer.getLatLngs().forEach(function (pair) {
-                new_coords.push([pair["lat"], pair["lng"] * meta["xscale"]]);
-              });
-              layer.setLatLngs(new_coords);
-            };
-            drawn_items.addLayer(layer);
-        }
-      });
+          feature_geojson["geometry"]["coordinates"].forEach(function (pair) {
+            coords.push([pair[1], pair[0] * meta["xscale"]]);
+          });
+          feature = L.polyline(coords, {color: classes[feature_geojson.properties.kind].color});
+        } else {
+          feature = L.geoJSON(feature_geojson, {style: classes[feature_geojson.properties.kind].color});
 
+          console.log("Fallback load implementation as GeoJSON. Might be wrong!");
+          console.log(feature_geojson);
+        };
+
+        drawn_items.addLayer(feature);
+      };
       user_message(`Loaded ${drawn_items.getLayers().length} line(s)`);
 
       // Display formatted GeoJSON in the <pre> element
