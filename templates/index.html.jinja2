@@ -6,20 +6,12 @@
 {% macro radargram(radar_key, values, addref=True) %}
     <a 
         href="/digitize/{{radar_key}}"
-        class="index-card index-card-{% if user == None %}anonymous{% elif values.n_submitted_by_user > 0 %}finished{% else %}unfinished{% endif %}"
+        class="index-card"
         {% if addref %}id="card-{{radar_key}}"{% endif %}
     >
         <div class="index-card-info">
             <h3 class="index-card-title">{{radar_key}}</h3>
-            <p class="index-card-description">Done by {{values.n_total_submissions}} {{"person" if values.n_total_submissions == 1 else "people"}}.
-                {% if values.n_submitted_by_user >= 2 %}
-                    Done by you ({{values.n_submitted_by_user}}x)!
-                {% elif values.n_submitted_by_user == 1 %}
-                    Done by you!
-                {% else %}
-                    Not done by you
-                {% endif %}
-            </p>
+            <p class="index-card-description" id="done-by">            </p>
             <p class="index-card-description">Length: {{values.length_km_rounded}} km.</p>
 
         </div>
@@ -48,8 +40,6 @@
     </div>
 
     <div style="display: flex; flex-wrap: wrap;justify-content: space-between;">
-  
-    
         <div style="min-width: 49%; margin-right: 5px;">
             <div class="index-location-group">
                 <h2 class="index-location-title">All glaciers</h2>
@@ -57,7 +47,7 @@
                     {% for glacier_key, glacier_radargrams in all_radargrams.items() %}
                         {% set n_total = glacier_radargrams | length - 1 %}
                         {% set n_done = glacier_radargrams["_meta"]["n_done_by_user"] %}
-                        <a href="#group-{{glacier_key}}" class="index-card-{% if n_done == n_total %}finished{% elif n_done > 0 %}unfinished{% else %}anonymous{%endif%}">{{glacier_radargrams._meta.nice_name}} (done {{n_done}} / {{n_total}})</a>
+                        <a href="#group-{{glacier_key}}" id="li-{{glacier_key}}" class="index-card-anonymous">{{glacier_radargrams._meta.nice_name}}. n={{n_total}}</a>
                     {% endfor %}
                 </div>
             </div>

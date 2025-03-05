@@ -180,7 +180,7 @@ class Submissions:
         self.user_submission_funcs = {}
         for user in self.all_users:
             user_dir = self.get_user_dir(username=user)
-            func = functools.partial(self._get_user_submissions_inner,user_dir=user_dir)
+            func = functools.partial(self._get_all_user_submissions_inner,user_dir=user_dir)
             func = functools.cache(func)
             func.cache_clear()
             self.user_submission_funcs[user] = func
@@ -194,12 +194,25 @@ class Submissions:
         return get_submitted_path() / username
 
     @staticmethod
-    def _get_user_submissions_inner(user_dir: Path, key: str) -> list[Path]:
-        """Time-consuming I/O call to get all JSON paths in the directory.""" 
+    def _get_all_user_submissions_inner(user_dir: Path) -> dict[str, Path]:
         if not user_dir.is_dir():
-            return []
+            return {}
 
-        return list(user_dir.glob(f"{key}/*.json"))
+        submissions = {}
+        for key_dir in user_dir.glob("*"):
+            if not key_dir.is_dir():
+                continue
+
+            submissions[key_dir.stem] = list(key_dir.glob("*.json"))
+
+        return submissions
+
+    def get_all_user_submissions(self, username: str) -> dict[str, Path]:
+        if username not in self.user_submission_funcs:
+            return {}
+        return self.user_submission_funcs[username]()
+        
+       
 
     def clear_user_cache(self, username: str) -> None:
         """Clear the cache of the submissions for a user."""
@@ -209,7 +222,7 @@ class Submissions:
         """Get all submissions made by a user for the given key."""
         if username not in self.user_submission_funcs:
             return []
-        return self.user_submission_funcs[username](key=key)
+        return self.user_submission_funcs[username]().get(key, [])
 
     def get_latest_user_submission_path(self, username: str, key: str) -> Path | None:
         """Get the most recent user submission path for the given key."""
@@ -238,6 +251,32 @@ class Submissions:
         return n
 
 SUBMISSIONS = Submissions()
+
+@flask_login.login_required
+@APP.route("/user_submissions.json")
+def get_n_user_submissions():
+    username = get_username()
+    if username is None:
+        return flask.jsonify(None)
+
+    all_submissions = SUBMISSIONS.get_all_user_submissions(username=username)
+    out = {
+        "per_radar_key": {},
+        "per_glacier": {},
+    }
+    for radar_key in all_submissions:
+        glacier_key = radar_key.split("-")[0]
+
+        if glacier_key not in out["per_glacier"]:
+            out["per_glacier"][glacier_key] = 0
+        out["per_glacier"][glacier_key] += 1
+
+        out["per_radar_key"][radar_key] = len(all_submissions[radar_key])
+       
+    return flask.jsonify(out)
+
+    # for submissions in SUBMISSIONS.get_user_submissions(username=username
+    
     
 parse_all_radargrams = functools.cache(format_radargrams.parse_all_radargrams)
 
@@ -277,7 +316,15 @@ def get_all_radargrams(username: str):
 def all_radargrams():
     radargrams = {}
     for value in get_all_radargrams(get_username() or "").values():
-        radargrams.update(value)
+        out = {}
+        for key in value:
+            out[key] = {}
+            for key2 in value[key]:
+                if key2 in ["tiles", "track"]:
+                    continue
+                out[key][key2] = value[key][key2]
+                    
+        radargrams.update(out)
     return flask.jsonify(radargrams)
 
 @APP.route("/radargram_meta/<radar_key>.json")
@@ -312,10 +359,7 @@ def get_username() -> str | None:
     return None
 
 
-@APP.route("/")
-def index():
-    all_radargrams = get_all_radargrams(get_username() or "")
-
+def _recommended() -> list[list[str]]:
     recommendations = [
         "dronbreen-20230221-DAT_0013_A1_1",
         "bergmesterbreen-20230222-DAT_0033_A1_3",
@@ -323,10 +367,20 @@ def index():
     ]
     # Extract the glacier name such that it's glacier/radar_key
     recommendations = [[s.split("-")[0], s] for s in recommendations]
+    return recommendations
+    
+
+@APP.route("/recommended.json")
+def recommended():
+    return flask.jsonify(_recommended())
+
+@APP.route("/")
+def index():
+    all_radargrams = get_all_radargrams(get_username() or "")
 
     user = get_username()
     return flask.render_template(
-        "index.html.jinja2", all_keys=all_radargrams.keys(), all_radargrams=all_radargrams, user=user, recommendations=recommendations,
+        "index.html.jinja2", all_keys=all_radargrams.keys(), all_radargrams=all_radargrams, user=user, recommendations=_recommended(),
     )
 
 
