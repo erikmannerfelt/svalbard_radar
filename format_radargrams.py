@@ -63,10 +63,29 @@ def get_radargram_cache_path(src_filepath: Path) -> tuple[Path, Path]:
 def parse_radargram(src_filepath: Path, chunksize: int = 1000, override_cache: bool = False) -> dict[str, object]:
     src_filepath = Path(src_filepath)
 
+    radar_key = "-".join(src_filepath.with_suffix("").parts[-3:])
     # static_dir = (Path("static/radargrams/") / "/".join(src_filepath.parts[-3:])).with_suffix("")
     static_dir, cache_dir = get_radargram_cache_path(src_filepath)
 
     meta_cache_path = cache_dir / "meta.json"
+    # These are run with slower settings and need stretching to be usable.
+    xscale = {
+        "rugaasfonna-20220222-DAT_0738_A1_9": 5,
+        "rugaasfonna-20220218-DAT_0728_A1_3": 5,
+        "rugaasfonna-20220218-DAT_0723_A1_1": 5,
+        "rugaasfonna-20220218-DAT_0727_A1_1": 5,
+        "svellnosbreen-20220218-DAT_0735_A1_2": 5,
+        "winsnesbreen-20240503-DAT_0013_A1_1": 3,
+        "moysalbreen-20220222-DAT_0760_A1_1": 5,
+        "moysalbreen-20220222-DAT_0750_A1_6": 5,
+        "moysalbreen-20220222-DAT_0749_A1_1": 5,
+        "dronbreen-20200226-DAT_0086_A1_1": 0.3,
+
+        "amenfonna-20240510-DAT_0044_A1_1": 3,
+        "etonbreen-20240503-DAT_0011_A1_1": 3,
+        "bergmesterbreen-20230222-DAT_0017_A1_4": 3,
+        "bergmesterbreen-20230222-DAT_0036_A1_1": 2,
+    }
 
     if meta_cache_path.is_file() and not override_cache:
         return json.loads(meta_cache_path.read_text())
@@ -170,11 +189,15 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000, override_cache: b
             image = images["abslog"]
 
             max_height = 512
-            if image.shape[0] <= max_height:
+            # Note to myself: PIL uses (width, height) and not the more common opposite
+            if image.shape[1] <= max_height:
                 new_shape = image.shape
             else:
-                new_width = int((image.shape[0] / image.shape[1]) * max_height)
-                new_shape = (max_height, new_width)
+                new_width = int((image.shape[1] / image.shape[0]) * max_height)
+                new_shape = (new_width, max_height)
+
+            if radar_key in xscale:
+                new_shape = (int(new_shape[0] * xscale[radar_key]), new_shape[1])
             Image.fromarray(image).resize(new_shape, resample=Image.Resampling.BILINEAR).save(thumbnail_path)
 
         with warnings.catch_warnings():
@@ -204,27 +227,9 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000, override_cache: b
                 }
             )
 
-        # These are run with slower settings and need stretching to be usable.
-        xscale = {
-            "rugaasfonna-20220222-DAT_0738_A1_9": 5,
-            "rugaasfonna-20220218-DAT_0728_A1_3": 5,
-            "rugaasfonna-20220218-DAT_0723_A1_1": 5,
-            "rugaasfonna-20220218-DAT_0727_A1_1": 5,
-            "svellnosbreen-20220218-DAT_0735_A1_2": 5,
-            "winsnesbreen-20240503-DAT_0013_A1_1": 3,
-            "moysalbreen-20220222-DAT_0760_A1_1": 5,
-            "moysalbreen-20220222-DAT_0750_A1_6": 5,
-            "moysalbreen-20220222-DAT_0749_A1_1": 5,
-            "dronbreen-20200226-DAT_0086_A1_1": 0.3,
-
-            "amenfonna-20240510-DAT_0044_A1_1": 3,
-            "etonbreen-20240503-DAT_0011_A1_1": 3,
-            "bergmesterbreen-20230222-DAT_0017_A1_4": 3,
-            "bergmesterbreen-20230222-DAT_0036_A1_1": 2,
-        }
 
         meta = {
-            "radar_key": "-".join(src_filepath.with_suffix("").parts[-3:]),
+            "radar_key": radar_key,
             "width": data["data"].shape[1],
             "height": data["data"].shape[0],
             "thumbnail": str(thumbnail_path),
