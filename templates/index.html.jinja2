@@ -57,7 +57,7 @@
             <h2 class="index-location-title">Recommended radargrams</h2>
             <div class="index-dataset-container">
                 {% for glacier_key, radar_key in recommendations %}
-                    {{ radargram(radar_key, all_radargrams[glacier_key][radar_key], False) }}
+                    {{ radargram(radar_key, all_radargrams[glacier_key][radar_key]) }}
                 {% endfor %}
             </div>
         </div>

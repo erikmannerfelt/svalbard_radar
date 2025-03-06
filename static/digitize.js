@@ -183,22 +183,26 @@ function make_feature_save_json(drawn_items, meta) {
   return output;
 }
 
-function user_message(message, error = false) {
+function user_message(message, feedback = null) {
 
     let response_text = document.getElementById('response-text')
 
-    if (error) {
-      response_text.style.color = "red";
+    console.log(message, feedback);
+    let color = "#333";
+    if (feedback != null) {
 
+      if (feedback == "success") {
+        color = "green";
+      } else if (feedback == "error") {
+        color = "red";
+      };
       let response_div = document.getElementById('response-text-div');
-      response_div.classList.add("response-text-highlight");
+      response_div.classList.add(`response-text-${feedback}`);
       setTimeout(function() {
-            response_div.classList.remove('response-text-highlight');
+            response_div.classList.remove(`response-text-${feedback}`);
         }, 1000);
-    } else {
-      response_text.style.color = "#333";
     }
-
+    response_text.style.color = color;
     response_text.textContent = message;
 }
 
@@ -213,16 +217,16 @@ async function submit_digitized(data) {
       });
 
       if (response.status == 401) {
-        user_message("Not logged in! Please save the data, log in, and try again.", user_message);
+        user_message("Not logged in! Please save the data, log in, and try again.", "error");
         return;
       }
 
       const result = await response.json();
       console.log('Response:', result);
-      user_message(result.message);
+      user_message(result.message, "success");
   } catch (error) {
       console.error('Error:', error);
-      user_message("An erorr occurred submitting!", true);
+      user_message("An erorr occurred submitting!", "error");
   }
 }
 
@@ -231,7 +235,7 @@ async function load_digitized_inner(data, meta, drawn_items) {
   try {
       for (key of ["radar_key", "width", "height"]) {
         if (data[key] != meta[key]) {
-          user_message(`Error loading data: ${key} (${data[key]}) does not align with expected ${key} (${meta[key]})`, true);
+          user_message(`Error loading data: ${key} (${data[key]}) does not align with expected ${key} (${meta[key]})`, "error");
           return;
         };
       };
@@ -267,7 +271,7 @@ async function load_digitized_inner(data, meta, drawn_items) {
       // geojsonOutput.textContent = JSON.stringify(data, null, 2);
     } catch (error) {
       console.error('Error parsing JSON:', error);
-      user_message("Error parsing data. Please check your file", true);
+      user_message("Error parsing data. Please check your file", "error");
     };
 }
 
@@ -286,12 +290,12 @@ async function load_digitized(event, meta, drawn_items) {
         const data = JSON.parse(e.target.result);
         load_digitized_inner(data, meta, drawn_items);
       } catch (error) {
-        user_message("Error parsing loaded JSON. Please check your file", true);
+        user_message("Error parsing loaded JSON. Please check your file", "error");
       }
   };
   reader.onerror = function() {
       console.error('File reading error:', reader.error);
-      user_message("Error reading file. Please try again", true);
+      user_message("Error reading file. Please try again", "error");
   };
   reader.readAsText(file);
 }
@@ -533,12 +537,12 @@ async function setup_map() {
   let submit_button = document.getElementById("submit-button");
   submit_button.onclick = function (event) {
     if (meta["difficulty"] === null) {
-      user_message("Please choose a difficulty before submitting", true);
+      user_message("Please choose a difficulty before submitting", "error");
       return;
     };
 
     if (drawn_items.getLayers().length == 0) {
-      user_message("Submit failed: project is empty", true);
+      user_message("Submit failed: project is empty", "error");
       return;
     };
 
