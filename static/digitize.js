@@ -395,7 +395,7 @@ async function setup_map() {
           }
         ).addTo(map);
         let icon = L.divIcon({
-            html: `<span>${i}</span>`,
+            html: `<span class="interval-indicator">${i}</span>`,
             iconSize: "auto",
         });
         L.marker([meta["height"] + rect_height / 2, (pair[0] * meta["xscale"] + pair[1] * meta["xscale"]) / 2], { icon: icon, interactive: false, }).addTo(map);
@@ -410,7 +410,44 @@ async function setup_map() {
         
       }).addTo(map);
     };
+
+    // Add x labels
+    let time_interval = meta["max_time"] / meta["width"];
+    meta["interval_indicators"].forEach(function (pair, i) {
+
+      for (let time = 0; time <= (time_interval * (pair[1] - pair[0])); time += 250) {
+
+        let icon = L.divIcon({
+            html: `<span class="xlabel">${time}s</span>`,
+            iconSize: "auto",
+        });
+        let marker = L.marker([0, pair[0] + time / time_interval], {icon: icon, interactive: false}).addTo(map);
+      }
+    });
   }
+
+  // Add a horizontal line below the radargram
+  L.polyline([[0, 0], [0, meta["width"]]], {color: "black", interactive: false}).addTo(map);
+
+  // Add y (depth) labels and decoration
+  for (vals of [["left", 0], ["right", meta["width"]]]) {
+      let side = vals[0];
+      let x = vals[1];
+
+      // Add a vertical line along the radargram side.
+      L.polyline([[0, x], [meta["height"], x]], {color: "black", interactive: false}).addTo(map);
+      
+      // Add labels
+      for (let depth = 0; depth <= meta["max_depth"]; depth += 50) {
+        let y_px = depth * (meta["height"] / meta["max_depth"]);
+
+          let icon = L.divIcon({
+              html: `<span class="ylabel-${side}">${depth}m</span>`,
+              iconSize: "auto",
+          });
+          L.marker([meta["height"] - y_px, x], {icon: icon, interactive: false}).addTo(map);
+    }
+  };
 
 
   show_tiles("abslog");

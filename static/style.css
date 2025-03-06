@@ -39,7 +39,23 @@ li {
 #map .leaflet-div-icon span {
   display: inline-block;
   padding: 3px;
+  /* transform: translate(-50%, -50%); */
+}
+
+#map .interval-indicator {
   transform: translate(-50%, -50%);
+}
+
+#map .ylabel-left {
+  transform: translate(-100%, 0%);
+}
+
+#map .ylabel-right {
+  transform: translate(0%, 0%);
+}
+
+#map .xlabel {
+  transform: translate(-50%, 0%);
 }
 
 #map .leaflet-div-icon b {
