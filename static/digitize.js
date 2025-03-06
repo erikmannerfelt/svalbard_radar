@@ -55,7 +55,8 @@ function get_draw_control_options() {
     polyline: {
       allowIntersection: false,
       shapeOptions: {
-        color: color
+        color: color,
+        showLength: false,
       }
     },
     polygon: false,
