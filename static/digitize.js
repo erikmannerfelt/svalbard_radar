@@ -54,9 +54,9 @@ function get_draw_control_options() {
   return {
     polyline: {
       allowIntersection: false,
+      showLength: false,
       shapeOptions: {
         color: color,
-        showLength: false,
       }
     },
     polygon: false,
@@ -84,9 +84,8 @@ function make_color_selector() {
     item.name = "key";
     item.value = key;
 
-    if (initial) {
+    if (key == "bed_unspecified") {
       item.checked = true;
-      initial = false;
     };
     // item.defaultChecked = true;
     var patch = document.createElement("span");
@@ -111,8 +110,6 @@ function setup_draw_features(map) {
   // Create a layer group to manage drawn features.
   const drawnItems = new L.FeatureGroup();
   map.addLayer(drawnItems);
-
-
 
   // Set initial color and drawing control
   var initialColor = get_current_color();
