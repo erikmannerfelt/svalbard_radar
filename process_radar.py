@@ -3,6 +3,7 @@ from pathlib import Path
 import tempfile
 import datetime
 from typing import Self, Callable
+import os
 
 def get_paths(offline: bool = False):
 
@@ -10,10 +11,6 @@ def get_paths(offline: bool = False):
     gpr_dir2 = Path("/remotes/nornan/Erik/Data/GPR")
 
     missing = [
-        "Scott 2019",
-        "Ayer 2019",
-        "Rieper 2019",
-        "Vallakra 2021",
         "Mette 2024",
         "Ragna 20240317",
     ]
@@ -49,6 +46,7 @@ def get_paths(offline: bool = False):
             "20220430": [gpr_dir2 / "2022/Svalbard/GPR_220430_B-Fimbulisen-100MHz"]
         },
         "vallakrabreen": {
+            "20210513": [gpr_dir2 / "2021/Svalbard/GPR_210513_A-Vallakrabreen-100MHz"],
             "20220419": [gpr_dir2 / "2022/Svalbard/GPR_220419_C-Vallakrabreen-100MHz"],
             "20220505": [gpr_dir2 / "2022/Svalbard/GPR_220505_A-VallakrabreenSurgeFront-100MHz"],
         },
@@ -83,7 +81,7 @@ def get_paths(offline: bool = False):
             ],
         },
         "ragna_mariebreen": {
-            # "20240317": [gpr_dir / "2024/Input/Radar_16-17.3.24/MALAGS/GPR_20240317_A-RagnaMariebreen-100MHz"],  # This doesn't have proper GPS
+            "20240317": [gpr_dir / "2024/Input/GPR_20240317_B-RagnaMariebreen-100MHz"],  
             "20230305": [gpr_dir2 / "2023/GPR_230305_B-RagnaMariebreen-100MHz"],
             "20240405": [gpr_dir / "2024/GPR_20240405_A-RagnaMariebreen-100MHz"],
             "20240412": [gpr_dir / "input/GPR_20240412_C-RagnaMariebreen-25MHz"],
@@ -136,6 +134,7 @@ def run_rsgpr(input_filepath: Path | str, output_filepath: Path | str, merge: st
     rsgpr_steps = [
         # "subset(0 3500)",
         # "zero_corr_max_peak",
+        "remove_empty_traces",
         "zero_corr",
         "correct_antenna_separation",
         "normalize_horizontal_magnitudes(0.3)",
@@ -262,9 +261,27 @@ class GprInfo:
 
 # def rsgpr_info(filepath: Path) -> GprInfo:
 
-def run_all():
-    all_paths = get_paths()
+def run_all(offline: bool = False):
+    all_paths = get_paths(offline=offline)
 
+
+    bad_list = [
+        "scott_turnerbreen-20240207-DAT_0452_A1_1",
+        "fimbulisen-20220430-DAT_0083_B1_1",
+        "fimbulisen-20220430-DAT_0082_B1_1",
+        "etonbreen-20240503-DAT_0010_A1_1",
+        "vallakrabreen-20210513-DAT_0011_A1_1",
+        "vallakrabreen-20220505-DAT_0101_A1_1",
+        "ragna_mariebreen-20240317-DAT_0349_A1_1",
+        "ragna_mariebreen-20240317-DAT_0343_A1_1",
+        "ragna_mariebreen-20240317-DAT_0328_A1_2",
+        "ragna_mariebreen-20240317-DAT_0328_A1_2",
+        "ragna_mariebreen-20240317-DAT_0316_A1_2",
+        "ragna_mariebreen-20240317-DAT_0318_A1_6",
+        "ragna_mariebreen-20230305-DAT_0050_A1_15",
+        "dronbreen-20200226-DAT_0086_A1_H_1",
+        "dronbreen-20190225-DAT_0011_A1_4",
+    ]
 
     for glacier, per_date in all_paths.items():
 
@@ -332,6 +349,16 @@ def run_all():
 
                         out_path = Path(f"processed_radar/{glacier}/{date_str}/{group_name}.nc")
                         out_path.parent.mkdir(exist_ok=True, parents=True)
+
+
+                        radar_key = "-".join(out_path.with_suffix("").parts[-3:])
+                        if radar_key in bad_list:
+                            if out_path.is_file():
+                                print(f"{out_path} on bad list but it exists. Removing...")
+                                os.remove(out_path)
+                            else:
+                                print(f"Skipped radar key: {radar_key} as it was on the bad list")
+                            continue
 
                         if out_path.is_file():
                             continue
