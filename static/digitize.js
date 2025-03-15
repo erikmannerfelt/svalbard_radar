@@ -427,10 +427,10 @@ async function setup_map() {
   }
 
   // Add a horizontal line below the radargram
-  L.polyline([[0, 0], [0, meta["width"]]], {color: "black", interactive: false}).addTo(map);
+  L.polyline([[0, 0], [0, meta["width"] * meta["xscale"]]], {color: "black", interactive: false}).addTo(map);
 
   // Add y (depth) labels and decoration
-  for (vals of [["left", 0], ["right", meta["width"]]]) {
+  for (vals of [["left", 0], ["right", meta["width"] * meta["xscale"]]]) {
       let side = vals[0];
       let x = vals[1];
 
