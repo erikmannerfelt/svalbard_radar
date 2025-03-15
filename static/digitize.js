@@ -2,7 +2,7 @@ function get_layer_classes() {
   let props = {
     "bed_cold": {
       "name": "Cold glacier bed",
-      "color": "blue",
+      "color": "#002EBD",  // Blue
     },
     "temperate": {
       "name": "Temperate ice",
@@ -10,11 +10,11 @@ function get_layer_classes() {
     },
     "bed_unspecified": {
       "name": "Glacier bed",
-      "color": "purple",
+      "color": "#CE00FF", // Purple/pink
     },
     "bed_missing": {
       "name": "Glacier bed not visible",
-      "color": "green",
+      "color": "#62F700",  // Neon green
     },
   } 
 
@@ -139,7 +139,11 @@ function setup_draw_features(map) {
     let class_props = get_current_class();
     props.color = class_props.color;
     props.kind = class_props.key;
+    props.name = class_props.name;
 
+    layer.bindPopup(function (lyr) {
+      return lyr.feature.properties.name;
+    });
     drawnItems.addLayer(layer);
   });
 
@@ -246,19 +250,28 @@ async function load_digitized_inner(data, meta, drawn_items) {
 
       for (feature_geojson of data["features"]["features"]) {
         let feature;
+        let class_props = classes[feature_geojson.properties.kind];
         if (feature_geojson["geometry"]["type"] == "LineString") {
           let coords = [];
 
           feature_geojson["geometry"]["coordinates"].forEach(function (pair) {
             coords.push([pair[1], pair[0] * meta["xscale"]]);
           });
-          feature = L.polyline(coords, {color: classes[feature_geojson.properties.kind].color});
+          feature = L.polyline(coords, {color: class_props.color});
+          console.log(feature);
         } else {
-          feature = L.geoJSON(feature_geojson, {style: classes[feature_geojson.properties.kind].color});
+          feature = L.geoJSON(feature_geojson, {style: class_props.color});
 
           console.log("Fallback load implementation as GeoJSON. Might be wrong!");
           console.log(feature_geojson);
         };
+        feature.properties = feature.properties || {};
+        feature.properties.name = class_props.name;
+        feature.properties.color = class_props.color;
+
+        feature.bindPopup(function (feature2) {
+          return feature2.properties.name;
+        });
 
         drawn_items.addLayer(feature);
       };

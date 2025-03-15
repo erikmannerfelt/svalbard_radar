@@ -10,9 +10,9 @@
     <span style="white-space: nowrap">{{ colored_box(color) }}<b>{{annotation}}</b></span>
 {% endmacro %}
 {% set temperate_ice = annotated_box("red", "Temperate ice") %}
-{% set bed_cold = annotated_box("blue", "Cold glacier bed") %}
-{% set bed_unspecified = annotated_box('purple', "Glacier bed") %}
-{% set bed_missing = annotated_box('green', "Glacier bed not visible") %}
+{% set bed_cold = annotated_box("#002EBD", "Cold glacier bed") %}
+{% set bed_unspecified = annotated_box('#CE00FF', "Glacier bed") %}
+{% set bed_missing = annotated_box('#62F700', "Glacier bed not visible") %}
 {% block content %}
   <div class="header">
       <a class="home-link" href="/" id="home-button">Home</a>
