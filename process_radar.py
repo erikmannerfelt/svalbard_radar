@@ -261,7 +261,7 @@ class GprInfo:
 
 # def rsgpr_info(filepath: Path) -> GprInfo:
 
-def run_all(offline: bool = False):
+def run_all(offline: bool = False, force_redo: bool = False):
     all_paths = get_paths(offline=offline)
 
 
@@ -322,6 +322,7 @@ def run_all(offline: bool = False):
                         continue
                     group_traces = sum(i.traces for i in group)
                     group_name = Path(group[0].filepath).stem + f"_{len(group)}"
+                    radar_key = f"{glacier}-{date_str}-{group_name}"
                     if (group_traces < 300):
                         print(f"Skipped {glacier}/{date_str}/{group_name} (width={group_traces})")
                         continue
@@ -350,8 +351,6 @@ def run_all(offline: bool = False):
                         out_path = Path(f"processed_radar/{glacier}/{date_str}/{group_name}.nc")
                         out_path.parent.mkdir(exist_ok=True, parents=True)
 
-
-                        radar_key = "-".join(out_path.with_suffix("").parts[-3:])
                         if radar_key in bad_list:
                             if out_path.is_file():
                                 print(f"{out_path} on bad list but it exists. Removing...")
@@ -361,9 +360,11 @@ def run_all(offline: bool = False):
                             continue
 
                         if out_path.is_file():
-                            continue
-
-                        print(f"Processing {out_path}")
+                            if not force_redo:
+                                continue
+                            print(f"Reprocessing {out_path}")
+                        else:
+                            print(f"Processing {out_path}")
                         try:
                             run_rsgpr(
                                 filepath,
