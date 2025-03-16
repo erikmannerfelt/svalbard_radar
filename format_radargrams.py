@@ -266,7 +266,7 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000, override_cache: b
         return meta
 
 
-def parse_all_radargrams(progress: bool = False):
+def parse_all_radargrams(progress: bool = False, redo_cache: bool = False):
     radargrams = {}
 
     glacier_dirs = list(Path("processed_radar").glob("*"))
@@ -277,7 +277,7 @@ def parse_all_radargrams(progress: bool = False):
             radargrams[glacier_dir.stem] = {}
             for filepath in glacier_dir.rglob("*.nc"):
                 progress_bar.set_description("/".join(filepath.parts[-3:]))
-                radargram = parse_radargram(filepath)
+                radargram = parse_radargram(filepath, override_cache=redo_cache)
                 radargrams[glacier_dir.stem][radargram["radar_key"]] = radargram
             progress_bar.update()
 
