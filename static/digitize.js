@@ -102,6 +102,58 @@ function make_color_selector() {
   };
 };
 
+function validate_polyline(map, polyline, skip_alert = false) {
+  // Reset all issue markers (if any). All need to be recreated.
+  let issue_markers = polyline.issue_markers = polyline.issue_markers || [];
+  issue_markers.forEach(function (marker) {
+    map.removeLayer(marker);
+    marker.remove();
+  });
+  issue_markers.splice(0, issue_markers.length);
+
+  let issues = [];
+
+  var latlngs = polyline.getLatLngs();
+  if (latlngs.length < 2) return issues; // Single point or empty polyline is valid
+  // Check if the line is drawn left-right or right-left
+  var increasing = latlngs[0].lng < latlngs[latlngs.length - 1].lng;
+  // Loop through all vertices and see if the one before leads to an overhang
+  for (var i = 1; i < latlngs.length; i++) {
+    if ((increasing && latlngs[i].lng <= latlngs[i-1].lng) ||
+        (!increasing && latlngs[i].lng >= latlngs[i-1].lng)) {
+      issues.push(`Vertex nr ${i} contains an overhang`); 
+
+      let marker = L.circleMarker([latlngs[i - 1].lat, latlngs[i - 1].lng], {color: "red"}).addTo(map).bindPopup(function (_) {return "Invalid overhang.";});
+      issue_markers.push(marker);
+    }
+  }
+  if ((issues.length > 0) & (!skip_alert)) {
+      alert(`${issues.length} issue(s) found. Please fix them!\n` + issues.join("\n"));
+  };
+  let dasharray = "none";
+  if (issues.length > 0) {
+    dasharray = "3 6"
+  }
+  
+  // The timeout is a silly solution to a problem: Leaflet.Draw sets the dasharray when exiting an editing session
+  // I haven't found out a way to override that, so instead I add a timeout that triggers after Leaflet.Draw finishes.
+  setTimeout(function() {
+    polyline.setStyle({dashArray: dasharray});
+  }, 100);
+
+  return issues;
+}
+
+function polyline_popup(layer) {
+  let string = layer.properties.name;
+
+  if (layer.properties.issues.length > 0) {
+    string = `${string}<br><b>Issues</b><br>` + layer.properties.issues.join("<br>");
+  };
+  return string;
+
+}
+
 function setup_draw_features(map) {
 
   make_color_selector();
@@ -132,19 +184,42 @@ function setup_draw_features(map) {
   map.on(L.Draw.Event.CREATED, function(event) {
     const layer = event.layer;
 
-    let feature = layer.feature = layer.feature || {};
-    feature.type = feature.type || "Feature"; // Intialize feature.type
-    let props = feature.properties = feature.properties || {};
+    let props = layer.properties = layer.properties || {};
     
     let class_props = get_current_class();
     props.color = class_props.color;
     props.kind = class_props.key;
     props.name = class_props.name;
+    props.issues = validate_polyline(map, layer);
 
-    layer.bindPopup(function (lyr) {
-      return lyr.feature.properties.name;
-    });
+    layer.bindPopup(polyline_popup);
     drawnItems.addLayer(layer);
+  });
+
+  map.on(L.Draw.Event.EDITED, function(event) {
+    const layers = event.layers;
+
+    layers.eachLayer(function (layer) {
+      let props = layer.properties;
+    
+      props.issues = validate_polyline(map, layer);
+    });
+  });
+
+  map.on(L.Draw.Event.DELETED, function (event) {
+    const layers = event.layers;
+    layers.eachLayer(function (layer) {
+      // Remove all issue markers (if any)
+      let issue_markers = layer.issue_markers || [];
+      if (!issue_markers) {
+        return;
+      }
+      issue_markers.forEach(function (marker) {
+        map.removeLayer(marker);
+        marker.remove();
+      });
+      issue_markers.splice(0, issue_markers.length);
+    });
   });
 
   document.getElementById('interp-class-select').addEventListener('change', function(_event) {
@@ -158,7 +233,13 @@ function make_feature_save_json(drawn_items, meta) {
 
   let date = new Date().toJSON();
 
-  let drawn_items_geojson = drawn_items.toGeoJSON();
+  let drawn_items_geojson = {"type": "FeatureCollection", "features": []};
+
+  drawn_items.eachLayer(function (layer) {
+    let geojson = layer.toGeoJSON();
+    geojson.properties = layer.properties;
+    drawn_items_geojson.features.push(geojson);
+  });
 
   // Apply xscaling
   if (meta["xscale"] != 1.) {
@@ -249,7 +330,7 @@ async function load_digitized_inner(data, meta, drawn_items) {
       }
 
       for (feature_geojson of data["features"]["features"]) {
-        let feature;
+        let layer;
         let class_props = classes[feature_geojson.properties.kind];
         if (feature_geojson["geometry"]["type"] == "LineString") {
           let coords = [];
@@ -257,23 +338,23 @@ async function load_digitized_inner(data, meta, drawn_items) {
           feature_geojson["geometry"]["coordinates"].forEach(function (pair) {
             coords.push([pair[1], pair[0] * meta["xscale"]]);
           });
-          feature = L.polyline(coords, {color: class_props.color});
-          console.log(feature);
+          layer = L.polyline(coords, {color: class_props.color});
+          console.log(layer);
         } else {
-          feature = L.geoJSON(feature_geojson, {style: class_props.color});
+          layer = L.geoJSON(feature_geojson, {style: class_props.color});
 
           console.log("Fallback load implementation as GeoJSON. Might be wrong!");
           console.log(feature_geojson);
         };
-        feature.properties = feature.properties || {};
-        feature.properties.name = class_props.name;
-        feature.properties.color = class_props.color;
+        layer.properties = layer.properties || {};
+        layer.properties.name = class_props.name;
+        layer.properties.color = class_props.color;
 
-        feature.bindPopup(function (feature2) {
-          return feature2.properties.name;
-        });
+        layer.properties.issues = validate_polyline(map, layer, true);
 
-        drawn_items.addLayer(feature);
+        layer.bindPopup(polyline_popup);
+
+        drawn_items.addLayer(layer);
       };
       user_message(`Loaded ${drawn_items.getLayers().length} line(s)`);
 
@@ -593,6 +674,18 @@ async function setup_map() {
       return;
     };
 
+    let n_lines_with_issues = 0;
+    drawn_items.eachLayer(function (layer) {
+      if (validate_polyline(map, layer, true).length > 0) {
+        n_lines_with_issues += 1;
+      };
+    });
+
+    if (n_lines_with_issues > 0) {
+      user_message(`Submit failed: ${n_lines_with_issues} line(s) have unfixed issues. Please look for the red circles.`, "error");
+      return;
+    }
+
     let confirmed = confirm("Are you sure you want to submit your interpretation?");
     if (!confirmed) {
       event.preventDefault();
@@ -624,8 +717,6 @@ async function setup_map() {
       event.returnValue = "";
     };
   });
-
-
 }
 
 async function main() {

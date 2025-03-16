@@ -215,7 +215,7 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000, override_cache: b
                 }
             )
 
-        trace_resolution_s = data.attrs.get("time-interval", round(float(np.median(np.diff(data.time.values))), 3))
+        trace_resolution_s = round(float(data.attrs.get("time-interval", np.median(np.diff(data.time.values)))), 3)
 
 
         meta = {
