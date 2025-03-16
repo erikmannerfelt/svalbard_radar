@@ -434,7 +434,7 @@ async function setup_map() {
             html: `<span class="xlabel">${time}s</span>`,
             iconSize: "auto",
         });
-        let marker = L.marker([0, pair[0] + time / time_interval], {icon: icon, interactive: false}).addTo(map);
+        let marker = L.marker([0, meta["xscale"] * (pair[0] + time / time_interval)], {icon: icon, interactive: false}).addTo(map);
       }
     });
   }
