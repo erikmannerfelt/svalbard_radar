@@ -1,7 +1,5 @@
 from typing import Callable
 import flask
-from pandas.errors import ParserWarning
-import flask_httpauth
 import flask_login
 import werkzeug.security
 import jsonschema
@@ -11,13 +9,13 @@ import hashlib
 import string
 import concurrent.futures
 from gevent.pywsgi import WSGIServer
-import time
 import api_analytics.flask
 import socket
+import datetime
+import threading
 
 import format_radargrams
 import functools
-import itertools
 
 APP = flask.Flask(__name__)
 
@@ -447,6 +445,28 @@ def submit_digitized():
 @APP.route("/howto")
 def howto():
     return flask.render_template("howto.html.jinja2")
+
+
+@APP.after_request
+def log_traffic(response: flask.Response):
+    request = flask.request
+
+    data = {
+        "hostname": request.host,
+        "ip_address": request.remote_addr,
+        "path": request.path,
+        "user_agent": request.headers.get("user-agent", request.headers.get("User-Agent", None)),
+        "method": request.method,
+        "status": response.status_code,
+        "user_id": get_username(),
+        "created_at": datetime.datetime.now(datetime.UTC).isoformat(),
+    }
+    with threading.Lock():
+        with open("traffic.log", "a+") as outfile:
+            outfile.write(json.dumps(data) + "\n")
+
+    return response
+
 
 
 def main(debug: bool = False):
