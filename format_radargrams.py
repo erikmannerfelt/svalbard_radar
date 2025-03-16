@@ -163,7 +163,7 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000, override_cache: b
                 for key in ["abslog", "classic"]:
                     filepath = static_dir / f"tiles/{key}/tile_{str(row).zfill(5)}_{str(col).zfill(5)}.jpg"
 
-                    if not filepath.is_file():
+                    if (not filepath.is_file()) or override_cache:
                         if images is None:
                             images = normalize(data["data"].values)
                         tile_arr = images[key][row_slice, col_slice]
@@ -182,7 +182,7 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000, override_cache: b
 
         thumbnail_path = static_dir / "thumbnail.jpg"
 
-        if not thumbnail_path.is_file():
+        if (not thumbnail_path.is_file()) or override_cache:
             if images is None:
                 images = normalize(data["data"].values)
 
@@ -198,7 +198,14 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000, override_cache: b
 
             if radar_key in xscale:
                 new_shape = (int(new_shape[0] * xscale[radar_key]), new_shape[1])
-            Image.fromarray(image).resize(new_shape, resample=Image.Resampling.BILINEAR).save(thumbnail_path)
+
+            thumb = Image.fromarray(image).resize(new_shape, resample=Image.Resampling.LANCZOS)
+
+            # Stretch it to use the full 0-255 range.
+            thumb = np.array(thumb, dtype="float32")
+            minval, maxval = np.percentile(thumb, [0.5, 99])
+            thumb = Image.fromarray((255 * np.clip((thumb - minval) / (maxval - minval), 0, 1)).astype("uint8"))
+            thumb.save(thumbnail_path)
 
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", message=".*invalid value encountered in divide.*")
@@ -227,6 +234,8 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000, override_cache: b
                 }
             )
 
+        trace_resolution_s = data.attrs.get("time-interval", round(float(np.median(np.diff(data.time.values))), 3))
+
 
         meta = {
             "radar_key": radar_key,
@@ -239,7 +248,7 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000, override_cache: b
             "max_time": round(data["return-time"].max().item(), 2),
             "antenna": data.attrs["antenna"],
             "depth_resolution_m": round(float(np.diff(data.depth.values[-2:])[0]), 3),
-            "trace_resolution_s": round(float(np.median(np.diff(data.time.values))), 3),
+            "trace_resolution_s": float(trace_resolution_s),
             "interval_indicators": interval_indicators,
             "average_speed": speed,
             "bounds": {
