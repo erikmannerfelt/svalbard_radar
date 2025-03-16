@@ -129,18 +129,25 @@ def get_paths(offline: bool = False):
 
 RSGPR_PATH = "/home/erikmann/Projects/UiO/rsgpr/target/release/rsgpr"
 
-def run_rsgpr(input_filepath: Path | str, output_filepath: Path | str, merge: str | None = "30 min"):
+def run_rsgpr(input_filepath: Path | str, output_filepath: Path | str, merge: str | None = "30 min", antenna: str | None = None):
 
+    siglog_strength = 1
+    if "25 MHz" in antenna:
+        siglog_strength = 0
+
+    # Unit: dB / ns of TWT. Found using auto_gain. The value below is for 25 MHz
+    gain_strength = 0.002340
+    if "100 MHz" in antenna:
+        gain_strength = 0.003556
+        
     rsgpr_steps = [
-        # "subset(0 3500)",
-        # "zero_corr_max_peak",
         "remove_empty_traces",
         "zero_corr",
         "correct_antenna_separation",
-        "normalize_horizontal_magnitudes(0.3)",
-        "dewow(5)",
-        # "kirchhoff_migration2d",
-        # "gain(0.043412704)",
+        f"bandpass",
+        "dewow(15)",  # Some long-range undulations are not captured by bandpass. Unsure why.
+        f"gain({gain_strength})",
+        f"siglog({siglog_strength})",
     ]
 
     cmds = [
@@ -281,6 +288,7 @@ def run_all(offline: bool = False, force_redo: bool = False):
         "ragna_mariebreen-20230305-DAT_0050_A1_15",
         "dronbreen-20200226-DAT_0086_A1_H_1",
         "dronbreen-20190225-DAT_0011_A1_4",
+        "moysalbreen-20220222-DAT_0760_A1_1",
     ]
 
     for glacier, per_date in all_paths.items():
@@ -369,6 +377,7 @@ def run_all(offline: bool = False, force_redo: bool = False):
                             run_rsgpr(
                                 filepath,
                                 out_path,
+                                antenna=group[0].antenna,
                             )
                         except subprocess.CalledProcessError as exception:
                             raise

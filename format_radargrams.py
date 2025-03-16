@@ -18,33 +18,18 @@ def checksum(objects: list[object]) -> str:
     return hashlib.sha256("".join(map(str, objects)).encode()).hexdigest()
 
 def normalize(data: np.ndarray, gain_strength: float = 0.02):
-
-    butter = scipy.signal.butter(4,[0.10, 0.9], "bandpass", output="sos")
-    data = scipy.signal.sosfilt(butter, data, axis=0)
-
-    data *= (10 ** ((np.arange(data.shape[0]) ** 0.5) * gain_strength))[:, None]
-
-    data -= np.median(data)
-
-    data_abslog = np.log10(np.abs(data + 1e-4))
-
-    minval_10, maxval_10 = np.percentile(np.abs(data_abslog[50:]), [5, 99])
-
-    data_abslog = np.clip((data_abslog - minval_10) / (maxval_10 - minval_10), 0, 1)
-    sign = np.sign(data)
-    data = np.clip(np.log10(np.abs(data + 1e-9)) - 1, 0, None) * sign
-    # plt.hist(data.ravel(), bins=50)
-    # plt.show()
-
-    # minval, maxval = np.percentile(data, [1, 99])
+    data_abs = np.abs(data)
+    minval_abs, maxval_abs = np.percentile(np.abs(data_abs[50:]), [1, 97])
+    data_abs = np.clip((data - minval_abs) / (maxval_abs - minval_abs), 0, 1)
     maxval = np.percentile(np.abs(data[50:]), 99)
     minval = -maxval
     data = np.clip((data - minval) / (maxval - minval), 0, 1)
 
     return {
         "classic": (data * 255).astype("uint8"),
-        "abslog": (data_abslog * 255).astype("uint8"),
+        "abslog": (data_abs * 255).astype("uint8"),
     }
+    
 
 def get_radargram_cache_path(src_filepath: Path) -> tuple[Path, Path]:
 
@@ -91,10 +76,6 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000, override_cache: b
         return json.loads(meta_cache_path.read_text())
 
     with xr.open_dataset(src_filepath) as data:
-
-        # plt.imshow(normalize(data["data"])["abslog"], cmap="Greys_r")
-        # plt.show()
-        # return
 
         d_t = data["time"].diff("x").values
         d_t[d_t == 0] = np.nan
