@@ -9,7 +9,6 @@ import hashlib
 import string
 import concurrent.futures
 from gevent.pywsgi import WSGIServer
-import api_analytics.flask
 import socket
 import datetime
 import threading
@@ -451,9 +450,11 @@ def howto():
 def log_traffic(response: flask.Response):
     request = flask.request
 
+    real_ip = request.headers.get('X-Real-IP', request.remote_addr)
+
     data = {
         "hostname": request.host,
-        "ip_address": request.remote_addr,
+        "ip_address": real_ip,
         "path": request.path,
         "user_agent": request.headers.get("user-agent", request.headers.get("User-Agent", None)),
         "method": request.method,
@@ -477,10 +478,6 @@ def main(debug: bool = False):
     DEBUG.debug = debug
     USER_DATA.update(dict(zip(usernames, pwds, strict=True)))
     SUBMISSIONS._refresh()
-
-    api_key = Path(".apianalytics_key")
-    if api_key.is_file():
-        api_analytics.flask.add_middleware(APP, api_key.read_text())
 
     print("Preprocessing...")
     format_radargrams.parse_all_radargrams(progress=True)
