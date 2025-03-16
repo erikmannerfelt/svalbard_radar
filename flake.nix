@@ -20,6 +20,7 @@
             zsh
             nodejs
             rsgpr
+            netcdf
           ];
         };
       }
