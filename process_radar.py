@@ -66,11 +66,18 @@ def get_paths(offline: bool = False):
                 gpr_dir2 / "2020/Svalbard/GPR_200226_B-Dronbreen-50MHz",
                 gpr_dir2 / "2020/Svalbard/GPR_200226_C-Dronbreen-100MHz",
             ],
+            "20220328": [
+                gpr_dir2 / "2022/Svalbard/GPR_220328_A-Dronbreen-100MHz",
+            ],
+            "20220329": [
+                gpr_dir2 / "2022/Svalbard/GPR_220329_A-Dronbreen-100MHz",
+            ],
             "20230220": [gpr_dir / "2023/GPR_230220_B-Slakbreen-100MHz"],  # It's misnamed as slakbreen
             "20230221": [gpr_dir / "2023/GPR_230221_B-Slakbreen-100MHz"],  # It's misnamed as slakbreen
             "20240209": [gpr_dir / "2024/GPR_20240209_A-Dronbreen-100MHz"],
         },
         "slakbreen": {
+            "20220330": [gpr_dir2 / "2022/Svalbard/GPR_220330_A-Slakbreen-100MHz"],
             "20230320": [gpr_dir / "2023/GPR_230320_A-Slakbreen-100MHz"],
             "20240310": [gpr_dir / "2024/GPR_20240310_A-Slakbreen-25MHz"],
         },

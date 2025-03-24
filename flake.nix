@@ -21,6 +21,7 @@
             nodejs
             rsgpr
             netcdf
+            just
           ];
         };
       }

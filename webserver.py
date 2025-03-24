@@ -479,9 +479,6 @@ def main(debug: bool = False):
     USER_DATA.update(dict(zip(usernames, pwds, strict=True)))
     SUBMISSIONS._refresh()
 
-    print("Preprocessing...")
-    format_radargrams.parse_all_radargrams(progress=True)
-
     port = 5000
     if "yggdrasil" in socket.gethostname():
         port = 8081
