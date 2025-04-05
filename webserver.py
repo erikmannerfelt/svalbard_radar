@@ -304,7 +304,7 @@ def get_all_radargrams(username: str):
             }
         )
 
-    radargrams = {k: v for k, v in sorted(radargrams.items(), key=lambda item: item[1]["_meta"]["n_total_submissions"])}
+    radargrams = {k: v for k, v in sorted(radargrams.items(), key=lambda item: item[1]["_meta"]["n_total_submissions"] / len(item[1]))}
 
     return radargrams
 
