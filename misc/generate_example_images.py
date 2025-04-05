@@ -45,6 +45,12 @@ def main():
     height = 1080
     tile_size = 1000
     images = {
+        "kroppbreen_cold_bed": {
+            "radar-key": "kroppbreen-20230228-DAT_0042_A1_1",
+            "xmin": 10500,
+            "ymin": 50,
+            "scale": 1.
+        },
         "filantropbreen_double_bed": {
             "radar-key": "filantropbreen-20240406-DAT_0372_A1_1",
             "xmin": 620,
