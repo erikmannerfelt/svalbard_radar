@@ -45,6 +45,12 @@ def main():
     height = 1080
     tile_size = 1000
     images = {
+        "filantropbreen_double_bed": {
+            "radar-key": "filantropbreen-20240406-DAT_0372_A1_1",
+            "xmin": 620,
+            "ymin": 120,
+            "scale": 1.2,
+        },
         "ragnamariebreen_no_bed": {
             "radar-key": "ragna_mariebreen-20240405-DAT_0359_A1_1",
             "xmin": 2000,

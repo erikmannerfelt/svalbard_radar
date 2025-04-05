@@ -75,6 +75,17 @@ def get_paths(offline: bool = False):
             "20230220": [gpr_dir / "2023/GPR_230220_B-Slakbreen-100MHz"],  # It's misnamed as slakbreen
             "20230221": [gpr_dir / "2023/GPR_230221_B-Slakbreen-100MHz"],  # It's misnamed as slakbreen
             "20240209": [gpr_dir / "2024/GPR_20240209_A-Dronbreen-100MHz"],
+            "20250325": [gpr_dir / "2025/GPR_20250325_A-Dronbreen-100MHz"],
+            "20250326": [
+                gpr_dir / "2025/GPR_20250326_A-Dronbreen-100MHz",
+                gpr_dir / "2025/GPR_20250326_B-Dronbreen-25MHz",
+            ],
+            "20250327": [
+                gpr_dir / "2025/GPR_20250327_A-Dronbreen-25MHz",
+            ],
+        },
+        "lofthusbreen": {
+            "20250326": [gpr_dir / "2025/GPR_20250326_C-Lofthusbreen-25MHz"],
         },
         "slakbreen": {
             "20220330": [gpr_dir2 / "2022/Svalbard/GPR_220330_A-Slakbreen-100MHz"],
@@ -133,6 +144,28 @@ def get_paths(offline: bool = False):
                             dir_list.remove(dir_entry)
             
     return filepaths
+
+
+def extract_glacier_raw_data(glacier: str = "dronbreen"):
+    import shutil
+
+    filepaths = get_paths()[glacier]
+
+    for date_str, date_fps in filepaths.items():
+
+        for filepath in date_fps:
+
+            for rad_fp in filepath.rglob("*.rad"):
+
+                out_dir = Path(f"{glacier}/{date_str}/{rad_fp.stem}")
+                out_dir.mkdir(exist_ok=True, parents=True)
+
+                for fp2 in rad_fp.parent.glob(f"*{rad_fp.stem}*"):
+                    out_fp = out_dir / fp2.name
+                    if out_fp.is_file():
+                        continue
+                    shutil.copyfile(fp2, out_fp) 
+                print(rad_fp)
 
 RSGPR_PATH = "/home/erikmann/Projects/UiO/rsgpr/target/release/rsgpr"
 
@@ -296,6 +329,10 @@ def run_all(offline: bool = False, force_redo: bool = False):
         "dronbreen-20200226-DAT_0086_A1_H_1",
         "dronbreen-20190225-DAT_0011_A1_4",
         "moysalbreen-20220222-DAT_0760_A1_1",
+        "dronbreen-20250326-DAT_0011_A1_2",
+        "dronbreen-20250326-DAT_0008_A1_1",
+        "dronbreen-20250326-DAT_0009_A1_1"
+        "slakbreen-20220330-DAT_0252_A1_1",
     ]
 
     for glacier, per_date in all_paths.items():

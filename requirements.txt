@@ -16,3 +16,5 @@ jsonschema
 scipy
 werkzeug
 gevent
+scikit-learn
+rasterio
