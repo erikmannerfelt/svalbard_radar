@@ -144,13 +144,84 @@ function validate_polyline(map, polyline, skip_alert = false) {
   return issues;
 }
 
+function change_layer_kind(layer, new_kind) {
+  const classes = get_layer_classes();
+
+  let class_props = classes[new_kind];
+
+  layer.properties = layer.properties || {};
+  layer.properties.kind = new_kind;
+  layer.properties.color = class_props.color;
+  layer.properties.name = class_props.name;
+
+  layer.setStyle({color: class_props.color});
+
+}
+
 function polyline_popup(layer) {
-  let string = layer.properties.name;
+  let popup_div = document.createElement("div");
+
+  let class_name = document.createElement("p");
+  class_name.innerHTML = `<b>Class: </b>${layer.properties.name}`;
+  popup_div.appendChild(class_name);
 
   if (layer.properties.issues.length > 0) {
-    string = `${string}<br><b>Issues</b><br>` + layer.properties.issues.join("<br>");
+    let issues_text = document.createElement("p");
+    issues_text.innerHTML = `<br><b>Issues</b><br>` + layer.properties.issues.join("<br>");
+    popup_div.appendChild(issues_text);
   };
-  return string;
+
+  let classes = get_layer_classes();
+
+  let class_change_div = document.createElement("div");
+  let dropdown = document.createElement("button");
+  dropdown.innerText = "Change class";
+  class_change_div.appendChild(dropdown);
+  dropdown.classList.add("button", "change-class-dropdown-button");
+
+  let dropdown_content = document.createElement("div");
+  dropdown_content.className = "change-class-dropdown-content";
+  class_change_div.appendChild(dropdown_content);
+  
+  dropdown.onclick = function () {
+    dropdown_content.classList.toggle("show");
+  };
+
+  for (key in classes) {
+
+    let item = document.createElement("button");
+
+    item.key = key;
+    item.classList.add("color-option");
+
+    var patch = document.createElement("span");
+    patch.classList.add("color-box");
+    patch.style.backgroundColor = classes[key]["color"];
+
+    const text = document.createTextNode(classes[key]["name"]);
+
+    item.appendChild(patch);
+    item.appendChild(text);
+
+    item.onclick = function (event) {
+      change_layer_kind(layer, event.target.key);
+      class_name.innerHTML = `<b>Class: </b>${layer.properties.name}`;
+    }
+
+    dropdown_content.appendChild(item);
+
+  };
+  // Close the dropdown if the user clicks outside of it
+  window.onclick = function(e) {
+    if (!e.target.matches('.change-class-dropdown-button')) {
+      if (dropdown_content.classList.contains("show")) {
+        dropdown_content.classList.remove("show");
+      };
+    };
+  }
+  popup_div.appendChild(class_change_div);
+
+  return popup_div;
 
 }
 
@@ -358,10 +429,8 @@ async function load_digitized_inner(data, meta, drawn_items) {
           console.log("Fallback load implementation as GeoJSON. Might be wrong!");
           console.log(feature_geojson);
         };
-        layer.properties = layer.properties || {};
-        layer.properties.name = class_props.name;
-        layer.properties.color = class_props.color;
-        layer.properties.kind = kind;
+
+        change_layer_kind(layer, kind);
 
         layer.properties.issues = validate_polyline(map, layer, true);
 
