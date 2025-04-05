@@ -331,7 +331,19 @@ async function load_digitized_inner(data, meta, drawn_items) {
 
       for (feature_geojson of data["features"]["features"]) {
         let layer;
-        let class_props = classes[feature_geojson.properties.kind];
+        let kind = feature_geojson.properties.kind;
+
+        // Added 2025-04-05. There was a bug where a loaded line didn't get the "kind" property, so if saved again, the kind property was lost.
+        // If that's the case, the lookup below is by name instead of kind.
+        if (kind == undefined) {
+          for (kind_class in classes) {
+            if (classes[kind_class].name == feature_geojson.properties.name) {
+              kind = kind_class;
+              break;
+            };
+          };
+        };
+        let class_props = classes[kind];
         if (feature_geojson["geometry"]["type"] == "LineString") {
           let coords = [];
 
@@ -349,6 +361,7 @@ async function load_digitized_inner(data, meta, drawn_items) {
         layer.properties = layer.properties || {};
         layer.properties.name = class_props.name;
         layer.properties.color = class_props.color;
+        layer.properties.kind = kind;
 
         layer.properties.issues = validate_polyline(map, layer, true);
 
