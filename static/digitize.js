@@ -488,6 +488,7 @@ async function setup_map() {
   };
   let track_interval_colors = ["black", "green", "red", "purple", "orange", "blue"];
 
+  // Add interval indicators to the digitization window 
   if (meta["interval_indicators"] != null) {
     if (meta["interval_indicators"].length > 1) {
       let rect_height = meta["height"] / 5
@@ -598,7 +599,7 @@ async function setup_map() {
   });
 
   meta["track"].forEach(function (track_json, i) {
-    let lines = L.geoJSON(track_json, {color: track_interval_colors[i % track_interval_colors.length]}).bindPopup(function (layer) {
+    let lines = L.geoJSON(track_json, {color: track_interval_colors[i % track_interval_colors.length], opacity: 0.5}).bindPopup(function (layer) {
       let props = layer.feature.properties;
       return `Interval nr ${props.i}<br>Num traces: ${props.n_traces}<br>Length: ${props.length} m`;
       
@@ -610,6 +611,7 @@ async function setup_map() {
                 {
                     offset: '5%',          
                     repeat: 100,               // No repeat for arrow
+                    opacity: 0.5,
                     symbol: L.Symbol.arrowHead({
                         pixelSize: 10,       // Size of the arrow
                         polygon: false,
