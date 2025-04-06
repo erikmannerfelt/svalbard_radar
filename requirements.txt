@@ -10,7 +10,6 @@ dask
 flask
 flask-httpauth
 flask-login
-api-analytics
 requests
 jsonschema
 scipy
@@ -18,3 +17,5 @@ werkzeug
 gevent
 scikit-learn
 rasterio
+gdal
+pyarrow
