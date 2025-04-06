@@ -22,6 +22,7 @@
             rsgpr
             netcdf
             just
+            ruff
           ];
         };
       }

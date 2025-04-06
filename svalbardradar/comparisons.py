@@ -1,23 +1,23 @@
-import pandas as pd
-import numpy as np
-import rasterio as rio
-import matplotlib.pyplot as plt
-import requests
-import zipfile
-import geopandas as gpd
-import scipy.spatial
-
-from pathlib import Path
 import os
 import shutil
+import zipfile
+from pathlib import Path
+
+import geopandas as gpd
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import rasterio as rio
+import requests
+import scipy.spatial
 
 from svalbardradar.tools import paths
 
 CACHE_PATH = paths.BASE_CACHE_PATH / "comparisons"
 
-def download_large_file(output_filepath: Path, url: str):
 
-    temp_path =output_filepath.with_suffix(f".{output_filepath.suffix}.part")
+def download_large_file(output_filepath: Path, url: str):
+    temp_path = output_filepath.with_suffix(f".{output_filepath.suffix}.part")
     if temp_path.is_file():
         os.remove(temp_path)
 
@@ -27,15 +27,14 @@ def download_large_file(output_filepath: Path, url: str):
     with requests.get(url, stream=True) as response:
         response.raise_for_status()
 
-
         temp_path.parent.mkdir(exist_ok=True, parents=True)
-        
+
         with open(temp_path, "wb") as outfile:
             for chunk in response.iter_content(chunk_size=8192 * 4):
                 outfile.write(chunk)
-        
 
-        shutil.move(temp_path,output_filepath)
+        shutil.move(temp_path, output_filepath)
+
 
 def get_vanpelt() -> Path:
     out_path = CACHE_PATH / "vanpelt/vanpelt_thickness.tif"
@@ -46,7 +45,6 @@ def get_vanpelt() -> Path:
 
 
 def get_furst() -> Path:
-
     out_path = CACHE_PATH / "furst/furst_thickness.vrt"
 
     if out_path.is_file():
@@ -58,6 +56,7 @@ def get_furst() -> Path:
     download_large_file(tar_path, url)
 
     from osgeo import gdal
+
     gdal.UseExceptions()
     gdal.BuildVRT(
         out_path.absolute(),
@@ -68,8 +67,6 @@ def get_furst() -> Path:
 
 
 def get_millan() -> Path:
-
-
     out_path = CACHE_PATH / "millan/millan_thickness.tif"
     url = "https://cluster.klima.uni-bremen.de/~oggm/velocities/millan22/thickness/RGI-7/THICKNESS_RGI-7.1_2021July09.tif"
 
@@ -78,11 +75,8 @@ def get_millan() -> Path:
     return out_path
 
 
-
 def get_farinotti() -> Path:
-
     out_path = CACHE_PATH / "farinotti/farinotti_thickness.vrt"
-
 
     if out_path.is_file():
         return out_path
@@ -105,7 +99,6 @@ def get_farinotti() -> Path:
             if not entry.filename.endswith(".tif"):
                 continue
 
-
             vsi_path = f"/vsizip/{zip_path.absolute()}/{entry.filename}"
 
             with rio.open(vsi_path) as raster:
@@ -114,8 +107,10 @@ def get_farinotti() -> Path:
             if crs_epsg == 32633:
                 filepaths.append(vsi_path)
                 continue
-            
-            warp_path =warped_vrt_dir / entry.filename.split("/")[-1].replace(".tif", ".vrt")
+
+            warp_path = warped_vrt_dir / entry.filename.split("/")[-1].replace(
+                ".tif", ".vrt"
+            )
             gdal.Warp(
                 str(warp_path.absolute()),
                 vsi_path,
@@ -127,17 +122,15 @@ def get_farinotti() -> Path:
 
             # filepaths_per_crs.append(vsi_path)
 
-
     gdal.BuildVRT(
         out_path.absolute(),
         filepaths,
         srcNodata=0,
     )
     return out_path
-    
+
 
 def get_glathida():
-
     out_path = CACHE_PATH / "glathida/glathida_pts.feather"
 
     read_func = gpd.read_file if "feather" not in out_path.suffix else gpd.read_feather
@@ -167,8 +160,10 @@ def get_glathida():
     data["POINT_ID"] = data["POINT_ID"].astype(str)
     # data = pd.read_csv(f"zip:/{zip_path}/glathida-3.1.0/data/TTT.csv")
     #
-    data = gpd.GeoDataFrame(data, geometry=gpd.points_from_xy(data["POINT_LON"], data["POINT_LAT"], crs=4326)).to_crs(32633)
-
+    data = gpd.GeoDataFrame(
+        data,
+        geometry=gpd.points_from_xy(data["POINT_LON"], data["POINT_LAT"], crs=4326),
+    ).to_crs(32633)
 
     if "feather" in out_path.suffix:
         data.to_feather(out_path)
@@ -177,13 +172,16 @@ def get_glathida():
 
     return read_func(out_path)
 
+
 def sample_glathida():
     import svalbardradar.interpretations
 
     data = svalbardradar.interpretations.merge_all_interpretations()
     glathida = get_glathida()
 
-    tree = scipy.spatial.KDTree(np.transpose([glathida.geometry.x, glathida.geometry.y]))
+    tree = scipy.spatial.KDTree(
+        np.transpose([glathida.geometry.x, glathida.geometry.y])
+    )
 
     distances, indices = tree.query(data[["easting", "northing"]])
 
@@ -193,12 +191,13 @@ def sample_glathida():
     data["glathida_thickness"] = glathida["THICKNESS"].values[indices[distance_mask]]
     data["glathida_date"] = glathida["SURVEY_DATE"].values[indices[distance_mask]]
 
-    data["glathida_year"] = data["glathida_date"].astype(str).str.slice(0, 4).astype(int)
+    data["glathida_year"] = (
+        data["glathida_date"].astype(str).str.slice(0, 4).astype(int)
+    )
     data["glathida_diff"] = data["glathida_thickness"] - data["thickness"]
 
     return data
 
-    
 
 def sample_models():
     import svalbardradar.interpretations
@@ -220,9 +219,12 @@ def sample_models():
     }
 
     for key in model_paths:
-
         with rio.open(model_paths[key]) as raster:
-            data[f"{key}_thickness"] = np.fromiter(raster.sample(data[["easting", "northing"]].values), dtype=raster.dtypes[0], count=data.shape[0])
+            data[f"{key}_thickness"] = np.fromiter(
+                raster.sample(data[["easting", "northing"]].values),
+                dtype=raster.dtypes[0],
+                count=data.shape[0],
+            )
 
     data = data.dropna(subset=[f"{key}_thickness" for key in model_paths], how="all")
 

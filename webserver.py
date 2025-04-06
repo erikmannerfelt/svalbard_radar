@@ -1,32 +1,38 @@
+import concurrent.futures
+import datetime
+import functools
+import hashlib
+import json
+import socket
+import string
+import threading
+from pathlib import Path
 from typing import Callable
+
 import flask
 import flask_login
-import werkzeug.security
 import jsonschema
-import json
-from pathlib import Path
-import hashlib
-import string
-import concurrent.futures
+import werkzeug.security
 from gevent.pywsgi import WSGIServer
-import socket
-import datetime
-import threading
 
-import format_radargrams
-import functools
+from svalbardradar import format_radargrams
 
-APP = flask.Flask(__name__, static_folder="web/static/", template_folder="web/templates/")
+APP = flask.Flask(
+    __name__, static_folder="web/static/", template_folder="web/templates/"
+)
 
 PRIVATE_KEY_PATH = Path("./.privatekey")
 APP.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 MB
 LOGIN_MANAGER = flask_login.LoginManager(APP)
 
+
 class Debug:
     def __init__(self, debug: bool):
         self.debug = debug
+
     def __bool__(self):
         return self.debug
+
 
 DEBUG = Debug(False)
 
@@ -84,7 +90,9 @@ def login():
         username = flask.request.form["username"]
         password = flask.request.form["password"]
 
-        if username in USER_DATA and werkzeug.security.check_password_hash(USER_DATA[username], password):
+        if username in USER_DATA and werkzeug.security.check_password_hash(
+            USER_DATA[username], password
+        ):
             user_obj = User(username=username)
             flask_login.login_user(user_obj)
             return flask.redirect(flask.url_for("index"))
@@ -147,7 +155,9 @@ def nice_name(glacier_key: str) -> str:
     elif glacier_key == "moysalbreen":
         return "Møysalbreen"
 
-    return " ".join(map(lambda part: part.capitalize(), glacier_key.replace("_", " ").split(" ")))
+    return " ".join(
+        map(lambda part: part.capitalize(), glacier_key.replace("_", " ").split(" "))
+    )
 
 
 # def get_user_dirs() -> list[Path]:
@@ -162,33 +172,9 @@ def nice_name(glacier_key: str) -> str:
 #     return res
 
 
-
 class Submissions:
     all_users: list[str]
     user_submission_funcs: dict[str, Callable]
-
-    def __init__(self):
-        self._refresh()
-
-    def _refresh(self):
-        """Reload the submissions database."""
-        self.all_users = list(USER_DATA.keys())
-
-        self.user_submission_funcs = {}
-        for user in self.all_users:
-            user_dir = self.get_user_dir(username=user)
-            func = functools.partial(self._get_all_user_submissions_inner,user_dir=user_dir)
-            func = functools.cache(func)
-            func.cache_clear()
-            self.user_submission_funcs[user] = func
-
-    def get_user_dirs(self) -> list[Path]:
-        """Get directories of all users (existing or not)."""
-        return [self.get_user_dir(username) for username in USER_DATA]
-
-    def get_user_dir(self, username: str) -> Path:
-        """Get directories of a specific user."""
-        return get_submitted_path() / username
 
     @staticmethod
     def _get_all_user_submissions_inner(user_dir: Path) -> dict[str, Path]:
@@ -204,12 +190,35 @@ class Submissions:
 
         return submissions
 
+    def _refresh(self):
+        """Reload the submissions database."""
+        self.all_users = list(USER_DATA.keys())
+
+        self.user_submission_funcs = {}
+        for user in self.all_users:
+            user_dir = self.get_user_dir(username=user)
+            func = functools.partial(
+                self._get_all_user_submissions_inner, user_dir=user_dir
+            )
+            func = functools.cache(func)
+            func.cache_clear()
+            self.user_submission_funcs[user] = func
+
+    def __init__(self):
+        self._refresh()
+
+    def get_user_dirs(self) -> list[Path]:
+        """Get directories of all users (existing or not)."""
+        return [self.get_user_dir(username) for username in USER_DATA]
+
+    def get_user_dir(self, username: str) -> Path:
+        """Get directories of a specific user."""
+        return get_submitted_path() / username
+
     def get_all_user_submissions(self, username: str) -> dict[str, Path]:
         if username not in self.user_submission_funcs:
             return {}
         return self.user_submission_funcs[username]()
-        
-       
 
     def clear_user_cache(self, username: str) -> None:
         """Clear the cache of the submissions for a user."""
@@ -230,9 +239,12 @@ class Submissions:
 
         return sorted(submissions, key=lambda fp: fp.stem.split("-")[-1])[-1]
 
-    def read_latest_user_submission(self, username: str, key: str) -> dict[str, object] | None:
-
-        latest_submission = self.get_latest_user_submission_path(username=username, key=key)
+    def read_latest_user_submission(
+        self, username: str, key: str
+    ) -> dict[str, object] | None:
+        latest_submission = self.get_latest_user_submission_path(
+            username=username, key=key
+        )
 
         if latest_submission is None:
             return None
@@ -247,7 +259,18 @@ class Submissions:
                 n += 1
         return n
 
+
 SUBMISSIONS = Submissions()
+
+
+def get_username() -> str | None:
+    user = flask_login.current_user
+
+    if hasattr(user, "username"):
+        return user.username
+
+    return None
+
 
 @flask_login.login_required
 @APP.route("/user_submissions.json")
@@ -269,13 +292,14 @@ def get_n_user_submissions():
         out["per_glacier"][glacier_key] += 1
 
         out["per_radar_key"][radar_key] = len(all_submissions[radar_key])
-       
+
     return flask.jsonify(out)
 
     # for submissions in SUBMISSIONS.get_user_submissions(username=username
-    
-    
+
+
 parse_all_radargrams = functools.cache(format_radargrams.parse_all_radargrams)
+
 
 @functools.lru_cache(maxsize=10)
 def get_all_radargrams(username: str):
@@ -283,7 +307,9 @@ def get_all_radargrams(username: str):
     for glacier_key in radargrams:
         radargrams[glacier_key]["_meta"] = {"n_done_by_user": 0}
         for key in radargrams[glacier_key]:
-            n_user_submissions = len(SUBMISSIONS.get_user_submissions(username=username, key=key))
+            n_user_submissions = len(
+                SUBMISSIONS.get_user_submissions(username=username, key=key)
+            )
             radargrams[glacier_key][key].update(
                 {
                     "n_total_submissions": SUBMISSIONS.get_n_users_submitted(key=key),
@@ -293,18 +319,29 @@ def get_all_radargrams(username: str):
             if n_user_submissions > 0:
                 radargrams[glacier_key]["_meta"]["n_done_by_user"] += 1
 
-
         radargrams[glacier_key] = {
-            k: v for k, v in sorted(radargrams[glacier_key].items(), key=lambda item: item[1]["n_total_submissions"])
+            k: v
+            for k, v in sorted(
+                radargrams[glacier_key].items(),
+                key=lambda item: item[1]["n_total_submissions"],
+            )
         }
         radargrams[glacier_key]["_meta"].update(
             {
-                "n_total_submissions": sum(r["n_total_submissions"] for r in radargrams[glacier_key].values()),
+                "n_total_submissions": sum(
+                    r["n_total_submissions"] for r in radargrams[glacier_key].values()
+                ),
                 "nice_name": nice_name(glacier_key),
             }
         )
 
-    radargrams = {k: v for k, v in sorted(radargrams.items(), key=lambda item: item[1]["_meta"]["n_total_submissions"] / len(item[1]))}
+    radargrams = {
+        k: v
+        for k, v in sorted(
+            radargrams.items(),
+            key=lambda item: item[1]["_meta"]["n_total_submissions"] / len(item[1]),
+        )
+    }
 
     return radargrams
 
@@ -320,16 +357,19 @@ def all_radargrams():
                 if key2 in ["tiles", "track"]:
                     continue
                 out[key][key2] = value[key][key2]
-                    
+
         radargrams.update(out)
     return flask.jsonify(radargrams)
+
 
 @APP.route("/radargram_meta/<radar_key>.json")
 def radargram_meta(radar_key: str):
     try:
-        return flask.jsonify(get_all_radargrams(get_username() or "")[radar_key.split("-")[0]][radar_key])
+        return flask.jsonify(
+            get_all_radargrams(get_username() or "")[radar_key.split("-")[0]][radar_key]
+        )
     except KeyError:
-        return flask.jsonify({"error": "Key not valid"}), 400 
+        return flask.jsonify({"error": "Key not valid"}), 400
 
 
 @APP.route("/radargram_latest_submission/<radar_key>.json")
@@ -344,17 +384,6 @@ def radargram_latest_submission(radar_key: str):
         return flask.jsonify({})
     return flask.jsonify(latest)
 
-    
-
-
-def get_username() -> str | None:
-    user = flask_login.current_user
-
-    if hasattr(user, "username"):
-        return user.username
-
-    return None
-
 
 def _recommended() -> list[list[str]]:
     recommendations = [
@@ -365,11 +394,12 @@ def _recommended() -> list[list[str]]:
     # Extract the glacier name such that it's glacier/radar_key
     recommendations = [[s.split("-")[0], s] for s in recommendations]
     return recommendations
-    
+
 
 @APP.route("/recommended.json")
 def recommended():
     return flask.jsonify(_recommended())
+
 
 @APP.route("/")
 def index():
@@ -377,7 +407,11 @@ def index():
 
     user = get_username()
     return flask.render_template(
-        "index.html.jinja2", all_keys=all_radargrams.keys(), all_radargrams=all_radargrams, user=user, recommendations=_recommended(),
+        "index.html.jinja2",
+        all_keys=all_radargrams.keys(),
+        all_radargrams=all_radargrams,
+        user=user,
+        recommendations=_recommended(),
     )
 
 
@@ -387,7 +421,10 @@ def radargram(radar_key: str):
     meta = all_radargrams[radar_key.split("-")[0]][radar_key]
     user = get_username()
 
-    return flask.render_template("digitize.html.jinja2", meta=meta, radar_key=radar_key, user=user)
+    return flask.render_template(
+        "digitize.html.jinja2", meta=meta, radar_key=radar_key, user=user
+    )
+
 
 @APP.route("/force-reload")
 @flask_login.login_required
@@ -402,7 +439,6 @@ def force_clear_cache():
 
     return "OK", 200
 
-    
 
 @APP.route("/submit-digitized", methods=["POST"])
 @flask_login.login_required
@@ -431,10 +467,14 @@ def submit_digitized():
         # Then, the full index has to be recalculated (but all values except the one above are probably cached so it's fast)
         get_all_radargrams.cache_clear()
 
-        return flask.jsonify({"message": "Data submitted successfully", "data": data}), 200
+        return flask.jsonify(
+            {"message": "Data submitted successfully", "data": data}
+        ), 200
 
     except jsonschema.ValidationError as exception:
-        return flask.jsonify({"error": f"JSON validation error: {exception.message}"}, 400)
+        return flask.jsonify(
+            {"error": f"JSON validation error: {exception.message}"}, 400
+        )
 
     except Exception as exception:
         print(f"Exception when user submitted json: {str(exception)}")
@@ -450,13 +490,15 @@ def howto():
 def log_traffic(response: flask.Response):
     request = flask.request
 
-    real_ip = request.headers.get('X-Real-IP', request.remote_addr)
+    real_ip = request.headers.get("X-Real-IP", request.remote_addr)
 
     data = {
         "hostname": request.host,
         "ip_address": real_ip,
         "path": request.path,
-        "user_agent": request.headers.get("user-agent", request.headers.get("User-Agent", None)),
+        "user_agent": request.headers.get(
+            "user-agent", request.headers.get("User-Agent", None)
+        ),
         "method": request.method,
         "status": response.status_code,
         "user_id": get_username(),
@@ -467,7 +509,6 @@ def log_traffic(response: flask.Response):
             outfile.write(json.dumps(data) + "\n")
 
     return response
-
 
 
 def main(debug: bool = False):
