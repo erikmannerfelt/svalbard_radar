@@ -66,12 +66,12 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000, override_cache: b
         "moysalbreen-20220222-DAT_0750_A1_6": 5,
         "moysalbreen-20220222-DAT_0749_A1_1": 5,
         "dronbreen-20200226-DAT_0086_A1_1": 0.3,
-
         "amenfonna-20240510-DAT_0044_A1_1": 3,
         "etonbreen-20240503-DAT_0011_A1_1": 3,
         "bergmesterbreen-20230222-DAT_0017_A1_4": 3,
         "bergmesterbreen-20230222-DAT_0036_A1_1": 2,
         "scott_turnerbreen-20240207-DAT_0457_A1_3": 2,
+        "dronbreen-20250325-DAT_0029_A1_1": 3,
     }
 
     if meta_cache_path.is_file() and not override_cache:
