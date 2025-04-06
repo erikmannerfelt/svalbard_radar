@@ -5,11 +5,11 @@ run-rsgpr:
 
 # Build all cached items
 build-cache:
-    ipython -c 'from svalbardradar.format_radargrams import *; parse_all_radargrams(progress=True)'
+    ipython -c 'from svalbardradar.format_radargrams import *; print(len(parse_all_radargrams(progress=True)))'
 
 # Rebuild all cached items
 rebuild-cache:
-    ipython -c 'from svalbardradar.format_radargrams import *; parse_all_radargrams(progress=True, redo_cache=True)'
+    ipython -c 'from svalbardradar.format_radargrams import *; print(len(parse_all_radargrams(progress=True, redo_cache=True)))'
 
 # Run the webserver
 web:

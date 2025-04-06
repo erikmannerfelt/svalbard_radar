@@ -14,8 +14,9 @@ import hashlib
 import json
 import functools
 
-def checksum(objects: list[object]) -> str:
-    return hashlib.sha256("".join(map(str, objects)).encode()).hexdigest()
+from svalbardradar.tools import paths
+
+CACHE_PATH = paths.BASE_CACHE_PATH / "radargrams"
 
 def normalize(data: np.ndarray, gain_strength: float = 0.02):
     data_abs = np.abs(data)
@@ -31,17 +32,17 @@ def normalize(data: np.ndarray, gain_strength: float = 0.02):
     }
     
 
-def get_radargram_cache_path(src_filepath: Path) -> tuple[Path, Path]:
+def get_radargram_cache_dirs(src_filepath: Path) -> tuple[Path, Path]:
 
     filename_for_key = "/".join(src_filepath.parts[-3:])
     with xr.open_dataset(src_filepath) as data:
         
         checksum = hashlib.md5((filename_for_key + data.attrs["processing-datetime"]).encode()).hexdigest()
 
-    static_path = (Path("web/static/radargrams/") / filename_for_key).with_suffix("")
-    cache_path = Path(f"cache/radargrams/{filename_for_key.replace('/', '-')}-{checksum}/")
+    static_dir = (paths.static_dir_path() / f"radargrams/{filename_for_key}").with_suffix("")
+    cache_dir = CACHE_PATH / f"{filename_for_key.replace('/', '-')}-{checksum}/"
 
-    return static_path, cache_path
+    return static_dir, cache_dir
 
     
 
@@ -50,7 +51,7 @@ def parse_radargram(src_filepath: Path, chunksize: int = 1000, override_cache: b
 
     radar_key = "-".join(src_filepath.with_suffix("").parts[-3:])
     # static_dir = (Path("static/radargrams/") / "/".join(src_filepath.parts[-3:])).with_suffix("")
-    static_dir, cache_dir = get_radargram_cache_path(src_filepath)
+    static_dir, cache_dir = get_radargram_cache_dirs(src_filepath)
 
     meta_cache_path = cache_dir / "meta.json"
     # These are run with slower settings and need stretching to be usable.
