@@ -133,44 +133,39 @@ def get_farinotti() -> Path:
 def get_glathida():
     out_path = CACHE_PATH / "glathida/glathida_pts.feather"
 
-    read_func = gpd.read_file if "feather" not in out_path.suffix else gpd.read_feather
-
     if out_path.is_file():
-        return read_func(out_path)
+        return gpd.read_feather(out_path)
 
-    zip_path = out_path.parent / "glathida-3.1.0.zip"
-
-    url = f"https://www.gtn-g.ch/database/{zip_path.name}"
+    zip_path = out_path.parent / "glathida.zip"
+    # url = "https://gitlab.com/wgms/glathida/-/archive/main/glathida-main.zip"
+    url = "https://gitlab.com/wgms/glathida/-/archive/15fd559c84f849637522b8e21e316db958620c08/glathida-15fd559c84f849637522b8e21e316db958620c08.zip"
 
     download_large_file(zip_path, url)
+
+    data = pd.DataFrame()
+    with zipfile.ZipFile(zip_path) as zip_file:
+        for entry in zip_file.filelist:
+            if "point.csv" not in entry.filename:
+                continue
+            with zip_file.open(entry.filename) as infile:
+                data = pd.concat([data, pd.read_csv(infile, low_memory=False)], ignore_index=True).convert_dtypes()
 
     west = 9
     east = 29
     south = 76
 
-    with zipfile.ZipFile(zip_path) as zip_file:
-        with zip_file.open("glathida-3.1.0/data/TTT.csv") as infile:
-            data = pd.read_csv(infile)
+    data = data[data["latitude"] > south]
+    data = data[(data["longitude"] > west) & (data["longitude"] < east)]
 
-    data = data[data["POINT_LAT"] > south]
-    data = data[(data["POINT_LON"] > west) & (data["POINT_LON"] < east)]
-
-    data = data.convert_dtypes()
-
-    data["POINT_ID"] = data["POINT_ID"].astype(str)
-    # data = pd.read_csv(f"zip:/{zip_path}/glathida-3.1.0/data/TTT.csv")
-    #
+    for col in ["profile_id", "point_id"]:
+        data[col] = data[col].astype(str)
     data = gpd.GeoDataFrame(
         data,
-        geometry=gpd.points_from_xy(data["POINT_LON"], data["POINT_LAT"], crs=4326),
+        geometry=gpd.points_from_xy(data["longitude"], data["latitude"], crs=4326),
     ).to_crs(32633)
 
-    if "feather" in out_path.suffix:
-        data.to_feather(out_path)
-    else:
-        data.to_file(out_path)
-
-    return read_func(out_path)
+    data.to_feather(out_path)
+    return gpd.read_feather(out_path)
 
 
 def sample_glathida():
@@ -188,8 +183,8 @@ def sample_glathida():
     distance_mask = distances < 50
 
     data = data[distance_mask]
-    data["glathida_thickness"] = glathida["THICKNESS"].values[indices[distance_mask]]
-    data["glathida_date"] = glathida["SURVEY_DATE"].values[indices[distance_mask]]
+    data["glathida_thickness"] = glathida["thickness"].values[indices[distance_mask]]
+    data["glathida_date"] = glathida["date"].values[indices[distance_mask]]
 
     data["glathida_year"] = (
         data["glathida_date"].astype(str).str.slice(0, 4).astype(int)
