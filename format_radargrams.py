@@ -38,7 +38,7 @@ def get_radargram_cache_path(src_filepath: Path) -> tuple[Path, Path]:
         
         checksum = hashlib.md5((filename_for_key + data.attrs["processing-datetime"]).encode()).hexdigest()
 
-    static_path = (Path("static/radargrams/") / filename_for_key).with_suffix("")
+    static_path = (Path("web/static/radargrams/") / filename_for_key).with_suffix("")
     cache_path = Path(f"cache/radargrams/{filename_for_key.replace('/', '-')}-{checksum}/")
 
     return static_path, cache_path

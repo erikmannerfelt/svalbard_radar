@@ -16,7 +16,7 @@ import threading
 import format_radargrams
 import functools
 
-APP = flask.Flask(__name__)
+APP = flask.Flask(__name__, static_folder="web/static/", template_folder="web/templates/")
 
 PRIVATE_KEY_PATH = Path("./.privatekey")
 APP.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 MB
