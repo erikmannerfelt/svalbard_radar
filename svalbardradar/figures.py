@@ -377,9 +377,9 @@ def plot_model_comparison(show: bool = True):
     models = [str(col).replace("_thickness", "") for col in data if "_thickness" in col]
 
     ref_names = {
-        "millan": "Millan et al., (2019)",
         "furst": "Fürst et al., (2018)",
         "farinotti": "Farinotti et al., (2019)",
+        "millan": "Millan et al., (2022)",
         "vanpelt": "van Pelt & Frank (2025)",
     }
 
@@ -395,7 +395,7 @@ def plot_model_comparison(show: bool = True):
         0, max_thickness - (max_thickness % step_size) + step_size * 2, step_size
     )
 
-    for i, model in enumerate(models):
+    for i, model in enumerate(ref_names):
         col = i % 2
         row = int((i - col) / 2)
         axis: plt.Axes = axes[row, col]
@@ -403,7 +403,7 @@ def plot_model_comparison(show: bool = True):
         hist2 = np.histogram2d(
             data[f"{model}_thickness"], data["thickness"], bins=thickness_bins
         )[0][::-1, :]
-        hist2 = np.ma.masked_array(hist2, mask=hist2 < 2)
+        hist2 = np.ma.masked_array(hist2, mask=hist2 == 0)
 
         axis.set_title(ref_names[model])
         axis.imshow(hist2, extent=(0.0, thickness_bins[-1], 0.0, thickness_bins[-1]))
@@ -425,6 +425,11 @@ def plot_model_comparison(show: bool = True):
             ),
             transform=axis.transAxes,
             va="top",
+            path_effects=[
+                matplotlib.patheffects.withStroke(
+                    linewidth=4, foreground="white"
+                )
+            ],
         )
 
         if row == 1:

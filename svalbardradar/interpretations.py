@@ -177,7 +177,7 @@ def merge_all_interpretations(
     outlier_threshold: float = 200.0,
     cold_model_strength: float = 100.0,
 ) -> gpd.GeoDataFrame:
-    out_path = Path("cache/interpretations/interp_all.feather")
+    out_path = CACHE_PATH / "interp_all.feather"
 
     if out_path.is_file():
         return gpd.read_feather(out_path)
