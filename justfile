@@ -18,3 +18,6 @@ web:
 # Run the webserver in debug mode
 web-debug: 
     python -c 'from webserver import *; main(debug=True)'
+
+make-figures:
+    ipython svalbardradar/figures.py

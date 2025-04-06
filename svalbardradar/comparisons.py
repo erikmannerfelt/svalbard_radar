@@ -5,14 +5,15 @@ import matplotlib.pyplot as plt
 import requests
 import zipfile
 import geopandas as gpd
-
+import scipy.spatial
 
 from pathlib import Path
 import os
 import shutil
 
-def nmad(values):
-    return 1.426 * np.median(np.abs(values - np.median(values)))
+from svalbardradar.tools import paths
+
+CACHE_PATH = paths.BASE_CACHE_PATH / "comparisons"
 
 def download_large_file(output_filepath: Path, url: str):
 
@@ -36,10 +37,8 @@ def download_large_file(output_filepath: Path, url: str):
 
         shutil.move(temp_path,output_filepath)
 
-    
-
 def get_vanpelt() -> Path:
-    out_path = Path("cache/thickness/vanpelt/vanpelt_thickness.tif")
+    out_path = CACHE_PATH / "vanpelt/vanpelt_thickness.tif"
     url = "https://zenodo.org/records/11239460/files/Thickness_map.tif?download=1"
 
     download_large_file(out_path, url)
@@ -48,7 +47,7 @@ def get_vanpelt() -> Path:
 
 def get_furst() -> Path:
 
-    out_path = Path("cache/thickness/furst/furst_thickness.vrt")
+    out_path = CACHE_PATH / "furst/furst_thickness.vrt"
 
     if out_path.is_file():
         return out_path
@@ -71,7 +70,7 @@ def get_furst() -> Path:
 def get_millan() -> Path:
 
 
-    out_path = Path("cache/thickness/millan/millan_thickness.tif")
+    out_path = CACHE_PATH / "millan/millan_thickness.tif"
     url = "https://cluster.klima.uni-bremen.de/~oggm/velocities/millan22/thickness/RGI-7/THICKNESS_RGI-7.1_2021July09.tif"
 
     download_large_file(out_path, url)
@@ -82,7 +81,7 @@ def get_millan() -> Path:
 
 def get_farinotti() -> Path:
 
-    out_path = Path("cache/thickness/farinotti/farinotti_thickness.vrt")
+    out_path = CACHE_PATH / "farinotti/farinotti_thickness.vrt"
 
 
     if out_path.is_file():
@@ -139,7 +138,7 @@ def get_farinotti() -> Path:
 
 def get_glathida():
 
-    out_path = Path("cache/thickness/glathida/glathida_pts.feather")
+    out_path = CACHE_PATH / "glathida/glathida_pts.feather"
 
     read_func = gpd.read_file if "feather" not in out_path.suffix else gpd.read_feather
 
@@ -178,15 +177,11 @@ def get_glathida():
 
     return read_func(out_path)
 
+def sample_glathida():
+    import svalbardradar.interpretations
 
-
-def compare_glathida():
-    data = gpd.read_file(Path("cache/interpretations/quick_interp_all.gpkg"))
-    data = data[data["kind"].str.contains("bed_") & (data["kind"] != "bed_missing")]
-
+    data = svalbardradar.interpretations.merge_all_interpretations()
     glathida = get_glathida()
-
-    import scipy.spatial
 
     tree = scipy.spatial.KDTree(np.transpose([glathida.geometry.x, glathida.geometry.y]))
 
@@ -195,52 +190,27 @@ def compare_glathida():
     distance_mask = distances < 50
 
     data = data[distance_mask]
-
     data["glathida_thickness"] = glathida["THICKNESS"].values[indices[distance_mask]]
     data["glathida_date"] = glathida["SURVEY_DATE"].values[indices[distance_mask]]
 
     data["glathida_year"] = data["glathida_date"].astype(str).str.slice(0, 4).astype(int)
-    data["glathida_diff"] = data["glathida_thickness"] - data["depth"]
+    data["glathida_diff"] = data["glathida_thickness"] - data["thickness"]
 
-    # data["glathida_group"] = 
-    year_intervals = [1990, 2010, 2025]
-    markers = ["x", "s", "o"]
+    return data
 
-    data["glathida_group"] = np.digitize(data["glathida_year"], year_intervals)
-
-    plt.figure(figsize=(5, 5))
-    for i, group in data.groupby("glathida_group"):
-
-        stats = f"(n={group.shape[0]}, ΔT: {group['glathida_diff'].median():.1f}±{nmad(group['glathida_diff']):.1f} m)"
-
-        if i == 0:
-            label = f"<={year_intervals[0]} {stats}"
-        else:
-            label = f"{year_intervals[i - 1]}-{year_intervals[i]} {stats}"
-        plt.scatter(group["depth"], group["glathida_thickness"], label=label, marker=markers[i])
-
-    max_thickness = data[["glathida_thickness", "depth"]].max().max()
-
-    plt.ylabel("GlaThiDa thickness (m)")
-    plt.xlabel("Our thickness (m)")
-
-    plt.plot([0, max_thickness], [0, max_thickness], color="black")
-    plt.legend()
-    plt.tight_layout()
-    Path("figures/").mkdir(exist_ok=True)
-    plt.savefig("figures/depth_vs_glathida.jpg", dpi=400)
-    plt.show()
-
+    
 
 def sample_models():
+    import svalbardradar.interpretations
 
-    out_path = Path("cache/interpretations/quick_interp_thickness_sampled.gpkg")
+    out_path = CACHE_PATH / "interp_thickness_sampled.gpkg"
 
     if out_path.is_file():
         return gpd.read_file(out_path)
 
-    data = gpd.read_file(Path("cache/interpretations/quick_interp_all.gpkg"))
-    data = data[data["kind"].str.contains("bed_") & (data["kind"] != "bed_missing")]
+    # data = gpd.read_file(Path("cache/interpretations/quick_interp_all.gpkg"))
+    data = svalbardradar.interpretations.merge_all_interpretations()
+    # data = data[data["kind"].str.contains("bed_") & (data["kind"] != "bed_missing")]
 
     model_paths = {
         "farinotti": get_farinotti(),
@@ -258,71 +228,3 @@ def sample_models():
 
     data.to_file(out_path)
     return gpd.read_file(out_path)
-
-
-
-
-def compare_models():
-
-    data = sample_models()
-
-    models = [str(col).replace("_thickness", "") for col in data if "_thickness" in col]
-
-    ref_names = {
-        "millan": "Millan et al., (2019)",
-        "furst": "Fürst et al., (2018)",
-        "farinotti": "Farinotti et al., (2019)",
-        "vanpelt": "van Pelt & Frank (2025)",
-
-    }
-
-
-    fig = plt.figure(figsize=(7, 7))
-    axes = fig.subplots(nrows=2, ncols=2, sharex=True, sharey=True)
-
-    max_thickness = data[["depth", *[f"{model}_thickness" for model in models]]].max().max()
-
-    step_size = 7.5
-    thickness_bins = np.arange(0, max_thickness - (max_thickness % step_size) + step_size * 2, step_size)
-
-    for i, model in enumerate(models):
-        col = i % 2
-        row = int((i - col) / 2)
-        axis: plt.Axes = axes[row, col]
-
-        hist2 = np.histogram2d(data[f"{model}_thickness"],data["depth"], bins=thickness_bins)[0][::-1, :]
-        hist2 = np.ma.masked_array(hist2, mask=hist2 < 2)
-
-        axis.set_title(ref_names[model])
-        axis.imshow(hist2, extent=(0., thickness_bins[-1], 0., thickness_bins[-1]))
-
-        xlim = axis.get_ylim()
-        axis.plot([xlim[0], xlim[1]], [xlim[0], xlim[1]], color="black")
-
-        diff = data[f"{model}_thickness"] - data["depth"]
-
-        axis.text(x=0.05, y=0.95, s="\n".join(
-                [
-                    f"Median: {diff.median():.1f} m", 
-                    f"NMAD: {1.426 * np.median(np.abs(diff - np.median(diff))): .1f} m",
-                    f"r = {data['depth'].corr(data[f'{model}_thickness']):.2f}", 
-
-                ]
-            ),
-            transform=axis.transAxes,
-            va="top",
-        )
-
-        if row == 1:
-            axis.set_xlabel("Measured thickness (m)")
-
-        if col == 0:
-            axis.set_ylabel("Modelled thickness (m)")
-
-
-    plt.tight_layout()
-        
-    Path("figures/").mkdir(exist_ok=True)
-    plt.savefig("figures/depth_vs_models.jpg", dpi=400)
-    plt.show()
-
