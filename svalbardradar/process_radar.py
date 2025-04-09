@@ -18,6 +18,12 @@ def get_paths(offline: bool = False):
     print("Missing", "\n".join(missing))
 
     filepaths = {
+        "antoniabreen": {
+            "20250406": [gpr_dir / "2025/GPR_20250406_B-Antoniabreen-25MHz"],
+        },
+        "finsterwalderbreen": {
+            "20250407": [gpr_dir / "2025/GPR_20250407_A-Finsterwalderbreen-25MHz"]
+        },
         "scott_turnerbreen": {
             "20240207": [gpr_dir / "2024/GPR_20240207_A-ScottTurnerbreen-100MHz/"],
         },
@@ -360,7 +366,10 @@ def run_all(offline: bool = False, force_redo: bool = False):
         "moysalbreen-20220222-DAT_0760_A1_1",
         "dronbreen-20250326-DAT_0011_A1_2",
         "dronbreen-20250326-DAT_0008_A1_1",
-        "dronbreen-20250326-DAT_0009_A1_1slakbreen-20220330-DAT_0252_A1_1",
+        "dronbreen-20250326-DAT_0009_A1_1",
+        "slakbreen-20220330-DAT_0252_A1_1",
+        "antoniabreen-20250406-DAT_0167_A1_1",
+        "finsterwalderbreen-20250407-DAT_0170_A1_1",
     ]
 
     for glacier, per_date in all_paths.items():
