@@ -57,6 +57,7 @@ def parse_radargram(
     radar_key = "-".join(src_filepath.with_suffix("").parts[-3:])
     # static_dir = (Path("static/radargrams/") / "/".join(src_filepath.parts[-3:])).with_suffix("")
     static_dir, cache_dir = get_radargram_cache_dirs(src_filepath)
+    static_base_part = str(static_dir.parents[4])
 
     meta_cache_path = cache_dir / "meta.json"
     # These are run with slower settings and need stretching to be usable.
@@ -180,7 +181,7 @@ def parse_radargram(
                         filepath.parent.mkdir(exist_ok=True, parents=True)
 
                         Image.fromarray(tile_arr).save(filepath)
-                    filepaths[key] = "/" + str(filepath)
+                    filepaths[key] = str(filepath).replace(static_base_part, "")
 
                 tiles.append(
                     {
@@ -267,7 +268,7 @@ def parse_radargram(
             "radar_key": radar_key,
             "width": data["data"].shape[1],
             "height": data["data"].shape[0],
-            "thumbnail": str(thumbnail_path),
+            "thumbnail": str(thumbnail_path).replace(static_base_part, ""),
             "length": length,
             "length_km_rounded": round(length / 1000, 1),
             "max_depth": round(data.depth.max().item(), 2),
