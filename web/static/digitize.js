@@ -1,7 +1,7 @@
 function get_layer_classes() {
   let props = {
     "bed_cold": {
-      "name": "Cold glacier bed",
+      "name": "Glacier bed (no temperate ice)",
       "color": "#002EBD",  // Blue
     },
     "temperate": {
