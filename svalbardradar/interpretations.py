@@ -47,7 +47,7 @@ def read_interpretation(filepath: Path, step_size: int = 10) -> pd.DataFrame:
 
     if "kind" not in new_data:
         new_data["kind"] = new_data["name"].apply(
-            lambda s: {"Glacier bed": "bed_unspecified"}[s]
+            lambda s: {"Glacier bed": "bed_unspecified", "Cold glacier bed": "bed_cold", "Glacier bed missing": "bed_missing", "Temperate ice": "temperate_ice"}[s]
         )
 
     for kind, kind_data in new_data.groupby("kind"):
@@ -68,18 +68,18 @@ def read_interpretation(filepath: Path, step_size: int = 10) -> pd.DataFrame:
 
 
 def merge_interpretations(
-    radar_key: str, step_size: float = 30.0, cold_model_strength: float = 100.0
+    radar_key: str, step_size: float = 30.0, cold_model_strength: float = 100.0, overwrite_cache: bool = False,
 ) -> gpd.GeoDataFrame:
+    cache_path = CACHE_PATH / f"per_radargram/{radar_key}.feather"
+    cache_path.parent.mkdir(exist_ok=True, parents=True)
+
+    if cache_path.is_file() and not overwrite_cache:
+        return gpd.read_feather(cache_path)
+
     glacier, date_str, file_stem = radar_key.split("-")
     filepath = paths.processed_radar_path(radar_key)
     if not filepath.is_file():
         return gpd.GeoDataFrame()
-
-    cache_path = CACHE_PATH / f"per_radargram/{radar_key}.feather"
-    cache_path.parent.mkdir(exist_ok=True, parents=True)
-
-    if cache_path.is_file():
-        return gpd.read_feather(cache_path)
 
     data = pd.DataFrame()
     colors = {}
@@ -176,6 +176,7 @@ def merge_all_interpretations(
     step_size: float = 30.0,
     outlier_threshold: float = 200.0,
     cold_model_strength: float = 100.0,
+    overwrite_cache: bool = False,
 ) -> gpd.GeoDataFrame:
     out_path = CACHE_PATH / "interp_all.feather"
 
@@ -192,6 +193,7 @@ def merge_all_interpretations(
             radar_key=radar_key,
             step_size=step_size,
             cold_model_strength=cold_model_strength,
+            overwrite_cache=overwrite_cache,
         )
 
         all_data.append(out)

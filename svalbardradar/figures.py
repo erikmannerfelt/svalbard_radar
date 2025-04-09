@@ -31,10 +31,6 @@ def plot_dronbreen_examples(show: bool = True):
         "res": 25.0,
         "outline": dronbreen_outline.geometry,
     }
-    # out_filepath = Path("cache/interpretations/gridded/dronbreen_thickness.tif")
-    # thickness, bounds = svalbardradar.tools.rasters.interpolate_raster(out_filepath, zcol="thickness", points=data.query("thickness_std < 30"), extrapolation_distance=500., **interp_kwargs)
-    # out_filepath = out_filepath.with_stem(out_filepath.stem.replace("_thickness", "_temperate_frac"))
-    # temperate_frac, _ = svalbardradar.tools.rasters.interpolate_raster(out_filepath,points=data.query("temperate_frac_std < 0.5"), zcol="temperate_frac",vmin=0., vmax=1., **interp_kwargs)
 
     gridded = svalbardradar.interpretations.grid_interpretations(
         "dronbreen", outline=dronbreen_outline.geometry[0]
@@ -261,21 +257,7 @@ def plot_interp_profiles(show: bool = True):
 
         data = data.sort_values("distance")
 
-        glacier, date_str, file_stem = radar_key.split("-")
-        filepath = Path(f"processed_radar/{glacier}/{date_str}/{file_stem}.nc")
-        with xr.open_dataset(filepath) as dataset:
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                models = {
-                    key: scipy.interpolate.interp1d(
-                        dataset["distance"].values,
-                        dataset[key].values,
-                        bounds_error=False,
-                    )
-                    for key in ["elevation"]
-                }
-
-                data["elevation"] = models["elevation"](data["distance"])
+        glacier = radar_key.split("-")[0]
 
         if "start_distance" in radar_meta:
             data = data[data["distance"] > radar_meta["start_distance"]]
@@ -458,30 +440,51 @@ def plot_glathida_comparison(show: bool = True):
     markers = ["x", "s", "o"]
 
     data["glathida_group"] = np.digitize(data["glathida_year"], year_intervals)
-
-    plt.figure(figsize=(5, 5))
-    for i, group in data.groupby("glathida_group"):
-        stats = f"(n={group.shape[0]}, ΔT: {group['glathida_diff'].median():.1f}±{statistics.nmad(group['glathida_diff']):.1f} m)"
-
-        if i == 0:
-            label = f"<={year_intervals[0]} {stats}"
-        else:
-            label = f"{year_intervals[i - 1]}-{year_intervals[i]} {stats}"
-        plt.scatter(
-            group["thickness"],
-            group["glathida_thickness"],
-            label=label,
-            marker=markers[i],
-            s=9,
-        )
-
     max_thickness = data[["glathida_thickness", "thickness"]].max().max()
 
-    plt.ylabel("GlaThiDa thickness (m)")
-    plt.xlabel("Our thickness (m)")
+    fig = plt.figure(figsize=(9, 3.5))
+    axes = fig.subplots(ncols=3, sharex=True, sharey=True)
+    for i, group in data.groupby("glathida_group"):
+        axis: plt.Axes = axes[i]
+        stats = f"n={group.shape[0]}, ΔT: {group['glathida_diff'].median():.1f}±{statistics.nmad(group['glathida_diff']):.1f} m"
 
-    plt.plot([0, max_thickness], [0, max_thickness], color="black")
-    plt.legend()
+
+        if i == 0:
+            label = f"–{year_intervals[0]}\n{stats}"
+        elif i == (len(year_intervals) - 1):
+            label = f"{year_intervals[-2]}–\n{stats}"
+        else:
+            label = f"{year_intervals[i - 1]}–{year_intervals[i]}\n{stats}"
+
+        axis.text(
+            0.5, 0.98,
+            label,
+            transform=axis.transAxes,
+            ha="center",
+            va="top",
+            path_effects=[
+                matplotlib.patheffects.withStroke(
+                    linewidth=4, foreground="white"
+                )
+            ],
+        ) 
+        axis.scatter(
+            group["thickness"],
+            group["glathida_thickness"],
+            # label=label,
+            s=9,
+            color="black",
+        )
+        axis.plot([0, max_thickness], [0, max_thickness], color="black")
+
+        if i == 0:
+            axis.set_ylabel("GlaThiDa thickness (m)")
+
+        axis.set_xlabel("Our thickness (m)")
+
+
+
+    # plt.legend()
     plt.tight_layout()
     Path("figures/").mkdir(exist_ok=True)
     plt.savefig("figures/thickness_vs_glathida.jpg", dpi=400)
