@@ -667,7 +667,8 @@ async function setup_map() {
     minZoom: 3,
   });
 
-  meta["track"].forEach(function (track_json, i) {
+  meta["track"].forEach(function (track_json, _) {
+    let i = track_json.properties.i;
     let lines = L.geoJSON(track_json, {color: track_interval_colors[i % track_interval_colors.length], opacity: 0.5}).bindPopup(function (layer) {
       let props = layer.feature.properties;
       return `Interval nr ${props.i}<br>Num traces: ${props.n_traces}<br>Length: ${props.length} m`;
