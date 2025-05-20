@@ -7,8 +7,8 @@ from typing import Callable, Self
 
 
 def get_paths(offline: bool = False):
-    gpr_dir = Path("/home/erikmann/GPR/")
-    gpr_dir2 = Path("/remotes/nornan/Erik/Data/GPR")
+    #gpr_dir = Path("/home/erikmann/GPR/")
+    gpr_dir = Path("/remotes/nornan/Erik/Data/GPR")
 
     missing = [
         "Mette 2024",
@@ -30,61 +30,61 @@ def get_paths(offline: bool = False):
         "bergmesterbreen": {
             "20230222": [
                 gpr_dir / "2023/GPR_230222_D-Bergmesterbreen-100MHz/",
-                gpr_dir / "2023/GPR_230222_E-BergmesterbreenSlakbreen-100MHz/",
+                gpr_dir / "2023/GPR_230222_E-BergmesterbreenDronbreen-100MHz/",
             ],
         },
         "kroppbreen": {
-            "20230228": [gpr_dir / "2023/GPR_230228_A-Kroppbreen-100MHz/"],
+            "20230228": [gpr_dir / "2023/GPR_230228_A-Kroppbreen-100MHz"],
             "20240407": [gpr_dir / "2024/GPR_20240407_B-Kroppbreen-100MHz"],
         },
         "rugaasfonna": {
-            "20220218": [gpr_dir2 / "2022/Svalbard/GPR_220218_A-Kokbreen-100MHz"],
-            "20220222": [gpr_dir2 / "2022/Svalbard/GPR_220222_A-Kokbreen-100MHz"],
+            "20220218": [gpr_dir / "2022/Svalbard/GPR_220218_A-Kokbreen-100MHz"],
+            "20220222": [gpr_dir / "2022/Svalbard/GPR_220222_A-Kokbreen-100MHz"],
         },
         "svellnosbreen": {
-            "20220218": [gpr_dir2 / "2022/Svalbard/GPR_220218_B-Svellnosbreen-100MHz"],
+            "20220218": [gpr_dir / "2022/Svalbard/GPR_220218_B-Svellnosbreen-100MHz"],
         },
         "moysalbreen": {
-            "20220222": [gpr_dir2 / "2022/Svalbard/GPR_220222_B-Moysalbreen-100MHz"],
+            "20220222": [gpr_dir / "2022/Svalbard/GPR_220222_B-Moysalbreen-100MHz"],
         },
         "fimbulisen": {
-            "20220430": [gpr_dir2 / "2022/Svalbard/GPR_220430_B-Fimbulisen-100MHz"]
+            "20220430": [gpr_dir / "2022/Svalbard/GPR_220430_B-Fimbulisen-100MHz"]
         },
         "vallakrabreen": {
-            "20210513": [gpr_dir2 / "2021/Svalbard/GPR_210513_A-Vallakrabreen-100MHz"],
-            "20220419": [gpr_dir2 / "2022/Svalbard/GPR_220419_C-Vallakrabreen-100MHz"],
+            "20210513": [gpr_dir / "2021/Svalbard/GPR_210513_A-Vallakrabreen-100MHz"],
+            "20220419": [gpr_dir / "2022/Svalbard/GPR_220419_C-Vallakrabreen-100MHz"],
             "20220505": [
-                gpr_dir2 / "2022/Svalbard/GPR_220505_A-VallakrabreenSurgeFront-100MHz"
+                gpr_dir / "2022/Svalbard/GPR_220505_A-VallakrabreenSurgeFront-100MHz"
             ],
         },
         "mettebreen": {
-            "20230305": [gpr_dir2 / "2023/GPR_230305_A-Mettebreen-100MHz"],
+            "20230305": [gpr_dir / "2023/GPR_230305_A-Mettebreen-100MHz"],
         },
         "dronbreen": {
             "20190225": [
-                gpr_dir2 / "2019/Svalbard/GPR_190225_A-Dronbreen-25MHz",
-                gpr_dir2 / "2019/Svalbard/GPR_190225_B-Dronbreen-50MHz",
+                gpr_dir / "2019/Svalbard/GPR_190225_A-Dronbreen-25MHz",
+                gpr_dir / "2019/Svalbard/GPR_190225_B-Dronbreen-50MHz",
             ],
             # "20190227": [gpr_dir2 / "2019/Svalbard/GPR_190227_A-Dronbreen-50MHz"],
-            "20200224": [gpr_dir2 / "2020/Svalbard/GPR_200224_A-Dronbreen-100MHz"],
-            "20200225": [gpr_dir2 / "2020/Svalbard/GPR_200225_A-Dronbreen-100MHz"],
+            "20200224": [gpr_dir / "2020/Svalbard/GPR_200224_A-Dronbreen-100MHz"],
+            "20200225": [gpr_dir / "2020/Svalbard/GPR_200225_A-Dronbreen-100MHz"],
             "20200226": [
-                gpr_dir2 / "2020/Svalbard/GPR_200226_A-Dronbreen-25MHz",
-                gpr_dir2 / "2020/Svalbard/GPR_200226_B-Dronbreen-50MHz",
-                gpr_dir2 / "2020/Svalbard/GPR_200226_C-Dronbreen-100MHz",
+                gpr_dir / "2020/Svalbard/GPR_200226_A-Dronbreen-25MHz",
+                gpr_dir / "2020/Svalbard/GPR_200226_B-Dronbreen-50MHz",
+                gpr_dir / "2020/Svalbard/GPR_200226_C-Dronbreen-100MHz",
             ],
             "20220328": [
-                gpr_dir2 / "2022/Svalbard/GPR_220328_A-Dronbreen-100MHz",
+                gpr_dir / "2022/Svalbard/GPR_220328_A-Dronbreen-100MHz",
             ],
             "20220329": [
-                gpr_dir2 / "2022/Svalbard/GPR_220329_A-Dronbreen-100MHz",
+                gpr_dir / "2022/Svalbard/GPR_220329_A-Dronbreen-100MHz",
             ],
             "20230220": [
-                gpr_dir / "2023/GPR_230220_B-Slakbreen-100MHz"
-            ],  # It's misnamed as slakbreen
+                gpr_dir / "2023/GPR_230220_B-Dronbreen-100MHz"
+            ],  
             "20230221": [
-                gpr_dir / "2023/GPR_230221_B-Slakbreen-100MHz"
-            ],  # It's misnamed as slakbreen
+                gpr_dir / "2023/GPR_230221_B-Dronbreen-100MHz"
+            ],  
             "20240209": [gpr_dir / "2024/GPR_20240209_A-Dronbreen-100MHz"],
             "20250325": [gpr_dir / "2025/GPR_20250325_A-Dronbreen-100MHz"],
             "20250326": [
@@ -99,7 +99,7 @@ def get_paths(offline: bool = False):
             "20250326": [gpr_dir / "2025/GPR_20250326_C-Lofthusbreen-25MHz"],
         },
         "slakbreen": {
-            "20220330": [gpr_dir2 / "2022/Svalbard/GPR_220330_A-Slakbreen-100MHz"],
+            "20220330": [gpr_dir / "2022/Svalbard/GPR_220330_A-Slakbreen-100MHz"],
             "20230320": [gpr_dir / "2023/GPR_230320_A-Slakbreen-100MHz"],
             "20240310": [gpr_dir / "2024/GPR_20240310_A-Slakbreen-25MHz"],
         },
@@ -110,14 +110,14 @@ def get_paths(offline: bool = False):
             ],
         },
         "ragna_mariebreen": {
-            "20240317": [gpr_dir / "2024/Input/GPR_20240317_B-RagnaMariebreen-100MHz"],
-            "20230305": [gpr_dir2 / "2023/GPR_230305_B-RagnaMariebreen-100MHz"],
+            "20240317": [gpr_dir / "2024/GPR_20240317_B-RagnaMariebreen-100MHz"],
+            "20230305": [gpr_dir / "2023/GPR_230305_B-RagnaMariebreen-100MHz"],
             "20240405": [gpr_dir / "2024/GPR_20240405_A-RagnaMariebreen-100MHz"],
-            "20240412": [gpr_dir / "input/GPR_20240412_C-RagnaMariebreen-25MHz"],
+            "20240412": [gpr_dir / "2024/GPR_20240412_C-RagnaMariebreen-25MHz"],
         },
         "edvardbreen": {
-            "20230305": [gpr_dir2 / "2023/GPR_230305_C-Edvardbreen-100MHz"],
-            "20240411": [gpr_dir / "input/GPR_20240411_A-Edvardbreen-25MHz"],
+            "20230305": [gpr_dir / "2023/GPR_230305_C-Edvardbreen-100MHz"],
+            "20240411": [gpr_dir / "2024/GPR_20240411_A-Edvardbreen-25MHz"],
             "20240407": [gpr_dir / "2024/GPR_20240407_A-Edvardbreen-100MHz"],
         },
         "filantropbreen": {
@@ -125,25 +125,44 @@ def get_paths(offline: bool = False):
         },
         "etonbreen": {
             "20240503": [
-                gpr_dir / "austfonna/GPR_20240503_B-EtonbreenProfile-25MHz",
-                gpr_dir / "austfonna/GPR_20240503_C-EtonbreenWinsnesbreenCross-25MHz",
+                gpr_dir / "2024/GPR_20240503_B-EtonbreenProfile-25MHz",
+                gpr_dir / "2024/GPR_20240503_C-EtonbreenWinsnesbreenCross-25MHz",
+            ],
+            "20250506": [
+                gpr_dir / "2025/GPR_20250506_A-Etonbreen-100MHz/DAT_0027_B1",
+                gpr_dir / "2025/GPR_20250506_A-Etonbreen-100MHz/DAT_0028_B1",
             ],
         },
         "winsnesbreen": {
             "20240503": [
-                gpr_dir / "austfonna/GPR_20240503_D-WinsnesbreenFreehand-25MHz",
-                gpr_dir / "austfonna/GPR_20240503_E-WinsnesbreenCenterline-25MHz",
+                gpr_dir / "2024/GPR_20240503_D-WinsnesbreenFreehand-25MHz",
+                gpr_dir / "2024/GPR_20240503_E-WinsnesbreenCenterline-25MHz",
             ],
         },
         "austfonna": {
             "20240507": [
-                gpr_dir / "austfonna/GPR_20240507_A-AustfonnaWestMargin-25MHz"
+                gpr_dir / "2024/GPR_20240507_A-AustfonnaWestMargin-25MHz"
             ],
         },
         "amenfonna": {
-            "20240510": [gpr_dir / "austfonna/GPR_20240510_A-Amenfonna-25MHz"],
+            "20240510": [gpr_dir / "2024/GPR_20240510_A-Amenfonna-25MHz"],
         },
     }
+
+    n_total = 0
+    missing = []
+    for key in filepaths:
+        for key2 in filepaths[key]:
+            for dir_entry in filepaths[key][key2]:
+                n_total += 1
+                if not dir_entry.is_dir():
+                    missing.append(dir_entry)
+
+    if len(missing) < 10:
+        for dir_entry in missing:
+            print(f"{dir_entry} not found")
+    else:
+        print(f"{len(missing)}/{n_total} GPR directories not found")
 
     if offline:
         # Remove all entries containing key2. Not sure why it doesn't take all on the first try!
@@ -152,7 +171,7 @@ def get_paths(offline: bool = False):
                 for key2 in filepaths[key]:
                     dir_list = filepaths[key][key2]
                     for dir_entry in dir_list:
-                        if str(gpr_dir2) in str(dir_entry):
+                        if str(gpr_dir) in str(dir_entry):
                             dir_list.remove(dir_entry)
 
     return filepaths
