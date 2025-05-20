@@ -38,11 +38,16 @@ async function get_metadata() {
 	return meta;
 }
 
-function get_current_class() {
+function get_current_kind() {
   let form = document.getElementById('interp-class-select');
   let selected_key = form.querySelector('input[name="key"]:checked'); 
+
+  return selected_key.value;
+};
+
+function get_current_class() {
   const classes = get_layer_classes();
-  return classes[selected_key.value];
+  return classes[get_current_kind()];
 };
 function get_current_color() {
   return get_current_class().color;
@@ -159,7 +164,6 @@ function change_layer_kind(layer, new_kind) {
 }
 
 function add_polyline_metadata(layer, kind, drawn_items) {
-
   change_layer_kind(layer, kind);
   layer.properties.issues = validate_polyline(map, layer);
 
@@ -170,6 +174,7 @@ function add_polyline_metadata(layer, kind, drawn_items) {
 }
 
 function create_polyline(coords, drawn_items, kind) {
+  console.log(kind);
   let class_props = get_layer_classes()[kind];
   let map = drawn_items._map;
 
@@ -302,14 +307,10 @@ function polyline_popup(layer, drawn_items) {
 function setup_draw_features(map) {
 
   make_color_selector();
-  const classes = get_layer_classes();
- 
+
   // Create a layer group to manage drawn features.
   const drawnItems = new L.FeatureGroup();
   map.addLayer(drawnItems);
-
-  // Set initial color and drawing control
-  var initialColor = get_current_color();
 
   // Create draw control
   const drawControl = new L.Control.Draw({
@@ -321,7 +322,7 @@ function setup_draw_features(map) {
 
   map.addControl(drawControl);
 
-  function updateDrawControl(color) {
+  function updateDrawControl() {
     drawControl.setDrawingOptions(get_draw_control_options());
   }
 
@@ -329,11 +330,8 @@ function setup_draw_features(map) {
   map.on(L.Draw.Event.CREATED, function(event) {
     const layer = event.layer;
 
-    let props = layer.properties = layer.properties || {};
-    
-    let class_props = get_current_class();
-
-    add_polyline_metadata(layer, class_props["kind"], drawnItems);
+    let kind = get_current_kind();
+    add_polyline_metadata(layer, kind, drawnItems);
 
     drawnItems.addLayer(layer);
   });
