@@ -158,7 +158,54 @@ function change_layer_kind(layer, new_kind) {
 
 }
 
-function polyline_popup(layer) {
+function add_polyline_metadata(layer, kind, drawn_items) {
+
+  change_layer_kind(layer, kind);
+  layer.properties.issues = validate_polyline(map, layer);
+
+  layer.bindPopup(function (new_layer) {
+    return polyline_popup(new_layer, drawn_items);
+  });
+
+}
+
+function create_polyline(coords, drawn_items, kind) {
+  let class_props = get_layer_classes()[kind];
+  let map = drawn_items._map;
+
+  let new_layer = L.polyline(coords, {color: class_props.color});
+
+  add_polyline_metadata(new_layer, kind, drawn_items);
+
+  map.addLayer(new_layer);
+  drawn_items.addLayer(new_layer);
+
+  return new_layer;
+}
+
+function split_polyline(layer, x_coord, drawn_items) {
+  for (i in [0, 1]) {
+    let coords = [];
+    layer["_latlngs"].forEach(function (pair) {
+
+      if (i == 0 & pair["lng"] > x_coord) {
+        return;
+      } else if (i == 1 & pair["lng"] < x_coord) {
+        return;
+      };
+      coords.push([pair["lat"], pair["lng"]]);
+    });
+
+    create_polyline(coords, drawn_items, layer.properties.kind);
+  }
+
+  layer._map.removeLayer(layer);
+  layer.remove();
+}
+
+function polyline_popup(layer, drawn_items) {
+
+  let popup_location = layer._popup._latlng;
   let popup_div = document.createElement("div");
 
   let class_name = document.createElement("p");
@@ -171,6 +218,11 @@ function polyline_popup(layer) {
     popup_div.appendChild(issues_text);
   };
 
+
+  let button_div = document.createElement("div");
+  button_div.style.display = "flex";
+  button_div.style.justifyContent = "space-between";
+  popup_div.appendChild(button_div);
   let classes = get_layer_classes();
 
   let class_change_div = document.createElement("div");
@@ -211,6 +263,25 @@ function polyline_popup(layer) {
     dropdown_content.appendChild(item);
 
   };
+
+  button_div.appendChild(class_change_div);
+
+
+  let split_line_button = document.createElement("button");
+  button_div.appendChild(split_line_button);
+  split_line_button.innerText = "Split line here";
+  split_line_button.classList.add("button");
+  split_line_button.onclick = function () {
+
+    // if (!confirm("Split line?")) {
+    //   return;
+    // }
+    split_polyline(layer, popup_location.lng, drawn_items);
+    dropdown_content.classList.remove("show");
+    
+
+  };
+
   // Close the dropdown if the user clicks outside of it
   window.onclick = function(e) {
     if (!e.target.matches('.change-class-dropdown-button')) {
@@ -219,7 +290,6 @@ function polyline_popup(layer) {
       };
     };
   }
-  popup_div.appendChild(class_change_div);
 
   return popup_div;
 
@@ -258,12 +328,9 @@ function setup_draw_features(map) {
     let props = layer.properties = layer.properties || {};
     
     let class_props = get_current_class();
-    props.color = class_props.color;
-    props.kind = class_props.key;
-    props.name = class_props.name;
-    props.issues = validate_polyline(map, layer);
 
-    layer.bindPopup(polyline_popup);
+    add_polyline_metadata(layer, class_props["kind"], drawnItems);
+
     drawnItems.addLayer(layer);
   });
 
@@ -414,27 +481,27 @@ async function load_digitized_inner(data, meta, drawn_items) {
             };
           };
         };
-        let class_props = classes[kind];
+        // let class_props = classes[kind];
         if (feature_geojson["geometry"]["type"] == "LineString") {
           let coords = [];
 
           feature_geojson["geometry"]["coordinates"].forEach(function (pair) {
             coords.push([pair[1], pair[0] * meta["xscale"]]);
           });
-          layer = L.polyline(coords, {color: class_props.color});
+
+          layer = create_polyline(coords, drawn_items, kind);
+          // layer = L.polyline(coords, {color: class_props.color});
           console.log(layer);
         } else {
+          // alert("Loaded
+          user_message("Skipped loading of one feature as it was the wrong type", "error");
+          return;
           layer = L.geoJSON(feature_geojson, {style: class_props.color});
 
           console.log("Fallback load implementation as GeoJSON. Might be wrong!");
           console.log(feature_geojson);
         };
 
-        change_layer_kind(layer, kind);
-
-        layer.properties.issues = validate_polyline(map, layer, true);
-
-        layer.bindPopup(polyline_popup);
 
         drawn_items.addLayer(layer);
       };
