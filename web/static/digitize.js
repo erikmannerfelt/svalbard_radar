@@ -183,14 +183,18 @@ function create_polyline(coords, drawn_items, kind) {
   return new_layer;
 }
 
-function split_polyline(layer, x_coord, drawn_items) {
+function split_polyline(layer, x_coord, y_coord, drawn_items) {
   for (i in [0, 1]) {
     let coords = [];
+
+    let done = false;
     layer["_latlngs"].forEach(function (pair) {
 
-      if (i == 0 & pair["lng"] > x_coord) {
-        return;
-      } else if (i == 1 & pair["lng"] < x_coord) {
+      if ((i == 0 & pair["lng"] > x_coord) | (i == 1 & pair["lng"] < x_coord)) {
+        if (!done) {
+          coords.push([y_coord, x_coord]);
+        };
+        done = true;
         return;
       };
       coords.push([pair["lat"], pair["lng"]]);
@@ -273,10 +277,10 @@ function polyline_popup(layer, drawn_items) {
   split_line_button.classList.add("button");
   split_line_button.onclick = function () {
 
-    // if (!confirm("Split line?")) {
-    //   return;
-    // }
-    split_polyline(layer, popup_location.lng, drawn_items);
+    if (!confirm("Split line?")) {
+      return;
+    }
+    split_polyline(layer, popup_location.lng, popup_location.lat, drawn_items);
     dropdown_content.classList.remove("show");
     
 
