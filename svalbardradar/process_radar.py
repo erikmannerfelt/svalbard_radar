@@ -5,10 +5,13 @@ import tempfile
 from pathlib import Path
 from typing import Callable, Self
 
+import dotenv
+
+dotenv.load_dotenv()
+
 
 def get_paths(offline: bool = False):
-    #gpr_dir = Path("/home/erikmann/GPR/")
-    gpr_dir = Path("/remotes/nornan/Erik/Data/GPR")
+    gpr_dir = Path(os.environ["GPR_DIR"])
 
     missing = [
         "Mette 2024",

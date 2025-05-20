@@ -3,12 +3,14 @@ import datetime
 import functools
 import hashlib
 import json
+import os
 import socket
 import string
 import threading
 from pathlib import Path
 from typing import Callable
 
+import dotenv
 import flask
 import flask_login
 import jsonschema
@@ -21,7 +23,8 @@ APP = flask.Flask(
     __name__, static_folder="web/static/", template_folder="web/templates/"
 )
 
-PRIVATE_KEY_PATH = Path("./.privatekey")
+dotenv.load_dotenv()
+
 APP.config["MAX_CONTENT_LENGTH"] = 50 * 1024 * 1024  # 50 MB
 LOGIN_MANAGER = flask_login.LoginManager(APP)
 
@@ -37,9 +40,9 @@ class Debug:
 DEBUG = Debug(False)
 
 
-@functools.cache
 def read_privatekey():
-    return PRIVATE_KEY_PATH.read_text()
+    # The \n is an error on my side, but now it's all distributed so it's too late to fix!
+    return os.environ["PRIVATEKEY"] + "\n"
 
 
 APP.secret_key = read_privatekey()
