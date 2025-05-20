@@ -70,7 +70,7 @@ async function setup_map() {
           };
 
           if (meta["n_total_submissions"] > 0) {
-            let extra = "Not done by you";
+            let extra = logged_in ? "Not done by you" : "";
             if (n_submitted_by_user > 1) {
               extra = `Done by you (${n_submitted_by_user}x!)`;
             } else if (n_submitted_by_user == 1) {
