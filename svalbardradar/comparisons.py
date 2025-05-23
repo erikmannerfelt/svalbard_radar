@@ -168,7 +168,7 @@ def get_glathida():
     return gpd.read_feather(out_path)
 
 
-def sample_glathida():
+def sample_glathida() -> pd.DataFrame:
     import svalbardradar.interpretations
 
     data = svalbardradar.interpretations.merge_all_interpretations()

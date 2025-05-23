@@ -585,6 +585,75 @@ def overview_map(show: bool = True):
     print(tracks)
         
 
+def plot_model_temperate_cold_performance(show: bool = True):
+    import svalbardradar.comparisons
+
+    data = svalbardradar.comparisons.sample_models()
+    glathida = svalbardradar.comparisons.sample_glathida()
+    glathida = glathida[glathida["glathida_year"] > 2000]
+    # data = svalbardradar.comparisons.sample_glathida(data.copy())
+
+    models = [str(col).replace("_thickness", "") for col in data if "_thickness" in col] + ["glathida"]
+
+    colors = {
+        "cold": "white",
+        "temperate": "red",
+        "all": "grey",
+    }
+    ref_names = {
+        "furst": "Fürst et al.\n(2018)",
+        "farinotti": "Farinotti et al.\n(2019)",
+        "millan": "Millan et al.\n(2022)",
+        "vanpelt": "van Pelt & Frank\n(2025)",
+        "glathida": "GlaThiDa 2000-"
+    }
+    case_names = {
+        "temperate": "Temperate ice",
+        "cold": "Cold ice",
+        "all": "All data",
+    }
+    box_distance = 5
+    plt.figure(figsize=(8, 5))
+    for i, model in enumerate(models):
+        if model != "glathida":
+            temperate = data["temperate_frac"] > 0.1
+            diff = data[f"{model}_thickness"] - data["thickness"]
+        else:
+            temperate = glathida["temperate_frac"] > 0.1
+            diff =glathida["glathida_diff"]
+
+        for j, (case, arr) in enumerate([("cold", diff[~temperate]), ("temperate", diff[temperate]), ("all", diff)]):
+            arr = arr[np.abs(arr) < 300]
+            plt.boxplot([arr], positions=[j - 1 + box_distance * i],  showfliers=False, manage_ticks=False, widths=0.8, patch_artist=True, boxprops={"facecolor": colors[case], "alpha": 0.5}, medianprops={"color": "black"}, label=case_names[case] if i == 0 else None)
+            # violins = plt.violinplot([arr], positions=[j - 1 + box_distance * i], widths=1)
+            # for violin in violins["bodies"]:
+            #     violin.set_facecolor(colors[case])
+            #     violin.set_edgecolor("black")
+            # for key in violins:
+            #     if key == "bodies":
+            #         continue
+            #     violins[key].set_edgecolor(colors[case] if colors[case] != "white" else "grey")
+            #     violins[key].set_alpha(0.5)
+    plt.xticks(np.arange(len(models)) * box_distance, [ref_names[model] for model in models])
+    plt.ylabel("Thickness difference (m)")
+    plt.legend()
+    xlim = plt.gca().get_xlim()
+
+    plt.hlines(0, *xlim, zorder=0, color="grey", linestyles="--")
+    plt.xlim(xlim)
+    plt.tight_layout()
+
+    Path("figures/").mkdir(exist_ok=True)
+    plt.savefig("figures/thickness_vs_cold_temperate.jpg", dpi=400)
+
+    if show:
+        plt.show()
+
+        
+
+    print(data.iloc[0])
+    
+
 
 def generate_all_figures(show: bool = True):
     plot_dronbreen_examples(show=show)
