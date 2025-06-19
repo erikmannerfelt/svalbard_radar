@@ -2,6 +2,7 @@ import io
 import json
 import warnings
 from pathlib import Path
+import datetime
 
 import geopandas as gpd
 import matplotlib.patheffects
@@ -201,6 +202,189 @@ def plot_dronbreen_examples(show: bool = True):
     if show:
         plt.show()
 
+
+def plot_user_spread(show: bool = True):
+    import svalbardradar.interpretations
+    from svalbardradar.tools import paths, rasters
+    from matplotlib.backends.backend_pdf import PdfPages
+    radar_keys = [
+        "moysalbreen-20220222-DAT_0750_A1_6",
+        "vallakrabreen-20210513-DAT_0014_A1_31",
+        "ragna_mariebreen-20240412-DAT_0404_A1_1",
+        "filantropbreen-20240406-DAT_0372_A1_1",
+    ]
+
+    all_data =svalbardradar.interpretations.merge_all_interpretations()
+
+    all_data["glacier"] = all_data["radar-key"].str.split("-", expand=True).iloc[:, 0]
+    all_data["part_idx"] = all_data["part_idx"].astype(int)
+    all_data["bed_elevation"] = all_data["elevation"] - all_data["thickness"]
+
+    all_data["temp_elevation"] = (
+        all_data["bed_elevation"] + all_data["thickness"] * all_data["temperate_frac"]
+    )
+
+    out_path = Path("figures/all_interpretations.pdf")
+    radar_keys = []
+    with PdfPages(out_path) as pdf, tqdm.tqdm(total=all_data["radar-key"].unique().shape[0]) as progress_bar:
+        for glacier, all_glacier_data in all_data.groupby("glacier"):
+            for radar_key, data in all_glacier_data.groupby("radar-key"):
+
+                # if len(radar_keys) > 9:
+                #     break
+                _, date_str, filename = radar_key.split("-")
+
+                data = data.copy()
+                data["distance"] = (
+                    (data[["easting", "northing"]].diff(axis="rows").fillna(0) ** 2).sum(
+                        axis="columns"
+                    )
+                    ** 0.5
+                ).cumsum() / 1e3
+
+                fig = plt.figure(figsize=(8.3, 11.7))
+                axes = fig.subplots(3, 1, sharex=True, sharey=True, height_ratios=[0.5, 0.25, 0.25])
+
+                with xr.open_dataset(f"processed_radar/{glacier}/{date_str}/{filename}.nc") as dataset:
+                    depth_model = scipy.interpolate.interp1d(
+                        np.arange(dataset["data"].shape[0])[::-1],
+                        dataset["depth"].values,
+                        bounds_error=False,
+                    )
+            
+                interp_paths = paths.get_latest_submissions(radar_key)
+
+                map: plt.Axes = axes[0].inset_axes([0.5, 0.05, 0.5, 0.95])
+                for _, per_radargram in all_glacier_data.groupby("radar-key"):
+                    for _, part in per_radargram.groupby("part_idx"):
+                        if part.iloc[0]["radar-key"] == radar_key:
+                            style = {"color": "red", "zorder": 2}
+                        else:
+                            style = {"color": "grey", "zorder": 1}
+                        map.plot(part.geometry.x, part.geometry.y, **style)
+
+
+                topo_ax: plt.Axes = axes[0].inset_axes([-0.02, 0.35, 0.4, 0.4]) 
+                max_d = 0.
+                for _, part in data.groupby("part_idx"):
+
+                    distances = part["distance"] - part["distance"].min() + max_d
+
+                    topo_ax.fill_between(
+                        distances,
+                        data["bed_elevation"].min() - 50,
+                        part["bed_elevation"],
+                        color="gray",
+                    )
+                    topo_ax.fill_between(
+                        distances,
+                        part["temp_elevation"],
+                        part["elevation"],
+                        color="lightblue",
+                        alpha=0.5,
+                    )
+                    topo_ax.fill_between(
+                        distances,
+                        part["bed_elevation"],
+                        part["temp_elevation"],
+                        color="red",
+                        alpha=0.5,
+                    )
+                    topo_ax.plot(distances, part["bed_elevation"], color="black")
+                    topo_ax.plot(distances, part["elevation"], color="blue")
+
+                    max_d = distances.max()
+
+                axes[0].text(
+                    -0.1,
+                    0.03,
+                    "\n".join(
+                         [
+                             f"Date: {date_str}",
+                             f"Glacier: {glacier}", 
+                             f"n contributors: {len(interp_paths)}", 
+                             f"Length: {max_d:.2f} km",
+                             f"Mean thickness: {data['thickness'].mean():.2f} m",
+                             f"Mean thickness uncertainty: {data['thickness_std'].mean():.2f} m",
+                             f"Mean temperate ice fraction: {100 *data['temperate_frac'].mean():.2f}%",
+                             f"Mean temperate ice fraction uncertainty: {100 * data['temperate_frac_std'].mean():.2f}%",
+                         ]
+                    ),
+                    transform=axes[0].transAxes
+                )
+
+                labeled = set()
+                for interp_path in interp_paths:
+
+                    interp =svalbardradar.interpretations.read_interpretation_lines(interp_path)
+                    for _, line in interp.iterrows():
+                        y_coords = depth_model(line.geometry.xy[1])
+
+                        axes[1].plot(line.geometry.xy[0], y_coords, color=line["color"], linestyle=":", label=line["kind"] if line["kind"] not in labeled else None)
+                        labeled.add(line["kind"])
+
+                axes[2].fill_between(data.index, data["thickness"] - data["thickness_std"], data["thickness"] + data["thickness_std"],  color="blue", alpha=0.5,label="Thickness (+- 1std)", zorder=2)
+                axes[2].plot(data.index, data["thickness"], color="blue", path_effects=[
+                        matplotlib.patheffects.withStroke(
+                            linewidth=3, foreground="black"
+                        )
+                ], zorder=4, label="Thickness (mean)")
+                axes[2].fill_between(
+                    data.index,
+                    data["thickness"] - data["thickness"] * (data["temperate_frac"] - data["temperate_frac_std"]),
+                    data["thickness"] - data["thickness"] * (data["temperate_frac"] + data["temperate_frac_std"]),
+                    color="red",
+                    alpha=0.5,
+                    label="Temperate ice (+- 1std)",
+                    zorder=1,
+                )
+                axes[2].plot(data.index, data["thickness"] - data["thickness"] * data["temperate_frac"], color="red", zorder=3, label="Temperate ice (mean)")
+
+                for spine in axes[0].spines.values():
+                    spine.set_visible(False)
+                axes[0].tick_params(left=False, bottom=False, labelleft=False, labelbottom=False)
+
+                topo_ax.set_xlim(0, max_d)
+                topo_ax.set_ylim(data["bed_elevation"].min(), topo_ax.get_ylim()[1])
+                topo_ax.set_ylabel("Elevation (m a.s.l.)")
+                topo_ax.set_xlabel("Distance (km)")
+
+                map.set_aspect("equal")
+                map.set_ylabel("Northing (m)")
+                xticks = map.get_xticks()
+                map.set_xticks(xticks)
+                map.set_xticklabels([str(int(xtick)) if i in [2, len(xticks) - 2] else "" for i, xtick in enumerate(xticks)])
+                
+                map.set_xlabel("Easting (m)")
+
+                axes[1].text(0.5, 1., "Individual interpretations", ha="center", va="bottom", transform=axes[-2].transAxes)
+                axes[1].legend()
+
+                axes[2].text(0.5, 1., "Merged interpretations", ha="center", va="bottom", transform=axes[-1].transAxes)
+                axes[2].set_ylabel("Depth (m)")
+                axes[2].set_xlabel("Traces")
+                axes[2].legend()
+
+                ylim = axes[2].get_ylim()
+                axes[2].set_ylim(min(ylim[1], 350), -10)
+
+                for axis in axes[1:]:
+                    axis.grid(alpha=0.5, zorder=0)
+
+                fig.text(0.02, 0.99, f"https://radar.mannerfelt.org/digitize/{radar_key}", va="top", fontsize=7)
+                fig.text(0.03, 0.97, radar_key.replace("-", "-\n"), ha="left", va="top", fontsize=14)
+
+                plt.subplots_adjust(left=0.1, bottom=0.05, right=0.95, top=0.99, hspace=0.05)
+
+                fig.text(0.99, 0.01, f"Created {datetime.datetime.now().date().isoformat()}", ha="right", va="bottom", fontsize=8)
+                fig.text(0.03, 0.01, str(len(radar_keys) + 1), ha="right", va="bottom", fontsize=8)
+
+                pdf.savefig(fig)
+                # plt.savefig("temp.jpg", dpi=300)
+                plt.close(fig)
+                progress_bar.update()
+                radar_keys.append(radar_key)
+                # raise NotImplementedError()
 
 def plot_centerline_profiles(show: bool = True):
     import svalbardradar.interpretations

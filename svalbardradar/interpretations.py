@@ -38,19 +38,24 @@ def make_gp(length_scale_bounds=(1e-2, 2e2), mean: float | None = None):
     )
     return model
 
+def read_interpretation_lines(filepath: Path) -> pd.DataFrame:
+    interp = json.loads(filepath.read_text())
+
+    data = gpd.read_file(io.StringIO(json.dumps(interp["features"])))
+
+    if "kind" not in data:
+        data["kind"] = data["name"].apply(
+            lambda s: {"Glacier bed": "bed_unspecified", "Cold glacier bed": "bed_cold", "Glacier bed missing": "bed_missing", "Temperate ice": "temperate_ice"}[s]
+        )
+    return data
+    
 
 def read_interpretation(filepath: Path, step_size: int = 10) -> pd.DataFrame:
     data = pd.DataFrame()
-    interp = json.loads(filepath.read_text())
 
-    new_data = gpd.read_file(io.StringIO(json.dumps(interp["features"])))
+    line_data = read_interpretation_lines(filepath=filepath)
 
-    if "kind" not in new_data:
-        new_data["kind"] = new_data["name"].apply(
-            lambda s: {"Glacier bed": "bed_unspecified", "Cold glacier bed": "bed_cold", "Glacier bed missing": "bed_missing", "Temperate ice": "temperate_ice"}[s]
-        )
-
-    for kind, kind_data in new_data.groupby("kind"):
+    for kind, kind_data in line_data.groupby("kind"):
         for _, row in kind_data.iterrows():
             for distance in np.arange(0, row.geometry.length + step_size, step_size):
                 point = row.geometry.interpolate(distance)
