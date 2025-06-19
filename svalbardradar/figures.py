@@ -202,7 +202,7 @@ def plot_dronbreen_examples(show: bool = True):
         plt.show()
 
 
-def plot_interp_profiles(show: bool = True):
+def plot_centerline_profiles(show: bool = True):
     import svalbardradar.interpretations
 
     better_but_need_gps = [
@@ -657,7 +657,7 @@ def plot_model_temperate_cold_performance(show: bool = True):
 
 def generate_all_figures(show: bool = True):
     plot_dronbreen_examples(show=show)
-    plot_interp_profiles(show=show)
+    plot_centerline_profiles(show=show)
     plot_model_comparison(show=show)
     plot_glathida_comparison(show=show)
 

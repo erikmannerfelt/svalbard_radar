@@ -103,12 +103,19 @@ def merge_interpretations(
 
         models = {
             key: scipy.interpolate.interp1d(
-                np.arange(dataset["data"].shape[1]),
+                dataset["x"].values,
                 dataset[key].values,
                 bounds_error=False,
             )
             for key in ["easting", "northing", "distance", "elevation"]
         }
+        # The part_idx represents potential jumps in location. So each idx should be treated as a separate radargram.
+        models["part_idx"] = scipy.interpolate.interp1d(
+            dataset["x"].values,
+            np.cumsum(np.r_[[0], np.diff(dataset["distance"].values)] > 100),
+            bounds_error=False,
+            kind="nearest",
+        )
         antenna = dataset.attrs["antenna"].split("MHz")[0] + "MHz"
         crs = dataset.attrs["crs"]
 
@@ -117,48 +124,61 @@ def merge_interpretations(
     for key in models:
         data[key] = models[key](data["x"].astype(float))
 
+    data = data.sort_values("distance")
+
     data = data.dropna(subset=["depth", "easting"])
+    data["part_idx"] = data["part_idx"].astype(int)
 
-    bed_model = make_gp()
+    out_list = []
+    for _, data in data.groupby("part_idx"):
 
-    bed_data = data[data["kind"].isin(["bed_cold", "bed_unspecified"])]
-    with warnings.catch_warnings():
-        warnings.filterwarnings("ignore")
-        bed_model.fit(bed_data[["x"]].values, bed_data["depth"].values)
+        bed_model = make_gp()
 
-    cold_data = data[data["kind"].isin(["bed_cold", "temperate"])].copy()
+        bed_data = data[data["kind"].isin(["bed_cold", "bed_unspecified"])]
 
-    x_eval = np.arange(0, bed_data["x"].max(), step_size)
-
-    out = pd.DataFrame(index=x_eval)
-
-    out["thickness"], out["thickness_std"] = bed_model.predict(
-        x_eval[:, None], return_std=True
-    )
-
-    if cold_data.shape[0] > 2:
-        bed_pred = bed_model.predict(cold_data[["x"]].values)
-        cold_data["frac"] = np.clip((bed_pred - cold_data["depth"]) / bed_pred, 0, 1)
-        temp_model = make_gp(mean=0, length_scale_bounds=(100, 1e3))
+        if bed_data.shape[0] < 5:
+            continue
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore")
-            temp_model.fit(cold_data[["x"]].values, cold_data["frac"].values)
+            bed_model.fit(bed_data[["x"]].values, bed_data["depth"].values)
 
-        out["temperate_frac"], out["temperate_frac_std"] = temp_model.predict(
+        cold_data = data[data["kind"].isin(["bed_cold", "temperate"])].copy()
+
+        x_eval = np.arange(bed_data["x"].min(), bed_data["x"].max(), step_size)
+
+        out = pd.DataFrame(index=x_eval)
+
+        out["thickness"], out["thickness_std"] = bed_model.predict(
             x_eval[:, None], return_std=True
         )
 
-        out["temperate_frac"] = np.clip(out["temperate_frac"], 0, 1)
+        if cold_data.shape[0] > 2:
+            bed_pred = bed_model.predict(cold_data[["x"]].values)
+            cold_data["frac"] = np.clip((bed_pred - cold_data["depth"]) / bed_pred, 0, 1)
+            temp_model = make_gp(mean=0, length_scale_bounds=(100, 1e3))
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore")
+                temp_model.fit(cold_data[["x"]].values, cold_data["frac"].values)
 
-    for col in models:
-        out[col] = models[col](x_eval)
+            out["temperate_frac"], out["temperate_frac_std"] = temp_model.predict(
+                x_eval[:, None], return_std=True
+            )
 
-    if crs != "EPSG:32633":
-        points = gpd.points_from_xy(out["easting"], out["northing"], crs=crs).to_crs(
-            32633
-        )
-        out["easting"] = points.x
-        out["northing"] = points.y
+            out["temperate_frac"] = np.clip(out["temperate_frac"], 0, 1)
+
+        for col in models:
+            out[col] = models[col](x_eval)
+
+        if crs != "EPSG:32633":
+            points = gpd.points_from_xy(out["easting"], out["northing"], crs=crs).to_crs(
+                32633
+            )
+            out["easting"] = points.x
+            out["northing"] = points.y
+
+        out_list.append(out)
+
+    out = pd.concat(out_list)
 
     out["antenna"] = antenna
     out["radar-key"] = radar_key
