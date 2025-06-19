@@ -180,6 +180,56 @@ def get_paths(offline: bool = False):
     return filepaths
 
 
+def get_dem_path(radar_key: str) -> Path:
+
+    dem_dir = Path("./dems/").absolute()
+
+    year = int(radar_key.split("-")[1][:4])
+
+    match radar_key.split("-")[0]:
+        case "austfonna" | "etonbreen" | "amenfonna" | "winsnesbreen":
+            return dem_dir / "austfonna_dem_2024.tif"
+        case "moysalbreen" | "rugaasfonna" | "bergmesterbreen" | "svellnosbreen":
+            return dem_dir / "dron_moysal_kok_dem_2022.tif"
+        case "edvardbreen" | "mettebreen" | "ragna_mariebreen" | "kroppbreen":
+            return dem_dir / "edvard_mette_ragna_kropp_dem_2024.tif"
+        case "elfenbeinbreen":
+            return dem_dir / "elfenbeinbreen_dem_2022.tif"
+        case "filantropbreen":
+            return dem_dir / "filantropbreen_dem_2023.tif"
+        case "fimbulisen":
+            return dem_dir / "fimbulisen_dem_2022.tif"
+        case "jinnbreen":
+            return dem_dir / "jinnbreen_dem_2022.tif"
+        case "finsterwalderbreen" | "antoniabreen":
+            return dem_dir / "finsterwalderbreen_antoniabreen_dem_2023.tif"
+        case "rabotbreen":
+            return dem_dir / "rabotbreen_dem_2024.tif"
+        case "scott_turnerbreen":
+            return dem_dir / "scott_turnerbreen_dem_2021.tif"
+        case "von_postbreen":
+            return dem_dir / "von_postbreen_dem_2024.tif"
+        case "dronbreen" | "lofthusbreen":
+            match year:
+                case 2023 | 2024:
+                    return dem_dir / "dronbreen_dem_2024.tif"
+                case _:
+                    return dem_dir / "dron_moysal_kok_dem_2022.tif"
+        case "slakbreen":
+            match year:
+                case 2022:
+                    return dem_dir / "slakbreen_dem_2022.tif"
+                case _:
+                    return dem_dir / "slakbreen_dem_2023.tif"
+        case "vallakrabreen":
+            match year:
+                case 2021:
+                    return dem_dir / "vallakra_dem_2021.tif"
+                case _:
+                    return dem_dir / "vallakra_dem_2022.tif"
+
+    raise ValueError(f"No DEM match for radar key {radar_key}")
+
 def extract_glacier_raw_data(glacier: str = "dronbreen"):
     import shutil
 
@@ -205,16 +255,17 @@ RSGPR_PATH = "/home/erikmann/Projects/UiO/rsgpr/target/release/rsgpr"
 def run_rsgpr(
     input_filepath: Path | str,
     output_filepath: Path | str,
+    dem_path: Path | None = None,
     merge: str | None = "30 min",
     antenna: str | None = None,
 ):
     siglog_strength = 1
-    if "25 MHz" in antenna:
+    if antenna is not None and "25 MHz" in antenna:
         siglog_strength = 0
 
     # Unit: dB / ns of TWT. Found using auto_gain. The value below is for 25 MHz
     gain_strength = 0.002340
-    if "100 MHz" in antenna:
+    if antenna is not None and "100 MHz" in antenna:
         gain_strength = 0.003556
 
     rsgpr_steps = [
@@ -240,9 +291,12 @@ def run_rsgpr(
             str(output_filepath),
             "-r",
         ]
-        + (["--merge", merge])
+        + ((["--merge", merge])
         if merge is not None
-        else []
+        else [])
+        + ((["--dem", str(dem_path)])
+        if dem_path is not None
+        else [])
     )
 
     result = subprocess.run(
@@ -432,6 +486,12 @@ def run_all(offline: bool = False, force_redo: bool = False):
                     group_traces = sum(i.traces for i in group)
                     group_name = Path(group[0].filepath).stem + f"_{len(group)}"
                     radar_key = f"{glacier}-{date_str}-{group_name}"
+
+                    dem_path = get_dem_path(radar_key=radar_key)
+
+                    if not dem_path.is_file():
+                        raise ValueError(f"DEM cannot be found: {dem_path}")
+
                     if group_traces < 300:
                         print(
                             f"Skipped {glacier}/{date_str}/{group_name} (width={group_traces})"
@@ -488,6 +548,7 @@ def run_all(offline: bool = False, force_redo: bool = False):
                             run_rsgpr(
                                 filepath,
                                 out_path,
+                                dem_path=dem_path,
                                 antenna=group[0].antenna,
                             )
                         except subprocess.CalledProcessError as exception:

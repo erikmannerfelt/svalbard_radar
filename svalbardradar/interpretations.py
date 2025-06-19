@@ -200,7 +200,7 @@ def merge_all_interpretations(
 ) -> gpd.GeoDataFrame:
     out_path = CACHE_PATH / "interp_all.feather"
 
-    if out_path.is_file():
+    if out_path.is_file() and not overwrite_cache:
         return gpd.read_feather(out_path)
 
     # radar_keys = ["ragna_mariebreen-20230305-DAT_0068_A1_3", "filantropbreen-20240406-DAT_0373_A1_1", "ragna_mariebreen-20240412-DAT_0404_A1_1"][::-1]

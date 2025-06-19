@@ -211,13 +211,15 @@ def plot_centerline_profiles(show: bool = True):
 
     radar_keys = [
         "mettebreen-20230305-DAT_0235_A1_8",
-        "filantropbreen-20240406-DAT_0372_A1_1",
+        # "filantropbreen-20240406-DAT_0372_A1_1",
         "moysalbreen-20220222-DAT_0749_A1_1",
         # "rugaasfonna-20220218-DAT_0723_A1_1",
         "lofthusbreen-20250326-DAT_0057_A1_1",
-        "jinnbreen-20240206-DAT_0448_A1_1",
         "ragna_mariebreen-20240412-DAT_0404_A1_1",
-        "dronbreen-20250327-DAT_0065_A1_1",
+        "jinnbreen-20240206-DAT_0448_A1_1",
+        "finsterwalderbreen-20250407-DAT_0171_A1_1",
+        "dronbreen-20230220-DAT_0009_A1_1",
+        # "dronbreen-20250327-DAT_0065_A1_1",
         "kroppbreen-20230228-DAT_0042_A1_1",
         "slakbreen-20240310-DAT_0286_A1_1",
         "edvardbreen-20240411-DAT_0396_A1_1",

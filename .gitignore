@@ -17,3 +17,4 @@ web/static/plugins/
 web/static/radargrams/
 web/static/images/examples/filantropbreen_double_bed.jpg
 .env
+dems/
