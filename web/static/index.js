@@ -1,3 +1,48 @@
+async function set_progress(progress) {
+
+  let progressElement = document.getElementById('progress-bar');
+  let percentageElement = document.getElementById('progress-percentage');
+  let progressRankElement = document.getElementById("progress-rank");
+  let progressPercentage = (progress * 100).toFixed(0);
+    
+  progressElement.style.width = progressPercentage + '%';
+  percentageElement.innerText = progressPercentage + '%';
+  
+  // Change color at specific intervals
+  if (progressPercentage >= 80) {
+      progressElement.classList.add("index-card-finished");
+      // progressElement.style.backgroundColor = 'green';
+  } else if (progressPercentage >= 20) {
+      progressElement.classList.add("index-card-unfinished");
+  } else {
+      progressElement.classList.add("progress-bar-low");
+  }
+
+  let ranks = [
+    [100, "Perfectionist radar god"],
+    [98, "Radar god"],
+    [90, "Senior radioglaciologist"],
+    [75, "Professional radioglaciologist"],
+    [50, "Halfway to perfection"],
+    [30, "Radar connoisseur"],
+    [15, "Very useful contributor!"],
+    [7, "Useful contributor"],
+    [1, "Great start!"],
+    [0, ""],
+
+  ];
+
+  for (let rank of ranks) {
+    if (progressPercentage >= rank[0]) {
+      progressRankElement.innerText = `${rank[1]} (>${rank[0]}%)`;
+      break;
+    }
+
+  };
+
+
+};
+
 async function setup_map() {
 
 
@@ -11,16 +56,17 @@ async function setup_map() {
   })
 
   fetch("/all_radargrams.json").then(response => response.json()).then(function (all_radargrams) {
+    let n_total_radargrams = Math.max(Object.keys(all_radargrams).length - 1, 1);
 
     fetch("/user_submissions.json").then(response => response.json()).then(function (submissions) {
 
       let logged_in = submissions != null;
-      console.log("logged_in", logged_in);
-
       if (logged_in) {
+
+        let n_total_submissions = 0;
         for (glacier_key in submissions["per_glacier"]) {
           let n_submissions = submissions.per_glacier[glacier_key];
-
+          n_total_submissions = n_total_submissions + n_submissions;
 
           let item = document.getElementById(`li-${glacier_key}`);
 
@@ -35,6 +81,9 @@ async function setup_map() {
             item.innerText = item.innerText + `. Done all.`;
           }
         };
+
+        set_progress(n_total_submissions / n_total_radargrams);
+       
       };
       for (let card of document.getElementsByClassName("index-card")) {
         let radar_key = card.id.replace("card-", ""); 

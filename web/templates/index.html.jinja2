@@ -40,6 +40,27 @@
     </div>
 
     <div style="display: flex; flex-wrap: wrap;justify-content: space-between;">
+        <div id="progress-div" style="min-width: 40%;{% if user == None %}display: none;{% endif %}">
+            <div class="index-location-group">
+                <h2 class="index-location-title">Progress</h2>
+
+                <div class="progress-wrapper">
+                    <div class="progress-container">
+                        <div class="progress-bar" id="progress-bar"></div>
+                    </div>
+                    <div id="progress-percentage" class="progress-percentage">0%</div>
+                </div>
+
+                <p style="font-weight: bold;">Status:</p>
+                <p id="progress-rank" style="font-size: 15pt;">
+
+                <p style="font-weight: bold;">Expectations:</p>
+                <list>
+                    <li>7%: Useful contribution.</li>
+                    <li>>7%: TBD.</li>
+                </list>
+            </div>
+        </div>
         <div style="min-width: 49%; margin-right: 5px;">
             <div class="index-location-group">
                 <h2 class="index-location-title">All glaciers</h2>
