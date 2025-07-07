@@ -150,6 +150,14 @@ def get_paths(offline: bool = False):
         "amenfonna": {
             "20240510": [gpr_dir / "2024/GPR_20240510_A-Amenfonna-25MHz"],
         },
+        "elfenbeinbreen": {
+            "20250326": [
+                gpr_dir / "2025/GPR_20250326_D-Elfenbeinbreen-100MHz/DAT_0435_B1",
+                gpr_dir / "2025/GPR_20250326_D-Elfenbeinbreen-100MHz/DAT_0436_B1",
+
+            ],
+
+        },
     }
 
     n_total = 0
@@ -277,6 +285,10 @@ def run_rsgpr(
         f"gain({gain_strength})",
         f"siglog({siglog_strength})",
     ]
+
+    # This radargram is very long and the bed is not visible. This cuts the invisible parts. 
+    if "GPR_20250326_D-Elfenbeinbreen-100MHz/DAT_0436_B1" in str(input_filepath):
+        rsgpr_steps.insert(0, "subset(18500 -1)")
 
     cmds = (
         [
