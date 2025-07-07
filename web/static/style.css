@@ -538,36 +538,37 @@ tr:hover {
   display: block;
 }
 
-.progress-wrapper {
-  display: flex;
-  align-items: center;
-  transition: width 0.5s;
-  min-width: 70%;
+.progress-bar-low {
+  background: linear-gradient(135deg, #ffe3e3 0%, #ffb3b3 100%);
 }
 
 .progress-container {
-  flex-grow: 1;
+  width: 100%;
   background-color: #e0e0e0;
   border-radius: 10px;
   overflow: hidden;
   height: 30px;
   position: relative;
-  transition: width 0.5s;
 }
 
 .progress-bar {
   height: 100%;
   width: 0%;
-  /* background-color: red; */
-  transition: width 0.5s, background-color 0.5s;
+  transition: width 0.5s;
+  color: #000;
+  /* Text color can be adjusted */
 }
 
 .progress-percentage {
-  margin-left: 10px;
-  width: 40px;
-  text-align: right;
-}
-
-.progress-bar-low {
-  background: linear-gradient(135deg, #ffe3e3 0%, #ffb3b3 100%);
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 100%;
+  line-height: 30px;
+  width: 100%;
+  text-align: center;
+  color: white;
+  /* Ensure text stands out on the progress bar */
+  font-weight: bold;
+  z-index: 1;
 }
