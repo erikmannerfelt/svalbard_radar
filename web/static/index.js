@@ -2,8 +2,6 @@ async function set_progress(n_radargrams_done, n_total_radargrams) {
 
   let progress = n_radargrams_done / n_total_radargrams;
 
-  progress = Math.random();
-  // progress =0.9;
   n_radargrams_done = Math.round(progress * n_total_radargrams);
 
   let progressElement = document.getElementById('progress-bar');
@@ -11,8 +9,6 @@ async function set_progress(n_radargrams_done, n_total_radargrams) {
   let progressRankElement = document.getElementById("progress-rank");
   let current_rank_element = document.getElementById("progress-status");
   let progressPercentage = (progress * 100).toFixed(0);
-    
-  
 
   let missions = [
     [8, "Contributor"],
