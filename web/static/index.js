@@ -6,65 +6,21 @@ async function set_progress(n_radargrams_done, n_total_radargrams) {
 
   let progressElement = document.getElementById('progress-bar');
   let percentageElement = document.getElementById('progress-percentage');
-  let progressRankElement = document.getElementById("progress-rank");
-  let current_rank_element = document.getElementById("progress-status");
-  let progressPercentage = (progress * 100).toFixed(0);
+  let progress_text_element = document.getElementById("progress-text");
 
-  let missions = [
-    [8, "Contributor"],
-    [10, "Enthusiast"],
-    [10, "Wave"],
-    [10, "Apprentice"],
-    [10, "Investigator"],
-    [10, "Professional"],
-    [10, "Technician"],
-    [10, "Specialist"],
-    [10, "Elite"],
-    [10, "Expert"],
-    [10, "Guru"],
-    [10, "Whisperer"],
-    [200, "God"],
-  ];
+  let contribution_threshold = 8;
 
-  let rank_name = "Beginner";
-  let mission_i = 0;
-  let mission_name;
-  let mission_points;
-  let current_zero = 0;
-  let current_goal = 0;
-  for ([mission_points, mission_name] of missions) {
-    mission_i += 1;
+  let mission_points = n_radargrams_done < contribution_threshold ? contribution_threshold : n_total_radargrams;
+  let mission_percentage = (100 * n_radargrams_done / mission_points).toFixed(0);
 
-    current_zero = current_goal;
-    // current_goal = Math.min(current_zero + mission_points, n_total_radargrams);
-    mission_points = Math.min(current_zero + mission_points, n_total_radargrams) - current_zero; 
-    current_goal = current_zero + mission_points;
-
-    if (current_goal > n_radargrams_done) {
-      break;
-    };
-    rank_name = mission_name;
+  if (n_radargrams_done < contribution_threshold) {
+    progress_text_element.innerText = `Contribution progress: ${mission_percentage}%`;
+  } else {
+    progress_text_element.innerText = `Thank you for your contribution! Total progress: ${mission_percentage}%`;
   };
-
-  let mission_score = n_radargrams_done - current_zero;
-
-  let mission_percentage = 100 * mission_score / mission_points;
 
   progressElement.style.width = mission_percentage + '%';
-
-  let text = "";
-  if (mission_score < mission_points) {
-    text += `Mission ${mission_i}: become a Radar ${mission_name}`;
-  } else {
-    text += `You are a Radar ${mission_name}`;
-  };
-
-  text += ` (${mission_score} / ${mission_points})\n\nIn total: ${n_radargrams_done}/${n_total_radargrams} (${progressPercentage}%)`
-
-  current_rank_element.innerText = `Status: Radar ${rank_name}`;
-  progressRankElement.innerText = text;
-
-  percentageElement.innerText = `(${mission_score} / ${mission_points})`;
+  percentageElement.innerText = `(${n_radargrams_done} / ${mission_points})`;
 
   // Change color at specific intervals
   if (mission_percentage >= 70) {
@@ -76,15 +32,6 @@ async function set_progress(n_radargrams_done, n_total_radargrams) {
   } else {
       progressElement.classList.add("progress-bar-low");
   }
-  // for (let rank of ranks) {
-  //   if (progressPercentage >= rank[0]) {
-  //     progressRankElement.innerText = `${rank[1]} (>${rank[0]}%)`;
-  //     break;
-  //   }
-
-  // };
-
-
 };
 
 async function setup_map() {
