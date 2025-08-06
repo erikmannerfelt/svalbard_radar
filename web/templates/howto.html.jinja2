@@ -27,13 +27,13 @@
     <b>Please read the instructions thoroughly before starting!</b>
     <p>
     Thank you for participating in this experiment.
-    Its primary purpose is to evaluate the subjective nature of delineating radargrams of glaciers.
+    Its purpose is to evaluate the subjective nature of interpreting radargrams of glaciers.
     Therefore, this instruction set is as limited as possible, to avoid the transfer of subjective biases!
     </p>
 
     <h2>How to become a contributor</h2>
     <p>
-    We welcome any contributor with some basic background in radar interpretation.
+    We welcome any contributor with basic background in radar interpretation.
     You do not need to be an expert at all, but some understanding of what we work with is expected!
     We plan on accepting contributions until mid- to late 2025.
     To register, please send an email to <a href="mailto:svalbardradar@gmail.com">svalbardradar@gmail.com</a> with "Contribution request" in the title, and briefly explain your experience in just a sentence or two.
@@ -52,6 +52,26 @@
     </div>
   </div>
 
+
+  <div class="howto-content-container">
+    <div class="howto-text-content">
+    <h2>How it might look like</h2>
+    <p>
+    The illustration shows how interpretations may end up looking like.
+    We do not want to show how we would interpret a real radargram because it would defeat the point of the experiment!
+    <list>
+      <li>The {{temperate_ice}} class marks the upper boundary of the temperate ice. The dashed lines show two possible interpretations; which one is up to you!
+      <li>The {{bed_unspecified}} class is wherever we see the bed and we may/do have temperate ice above.
+      <li>Remember, the {{bed_cold}} class assumes no temperate ice above.
+      <li>The {{bed_missing}} class is when the bed is not visible at all, not just unclear. The depth (y) coordinates do not matter, only the trace (x).
+    </list>
+    </p>
+    </div>
+
+    <div class="howto-image-content">
+      <img src="{{ url_for('static', filename='images/interp_illustration.png') }}"></img>
+    </div>
+  </div>
 
   <div class="howto-content-container">
     <div class="howto-text-content">
@@ -194,26 +214,6 @@
   </div>
      
 
-
-  <div class="howto-content-container">
-    <div class="howto-text-content">
-    <h2>Summary of how it might look like</h2>
-    <p>
-    The illustration shows how interpretations may end up looking like.
-    We do not want to show how we would interpret a real radargram because it would defeat the point of the experiment!
-    <list>
-      <li>The {{temperate_ice}} class marks the upper boundary of the temperate ice. The dashed lines show two possible interpretations; which one is up to you!
-      <li>The {{bed_unspecified}} class is wherever we see the bed and we may/do have temperate ice above.
-      <li>Remember, the {{bed_cold}} class assumes no temperate ice above.
-      <li>The {{bed_missing}} class is when the bed is not visible at all, not just unclear. The depth (y) coordinates do not matter, only the trace (x).
-    </list>
-    </p>
-    </div>
-
-    <div class="howto-image-content">
-      <img src="{{ url_for('static', filename='images/interp_illustration.png') }}"></img>
-    </div>
-  </div>
 
 
   <div class="howto-content-container">
