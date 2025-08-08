@@ -165,6 +165,8 @@ function change_layer_kind(layer, new_kind) {
 
 function add_polyline_metadata(layer, kind, drawn_items) {
   change_layer_kind(layer, kind);
+
+  let map = drawn_items._map;
   layer.properties.issues = validate_polyline(map, layer);
 
   layer.bindPopup(function (new_layer) {
