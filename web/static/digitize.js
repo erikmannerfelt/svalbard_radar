@@ -126,7 +126,7 @@ function validate_polyline(map, polyline, skip_alert = false) {
   for (var i = 1; i < latlngs.length; i++) {
     if ((increasing && latlngs[i].lng <= latlngs[i-1].lng) ||
         (!increasing && latlngs[i].lng >= latlngs[i-1].lng)) {
-      issues.push(`Vertex nr ${i} contains an overhang`); 
+      issues.push(`Line contains an overhang (vertex ${i})`); 
 
       let marker = L.circleMarker([latlngs[i - 1].lat, latlngs[i - 1].lng], {color: "red"}).addTo(map).bindPopup(function (_) {return "Invalid overhang.";});
       issue_markers.push(marker);
