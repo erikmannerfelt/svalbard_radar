@@ -158,6 +158,16 @@ def get_paths(offline: bool = False):
             ],
 
         },
+        "rabotbreen": {
+            "20250402": [
+                gpr_dir / "2025/GPR_20250402_A-Rabotbreen-25MHz",
+            ]
+        },
+        "von_postbreen": {
+            "20250402": [
+                gpr_dir / "2025/GPR_20250402_B-vonPostbreen-25MHz",
+            ]
+        }
     }
 
     n_total = 0
@@ -289,6 +299,12 @@ def run_rsgpr(
     # This radargram is very long and the bed is not visible. This cuts the invisible parts. 
     if "GPR_20250326_D-Elfenbeinbreen-100MHz/DAT_0436_B1" in str(input_filepath):
         rsgpr_steps.insert(0, "subset(18500 -1)")
+    # This radargram starts with a long standstill which messes with the rest of the data
+    elif "GPR_20250402_A-Rabotbreen-25MHz/DAT_0068" in str(input_filepath):
+        rsgpr_steps.insert(0, "subset(180 -1)")
+    # This radargram is very long and the bed is not visible. This cuts the invisible parts. 
+    elif "GPR_20250402_B-vonPostbreen-25MHz/DAT_0024_A1" in str(input_filepath):
+        rsgpr_steps.insert(0, "subset(4500 -1)")
 
     cmds = (
         [
