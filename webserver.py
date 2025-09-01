@@ -390,14 +390,14 @@ def radargram_latest_submission(radar_key: str):
 
 def _recommended() -> list[list[str]]:
     recommendations = [
-        "dronbreen-20230221-DAT_0013_A1_1",
-        "bergmesterbreen-20230222-DAT_0033_A1_3",
         "ragna_mariebreen-20240412-DAT_0404_A1_1",
-        "amenfonna-20240510-DAT_0044_A1_1",
+        "von_postbreen-20250402-DAT_0024_A1_0002_1",
+        "rabotbreen-20250402-DAT_0071_A1_1",
+        "dronbreen-20240209-DAT_0463_A1_3",
+        "edvardbreen-20230305-DAT_0232_A1_1",
+        "bergmesterbreen-20230222-DAT_0016_A1_1",
+        "jinnbreen-20240206-DAT_0447_A1_1",
         "dronbreen-20250327-DAT_0065_A1_1",
-        "etonbreen-20250506-DAT_0028_B1_1",
-        "mettebreen-20230305-DAT_0229_A1_1",
-        "slakbreen-20230320-DAT_0297_A1_1",
     ]
     # Extract the glacier name such that it's glacier/radar_key
     recommendations = [[s.split("-")[0], s] for s in recommendations]
