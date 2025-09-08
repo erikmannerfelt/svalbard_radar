@@ -28,7 +28,7 @@ def processed_radar_path(radar_key: str) -> Path:
 
 def get_all_interpreted_radargrams() -> list[str]:
     all_radargrams = set()
-    for dir_path in _submissions_dir_path().glob("*/*"):
+    for dir_path in sorted(_submissions_dir_path().glob("*/*")):
         if not dir_path.is_dir():
             continue
         radar_key = dir_path.stem
@@ -41,7 +41,7 @@ def get_all_interpreted_radargrams() -> list[str]:
 
 def get_latest_submissions(radar_key: str) -> list[Path]:
     interpretations = []
-    for user_dir in _submissions_dir_path().glob("*"):
+    for user_dir in sorted(_submissions_dir_path().glob("*")):
         if not user_dir.is_dir():
             continue
         radar_key_dir = user_dir / radar_key

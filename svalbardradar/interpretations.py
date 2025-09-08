@@ -1,9 +1,8 @@
-import io
-import json
 import warnings
 from pathlib import Path
 
 import geopandas as gpd
+import json
 import matplotlib.patheffects
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,6 +17,450 @@ from svalbardradar.tools import paths, rasters
 
 CACHE_PATH = paths.BASE_CACHE_PATH / "interpretations"
 
+
+def read_interpretation_xy(filepath: Path) -> pd.Series:
+
+    # ---- load JSON ----
+    text = Path(filepath).read_text()
+    data = json.loads(text)
+
+    # ---- resolve user and radar_key (JSON first, then path fallback) ----
+    user = data.get("user")
+    radar_key = data.get("radar_key")
+    if user is None or radar_key is None:
+        parts = filepath.parts
+        # Expect .../<user>/<radar_key>/<file>.json
+        # (IndexError will raise with clear message if structure is too short)
+        if user is None:
+            user = parts[-3]
+        if radar_key is None:
+            radar_key = parts[-2]
+
+    features = data["features"]["features"]
+
+    # ---- accumulators (arrays only; build pandas object once at the end) ----
+    y_chunks: list[np.ndarray] = []
+    x_chunks: list[np.ndarray] = []
+    kind_chunks: list[np.ndarray] = []
+
+    # ---- helper: compress contiguous duplicate x via mean ----
+    def _compress_dupes_mean(xi: np.ndarray, yi: np.ndarray):
+        # xi is non-decreasing; duplicates (if any) appear in contiguous runs
+        if xi.size == 0:
+            return xi, yi
+        run_starts = np.r_[0, np.flatnonzero(xi[1:] != xi[:-1]) + 1]
+        run_ends = np.r_[run_starts[1:], xi.size]
+        x_u = xi[run_starts]
+        # mean of each run (use reduceat for O(n) pass)
+        sums = np.add.reduceat(yi, run_starts)
+        counts = run_ends - run_starts
+        y_u = sums / counts
+        return x_u, y_u
+
+    for feature in features:
+        coords = feature["geometry"]["coordinates"]
+        if not coords:
+            continue
+
+        arr = np.asarray(coords, dtype=float)  # shape (n, 2)
+        if arr.ndim != 2 or arr.shape[1] != 2:
+            continue  # skip malformed
+
+        arr = arr[np.argsort(arr[:, 0])]
+        x_raw = arr[:, 0]
+        y_raw = arr[:, 1]
+
+        # sanity: x must be non-decreasing (duplicates allowed)
+        if x_raw.size >= 2 and np.any(x_raw[1:] < x_raw[:-1]):
+            raise ValueError("x must be non-decreasing within each feature")
+
+        # bankers rounding for x -> integer pixels
+        x_int = np.rint(x_raw).astype(np.int64)
+
+        # compress contiguous duplicates by mean
+        x_u, y_u = _compress_dupes_mean(x_int, y_raw)
+        if x_u.size == 0:
+            continue
+
+        # full integer x-grid for this feature, then interpolate linearly
+        x_full = np.arange(x_u[0], x_u[-1] + 1, dtype=np.int64)
+        y_full = np.interp(x_full, x_u, y_u)  # float64 for accuracy
+
+        # round to nearest (bankers) and cast to uint16 (safe for < 65536)
+        y_full = np.rint(y_full)
+        # Clip defensively to avoid casting surprises if anyone scribbles negatives
+        y_full = np.clip(y_full, 0, np.iinfo(np.uint16).max).astype(np.uint16, copy=False)
+
+        # x level: store as uint16 to save memory
+        x_full_u = np.clip(x_full, 0, np.iinfo(np.uint16).max).astype(np.uint16, copy=False)
+
+        if "kind" in feature["properties"]:
+            kind = feature["properties"]["kind"]
+        else:
+            kind = {"Glacier bed": "bed_unspecified", "Cold glacier bed": "bed_cold", "Glacier bed missing": "bed_missing", "Temperate ice": "temperate_ice"}[feature["properties"]["name"]]
+
+        # stash
+        y_chunks.append(y_full)
+        x_chunks.append(x_full_u)
+        kind_chunks.append(np.repeat(kind, x_full.size))
+
+    if not y_chunks:
+        # Empty series with proper name and index names; dtypes not critical here
+        empty_index = pd.MultiIndex.from_arrays(
+            [[], [], [], []], names=["radar_key", "user", "kind", "x"]
+        )
+        return pd.Series([], index=empty_index, name="y", dtype=np.uint16)
+
+    # ---- concatenate once ----
+    y_all = np.concatenate(y_chunks)  # uint16
+    x_all = np.concatenate(x_chunks)  # uint16
+    kind_all = np.concatenate(kind_chunks)  # object
+
+    n_total = y_all.size
+
+    # Build the MultiIndex (repeat constant labels once; minimal overhead)
+    mi = pd.MultiIndex.from_arrays(
+        [
+            np.repeat(radar_key, n_total),  # object
+            np.repeat(user, n_total),       # object
+            kind_all,                       # object
+            x_all,                          # uint16
+        ],
+        names=["radar_key", "user", "kind", "x"],
+    )
+
+    return pd.Series(y_all, index=mi, name="y")
+
+
+def read_interpretation_xy(filepath: Path, x_vals: np.ndarray | None = None) -> pd.Series:
+    """
+    Read digitized interpretation from a JSON feature collection and return y-values per pixel x.
+
+    If `x_vals` is None (default), behaves like the original: for each feature,
+    it fills every integer pixel between the first and last x with interpolated y.
+
+    If `x_vals` (np.uint16) is provided, the function samples only at those pixels
+    (per feature) that lie within that feature's [xmin, xmax] span.
+    Pixels outside the span are skipped (no extrapolation).
+
+    Returns
+    -------
+    pd.Series with name 'y' and MultiIndex ['radar_key', 'user', 'kind', 'x'] where
+    'x' is dtype uint16 and 'y' is dtype uint16.
+    """
+    # ---- load JSON ----
+    text = Path(filepath).read_text()
+    data = json.loads(text)
+
+    # ---- resolve user and radar_key (JSON first, then path fallback) ----
+    user = data.get("user")
+    radar_key = data.get("radar_key")
+    if user is None or radar_key is None:
+        parts = filepath.parts
+        # Expect .../<user>/<radar_key>/<file>.json
+        if user is None:
+            user = parts[-3]
+        if radar_key is None:
+            radar_key = parts[-2]
+
+    features = data["features"]["features"]
+
+    # ---- accumulators ----
+    y_chunks: list[np.ndarray] = []
+    x_chunks: list[np.ndarray] = []
+    kind_chunks: list[np.ndarray] = []
+
+    # ---- helper: compress contiguous duplicate x via mean ----
+    def _compress_dupes_mean(xi: np.ndarray, yi: np.ndarray):
+        # xi is non-decreasing; duplicates (if any) appear in contiguous runs
+        if xi.size == 0:
+            return xi, yi
+        run_starts = np.r_[0, np.flatnonzero(xi[1:] != xi[:-1]) + 1]
+        run_ends = np.r_[run_starts[1:], xi.size]
+        x_u = xi[run_starts]
+        sums = np.add.reduceat(yi, run_starts)
+        counts = run_ends - run_starts
+        y_u = sums / counts
+        return x_u, y_u
+    # Normalize/prepare query x once (if provided)
+    if x_vals is not None:
+        # ensure array, clamp to uint16 domain, and work in int64 for math
+        x_query_sorted_unique = np.unique(
+            np.clip(np.asarray(x_vals, dtype=np.uint16),
+                    0, np.iinfo(np.uint16).max).astype(np.int64, copy=False)
+        )
+
+    for feature in features:
+        coords = feature["geometry"]["coordinates"]
+        if not coords:
+            continue
+
+        arr = np.asarray(coords, dtype=float)  # shape (n, 2)
+        if arr.ndim != 2 or arr.shape[1] != 2:
+            continue  # skip malformed
+
+        # sort by x
+        arr = arr[np.argsort(arr[:, 0])]
+        x_raw = arr[:, 0]
+        y_raw = arr[:, 1]
+
+        # sanity: x must be non-decreasing (duplicates allowed)
+        if x_raw.size >= 2 and np.any(x_raw[1:] < x_raw[:-1]):
+            raise ValueError("x must be non-decreasing within each feature")
+
+        # bankers rounding for x -> integer pixels (int64 for math)
+        x_int = np.rint(x_raw).astype(np.int64)
+
+        # compress contiguous duplicates by mean
+        x_u, y_u = _compress_dupes_mean(x_int, y_raw)
+        if x_u.size == 0:
+            continue
+
+        # Determine which x to evaluate for this feature
+        if x_vals is None:
+            # Original behavior: full [x_min, x_max] integer grid
+            x_eval = np.arange(x_u[0], x_u[-1] + 1, dtype=np.int64)
+        else:
+            # Only evaluate requested pixels that fall within this feature's span
+            # (no extrapolation)
+            # x_query_sorted_unique is ascending and unique so np.interp is efficient
+            in_span = (x_query_sorted_unique >= x_u[0]) & (x_query_sorted_unique <= x_u[-1])
+            x_eval = x_query_sorted_unique[in_span]
+            if x_eval.size == 0:
+                continue
+
+        # Linear interpolation (float64), then banker-round and cast to uint16
+        y_eval = np.interp(x_eval, x_u, y_u)
+        y_eval = np.rint(y_eval)
+        y_eval = np.clip(y_eval, 0, np.iinfo(np.uint16).max).astype(np.uint16, copy=False)
+
+        # x level: store as uint16 to save memory
+        x_eval_u16 = np.clip(x_eval, 0, np.iinfo(np.uint16).max).astype(np.uint16, copy=False)
+
+        if "kind" in feature["properties"]:
+            kind = feature["properties"]["kind"]
+        else:
+            kind = {
+                "Glacier bed": "bed_unspecified",
+                "Cold glacier bed": "bed_cold",
+                "Glacier bed missing": "bed_missing",
+                "Temperate ice": "temperate_ice",
+            }[feature["properties"]["name"]]
+
+        # stash
+        y_chunks.append(y_eval)
+        x_chunks.append(x_eval_u16)
+        kind_chunks.append(np.repeat(kind, x_eval_u16.size))
+
+    if not y_chunks:
+        empty_index = pd.MultiIndex.from_arrays(
+            [[], [], [], []], names=["radar_key", "user", "kind", "x"]
+        )
+        return pd.Series([], index=empty_index, name="y", dtype=np.uint16)
+
+    # ---- concatenate once ----
+    y_all = np.concatenate(y_chunks)  # uint16
+    x_all = np.concatenate(x_chunks)  # uint16
+    kind_all = np.concatenate(kind_chunks)  # object
+    n_total = y_all.size
+
+    mi = pd.MultiIndex.from_arrays(
+        [
+            np.repeat(radar_key, n_total),
+            np.repeat(user, n_total),
+            kind_all,
+            x_all,
+        ],
+        names=["radar_key", "user", "kind", "x"],
+    )
+
+    return pd.Series(y_all, index=mi, name="y")
+
+
+def standardize_along_distance(
+    df: pd.DataFrame,
+    new_indices,
+    distance_level: str = 'distance',
+    group_levels = ('radar_key', 'user', 'kind'),
+    *,
+    method: str = "linear",             # 'index' uses distance values for interpolation
+    limit_direction: str = 'both',     # fill inner gaps both ways; ends still NaN
+    dropna_how: str = 'all',           # drop rows where all columns are NaN
+):
+    """
+    Reindex each (radar_key, user, kind) group onto `new_indices` along the
+    `distance` level, using interpolation in the distance dimension.
+    """
+    new_idx = pd.Index(new_indices, name=distance_level)
+
+    def _one_group(g: pd.DataFrame) -> pd.DataFrame:
+        # Extract the group's distance values and build a union grid
+        old = g.index.get_level_values(distance_level).to_numpy()
+        union = np.unique(np.r_[old, new_idx.values])
+
+        # (Optional but recommended) ensure strictly increasing distance
+        # If duplicates at identical distance exist within the group, aggregate first:
+        # g = g.groupby(level=g.index.names).mean()
+        g = g.sort_index(level=distance_level)
+
+        # Reindex to union (keeps original points + adds requested ones as NaN)
+        g_union = g.reindex(union, level=distance_level)
+
+        # Interpolate along the index (distance). Works per-column on numeric dtypes.
+        g_interp = g_union.interpolate(method=method, limit_direction=limit_direction)
+
+        # Finally, select the standardized grid
+        out = g_interp.reindex(new_idx, level=distance_level)
+
+        # Optionally drop rows where all columns are NaN (e.g., outside data range)
+        return out.dropna(how=dropna_how)
+
+    return (
+        df.groupby(level=list(group_levels), group_keys=False, observed=True)
+          .apply(_one_group)
+    )
+
+
+def read_all_interpretations(step_m: float = 5.):
+    radar_keys = paths.get_all_interpreted_radargrams()
+    # testkey = "ragna_mariebreen-20240412-DAT_0404_A1_1"
+    # testkey = "bergmesterbreen-20230222-DAT_0033_A1_3"
+    # testkey = "amenfonna-20240510-DAT_0044_A1_1"
+    testkey = "filantropbreen-20240406-DAT_0372_A1_1"
+
+    all_data_list = []
+    for radar_key in radar_keys:
+        if radar_key != testkey:
+            continue
+        warnings.warn("Debug: filtering by key")
+        interp_paths = paths.get_latest_submissions(radar_key)
+
+        with xr.open_dataset(paths.processed_radar_path(radar_key)) as dataset, warnings.catch_warnings():
+
+
+            depth_model = scipy.interpolate.interp1d(
+                np.arange(dataset["data"].shape[0])[::-1],
+                dataset["depth"].values,
+                bounds_error=False,
+            )
+
+            diffs = np.r_[[0], np.diff(dataset["distance"].values)]
+            dataset["distance"] = np.cumsum(np.where(diffs < 100, diffs, step_m))
+
+            models = {
+                key: scipy.interpolate.interp1d(
+                    dataset["x"].values,
+                    dataset[key].values,
+                    bounds_error=False,
+                )
+                for key in ["easting", "northing", "distance", "elevation"]
+            }
+
+            warnings.filterwarnings("ignore", message="invalid value encountered")
+            warnings.filterwarnings("ignore", message="divide by zero")
+            distance_model = scipy.interpolate.interp1d(dataset["distance"].values, dataset["x"].values, bounds_error=False)
+            distance_bins = np.arange(dataset["distance"].min(), dataset["distance"].max(), step_m)
+            x_inds = np.unique(np.round(distance_model(distance_bins)).astype(np.uint16))
+
+            # The part_idx represents potential jumps in location. So each idx should be treated as a separate radargram.
+            # models["part_idx"] = scipy.interpolate.interp1d(
+            #     dataset["x"].values,
+            #     np.cumsum(np.r_[[0], np.diff(dataset["distance"].values)] > 100),
+            #     bounds_error=False,
+            #     kind="nearest",
+            # )
+            antenna = dataset.attrs["antenna"].split("MHz")[0] + "MHz"
+            crs = dataset.attrs["crs"]
+
+        data = pd.concat([read_interpretation_xy(fp, x_vals=x_inds) for fp in interp_paths]).to_frame()
+
+        data["depth"] = depth_model(data["y"].astype(float))
+        for key in models:
+            data[key] = models[key](data.index.get_level_values("x").astype(float))
+
+        data = data.sort_values("distance").reset_index(level='x', drop=True).set_index('distance', append=True).drop(columns=["y"]).dropna(subset=["depth", "easting"])
+        data = data[~data.index.duplicated(keep='first')]
+
+        if crs != "EPSG:32633":
+            points = gpd.points_from_xy(data["easting"], data["northing"], crs=crs).to_crs(
+                32633
+            )
+            data["easting"] = points.x
+            data["northing"] = points.y
+
+        # Ugly and slow way of standardizing the distance index to the exact step size
+        good_distances = np.arange(0, data.index.get_level_values("distance").max() + step_m, step_m)
+        for idxs, part in data.groupby(["radar_key", "user", "kind"]):
+            part = part.reset_index().set_index("distance").drop(columns=part.index.names[:-1])
+            resampled = part.reindex(np.unique(np.r_[good_distances, part.index.values])).interpolate().loc[good_distances].dropna(how="all")
+            resampled.index = pd.MultiIndex.from_arrays([*[[str(idx)] * resampled.shape[0] for idx in idxs], resampled.index], names=data.index.names)
+            all_data_list.append(resampled)
+
+    data = pd.concat(all_data_list)
+
+    bed_data_list = []
+    for key in ["bed_cold", "bed_unspecified"]:
+        try:
+            bed_data_list.append(data.loc[(slice(None), slice(None), [key])])
+        except KeyError:
+            continue
+
+    bed_data = pd.concat(bed_data_list)
+
+    # bed_data = data.loc[(slice(None), slice(None), ["bed_cold", "bed_unspecified"])]
+    bed_grouped = bed_data.groupby(level=["radar_key", "distance"])
+
+    out = bed_grouped.median().rename(columns={"depth": "thickness"})
+    # out["distance"] = bed_grouped["distance"].first()
+    out["thickness_std"] = bed_grouped["depth"].std()
+    out["thickness_lower"] = bed_grouped["depth"].quantile(0.25)
+    out["thickness_upper"] = bed_grouped["depth"].quantile(0.75)
+
+    temperate_data_list = []
+    for key in ["bed_cold", "temperate"]:
+        try:
+            temperate_data_list.append(data.loc[(slice(None), slice(None), [key])])
+        except KeyError:
+            continue
+    # temperate_data = data.loc[(slice(None), slice(None), ["temperate", "bed_cold"])]
+    temperate_data = pd.concat(temperate_data_list)
+    temperate_grouped = temperate_data.groupby(level=["radar_key", "distance"])
+
+    out["temperate_ice"] = np.clip(out["thickness"] - temperate_grouped["depth"].median(), min=0, max=out["thickness"])
+    out["temperate_ice_std"] = temperate_grouped["depth"].std()
+    out["temperate_ice_lower"] = np.clip(out["thickness"] - temperate_grouped["depth"].quantile(0.25), min=0, max=out["thickness"])
+    out["temperate_ice_upper"] = np.clip(out["thickness"] - temperate_grouped["depth"].quantile(0.75), min=0, max=out["thickness"])
+
+    out["temperate_ice_frac"] = out["temperate_ice"] / out["thickness"]
+    out["temperate_ice_frac_std"] = out["temperate_ice_std"] / out["thickness"]
+
+    to_clamp = (out["temperate_ice_frac"] > 0.5) & ((out["thickness"] - out["temperate_ice_lower"]) <= 17)
+    out.loc[to_clamp, "temperate_ice_frac"] = 1.
+    for col in ["temperate_ice", "temperate_ice_upper"]:
+        out.loc[to_clamp, col] = out["thickness"]
+    
+    out["bed_elevation"] = out["elevation"] - out["thickness"]
+    out["temperate_elevation"] = out["bed_elevation"] + out["temperate_ice"]
+    
+    out = gpd.GeoDataFrame(
+        out,
+        geometry=gpd.points_from_xy(
+            out["easting"], out["northing"], crs=32633
+        ),
+    )
+    print(out)
+
+    out0 = out.loc[(testkey, slice(None))]
+
+    plt.fill_between(out0.index, out0["bed_elevation"].min(), out0["bed_elevation"], color="grey")
+    plt.fill_between(out0.index, out0["bed_elevation"], out0["temperate_elevation"], color="red", alpha=0.5)
+    plt.fill_between(out0.index, out0["temperate_elevation"], out0["elevation"], color="blue", alpha=0.5)
+    # plt.errorbar(out0.index, out0["bed_elevation"], yerr=out0["thickness_std"], color="blue", alpha=0.5)
+
+    plt.fill_between(out0.index, out["bed_elevation"] + out0["temperate_ice_lower"], out["bed_elevation"] + out0["temperate_ice_upper"], color="red", alpha=0.3)
+    plt.fill_between(out0.index, out["elevation"] - out0["thickness_lower"], out["elevation"] - out0["thickness_upper"], color="blue", alpha=0.3)
+    # plt.errorbar(out0.index, out0["temperate_elevation"], yerr=np.clip((out0[["temperate_ice_upper", "temperate_ice_lower"]].values - np.repeat(out0["temperate_ice"].values[:, None], 2, axis=1)).T, min=0, max=None), color="red", alpha=0.5)
+    plt.show()
 
 def make_gp(length_scale_bounds=(1e-2, 2e2), mean: float | None = None):
     import sklearn.gaussian_process
