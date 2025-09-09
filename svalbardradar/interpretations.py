@@ -1,5 +1,6 @@
 import warnings
 from pathlib import Path
+import io
 
 import geopandas as gpd
 import json
@@ -321,18 +322,23 @@ def standardize_along_distance(
     )
 
 
-def read_all_interpretations(step_m: float = 5.):
+def read_all_interpretations(step_m: float = 5., overwrite_cache: bool = False):
+    out_path = CACHE_PATH / "interp_all.feather"
+
+    if out_path.is_file() and not overwrite_cache:
+        return gpd.read_feather(out_path)
+
     radar_keys = paths.get_all_interpreted_radargrams()
     # testkey = "ragna_mariebreen-20240412-DAT_0404_A1_1"
     # testkey = "bergmesterbreen-20230222-DAT_0033_A1_3"
     # testkey = "amenfonna-20240510-DAT_0044_A1_1"
-    testkey = "filantropbreen-20240406-DAT_0372_A1_1"
+    # testkey = "dronbreen-20250327-DAT_0065_A1_1"
 
     all_data_list = []
     for radar_key in radar_keys:
-        if radar_key != testkey:
-            continue
-        warnings.warn("Debug: filtering by key")
+        # if radar_key != testkey:
+        #     continue
+        # warnings.warn("Debug: filtering by key")
         interp_paths = paths.get_latest_submissions(radar_key)
 
         with xr.open_dataset(paths.processed_radar_path(radar_key)) as dataset, warnings.catch_warnings():
@@ -363,12 +369,12 @@ def read_all_interpretations(step_m: float = 5.):
             x_inds = np.unique(np.round(distance_model(distance_bins)).astype(np.uint16))
 
             # The part_idx represents potential jumps in location. So each idx should be treated as a separate radargram.
-            # models["part_idx"] = scipy.interpolate.interp1d(
-            #     dataset["x"].values,
-            #     np.cumsum(np.r_[[0], np.diff(dataset["distance"].values)] > 100),
-            #     bounds_error=False,
-            #     kind="nearest",
-            # )
+            models["part_idx"] = scipy.interpolate.interp1d(
+                dataset["x"].values,
+                np.cumsum(diffs > 100),
+                bounds_error=False,
+                kind="nearest",
+            )
             antenna = dataset.attrs["antenna"].split("MHz")[0] + "MHz"
             crs = dataset.attrs["crs"]
 
@@ -378,7 +384,7 @@ def read_all_interpretations(step_m: float = 5.):
         for key in models:
             data[key] = models[key](data.index.get_level_values("x").astype(float))
 
-        data = data.sort_values("distance").reset_index(level='x', drop=True).set_index('distance', append=True).drop(columns=["y"]).dropna(subset=["depth", "easting"])
+        data = data.sort_values("distance").reset_index(level='x', drop=False).set_index('distance', append=True).drop(columns=["y"]).dropna(subset=["depth", "easting"])
         data = data[~data.index.duplicated(keep='first')]
 
         if crs != "EPSG:32633":
@@ -388,13 +394,15 @@ def read_all_interpretations(step_m: float = 5.):
             data["easting"] = points.x
             data["northing"] = points.y
 
+        data["antenna"] = antenna
+        all_data_list.append(data)
         # Ugly and slow way of standardizing the distance index to the exact step size
-        good_distances = np.arange(0, data.index.get_level_values("distance").max() + step_m, step_m)
-        for idxs, part in data.groupby(["radar_key", "user", "kind"]):
-            part = part.reset_index().set_index("distance").drop(columns=part.index.names[:-1])
-            resampled = part.reindex(np.unique(np.r_[good_distances, part.index.values])).interpolate().loc[good_distances].dropna(how="all")
-            resampled.index = pd.MultiIndex.from_arrays([*[[str(idx)] * resampled.shape[0] for idx in idxs], resampled.index], names=data.index.names)
-            all_data_list.append(resampled)
+        # good_distances = np.arange(0, data.index.get_level_values("distance").max() + step_m, step_m)
+        # for idxs, part in data.groupby(["radar_key", "user", "kind"]):
+        #     part = part.reset_index().set_index("distance").drop(columns=part.index.names[:-1])
+        #     resampled = part.reindex(np.unique(np.r_[good_distances, part.index.values])).interpolate().loc[good_distances].dropna(how="all")
+        #     resampled.index = pd.MultiIndex.from_arrays([*[[str(idx)] * resampled.shape[0] for idx in idxs], resampled.index], names=data.index.names)
+        #     all_data_list.append(resampled)
 
     data = pd.concat(all_data_list)
 
@@ -408,13 +416,18 @@ def read_all_interpretations(step_m: float = 5.):
     bed_data = pd.concat(bed_data_list)
 
     # bed_data = data.loc[(slice(None), slice(None), ["bed_cold", "bed_unspecified"])]
-    bed_grouped = bed_data.groupby(level=["radar_key", "distance"])
+    bed_grouped = bed_data.select_dtypes(np.number).groupby(level=["radar_key", "distance"])
 
     out = bed_grouped.median().rename(columns={"depth": "thickness"})
+
+    out = pd.merge(out, bed_data.select_dtypes(object).groupby(level=["radar_key", "distance"]).first(), right_index=True, left_index=True)
+    out["date_str"] = out.index.get_level_values("radar_key").str.extract(r"(202\d{5})").iloc[:, 0].astype(str).values
     # out["distance"] = bed_grouped["distance"].first()
     out["thickness_std"] = bed_grouped["depth"].std()
     out["thickness_lower"] = bed_grouped["depth"].quantile(0.25)
     out["thickness_upper"] = bed_grouped["depth"].quantile(0.75)
+
+    out["part_idx"] = out["part_idx"].round().astype(int)
 
     temperate_data_list = []
     for key in ["bed_cold", "temperate"]:
@@ -424,23 +437,25 @@ def read_all_interpretations(step_m: float = 5.):
             continue
     # temperate_data = data.loc[(slice(None), slice(None), ["temperate", "bed_cold"])]
     temperate_data = pd.concat(temperate_data_list)
-    temperate_grouped = temperate_data.groupby(level=["radar_key", "distance"])
+    temperate_grouped = temperate_data.select_dtypes(np.number).groupby(level=["radar_key", "distance"])
 
-    out["temperate_ice"] = np.clip(out["thickness"] - temperate_grouped["depth"].median(), min=0, max=out["thickness"])
-    out["temperate_ice_std"] = temperate_grouped["depth"].std()
-    out["temperate_ice_lower"] = np.clip(out["thickness"] - temperate_grouped["depth"].quantile(0.25), min=0, max=out["thickness"])
-    out["temperate_ice_upper"] = np.clip(out["thickness"] - temperate_grouped["depth"].quantile(0.75), min=0, max=out["thickness"])
+    out["temperate"] = np.clip(out["thickness"] - temperate_grouped["depth"].median(), min=0, max=out["thickness"])
 
-    out["temperate_ice_frac"] = out["temperate_ice"] / out["thickness"]
-    out["temperate_ice_frac_std"] = out["temperate_ice_std"] / out["thickness"]
+    out.loc[out["temperate"].isna() & (~out["thickness"].isna()), "temperate"] = 0
+    out["temperate_std"] = temperate_grouped["depth"].std()
+    out["temperate_lower"] = np.clip(out["thickness"] - temperate_grouped["depth"].quantile(0.25), min=0, max=out["thickness"])
+    out["temperate_upper"] = np.clip(out["thickness"] - temperate_grouped["depth"].quantile(0.75), min=0, max=out["thickness"])
 
-    to_clamp = (out["temperate_ice_frac"] > 0.5) & ((out["thickness"] - out["temperate_ice_lower"]) <= 17)
-    out.loc[to_clamp, "temperate_ice_frac"] = 1.
-    for col in ["temperate_ice", "temperate_ice_upper"]:
+    out["temperate_frac"] = out["temperate"] / out["thickness"]
+    out["temperate_frac_std"] = out["temperate_std"] / out["thickness"]
+
+    to_clamp = (out["temperate_frac"] > 0.5) & ((out["thickness"] - out["temperate"]) <= 17)
+    out.loc[to_clamp, "temperate_frac"] = 1.
+    for col in ["temperate", "temperate_upper"]:
         out.loc[to_clamp, col] = out["thickness"]
     
     out["bed_elevation"] = out["elevation"] - out["thickness"]
-    out["temperate_elevation"] = out["bed_elevation"] + out["temperate_ice"]
+    out["temperate_elevation"] = out["bed_elevation"] + out["temperate"]
     
     out = gpd.GeoDataFrame(
         out,
@@ -448,7 +463,13 @@ def read_all_interpretations(step_m: float = 5.):
             out["easting"], out["northing"], crs=32633
         ),
     )
-    print(out)
+    # plt.hist(out["part_idx"])
+    # plt.show()
+    # print(out.reset_index().iloc[0])
+    out.reset_index().to_feather(out_path)
+
+    return gpd.read_feather(out_path)
+    return
 
     out0 = out.loc[(testkey, slice(None))]
 
@@ -457,7 +478,7 @@ def read_all_interpretations(step_m: float = 5.):
     plt.fill_between(out0.index, out0["temperate_elevation"], out0["elevation"], color="blue", alpha=0.5)
     # plt.errorbar(out0.index, out0["bed_elevation"], yerr=out0["thickness_std"], color="blue", alpha=0.5)
 
-    plt.fill_between(out0.index, out["bed_elevation"] + out0["temperate_ice_lower"], out["bed_elevation"] + out0["temperate_ice_upper"], color="red", alpha=0.3)
+    plt.fill_between(out0.index, out["bed_elevation"] + out0["temperate_lower"], out["bed_elevation"] + out0["temperate_upper"], color="red", alpha=0.3)
     plt.fill_between(out0.index, out["elevation"] - out0["thickness_lower"], out["elevation"] - out0["thickness_upper"], color="blue", alpha=0.3)
     # plt.errorbar(out0.index, out0["temperate_elevation"], yerr=np.clip((out0[["temperate_ice_upper", "temperate_ice_lower"]].values - np.repeat(out0["temperate_ice"].values[:, None], 2, axis=1)).T, min=0, max=None), color="red", alpha=0.5)
     plt.show()

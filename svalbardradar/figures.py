@@ -84,14 +84,14 @@ def plot_dronbreen_examples(show: bool = True):
 
     examples = [
         {
-            "radar-key": "dronbreen-20240209-DAT_0463_A1_3",
+            "radar_key": "dronbreen-20240209-DAT_0463_A1_3",
             "start_trace": 3540,
             # "stop_trace": 6420,
             "standstills": [(3983, 4038)],
             # "max_depth": 175,
         },
         {
-            "radar-key": "dronbreen-20220328-DAT_0226_A1_1",
+            "radar_key": "dronbreen-20220328-DAT_0226_A1_1",
             "start_trace": 1100,
             # "stop_trace": 4100,
             "standstills": [],
@@ -100,10 +100,10 @@ def plot_dronbreen_examples(show: bool = True):
 
     for i, info in enumerate(examples):
         # info["stop_distance"] = 2600
-        glacier, date_str, file_stem = info["radar-key"].split("-")
+        glacier, date_str, file_stem = info["radar_key"].split("-")
         axis: plt.Axes = axes[1, i]
 
-        with xr.open_dataset(paths.processed_radar_path(info["radar-key"])) as dataset:
+        with xr.open_dataset(paths.processed_radar_path(info["radar_key"])) as dataset:
             dataset.coords["trace_n"] = "x", np.arange(dataset.x.shape[0])
             dataset = dataset.swap_dims(x="trace_n", y="depth").sel(
                 trace_n=slice(info["start_trace"], None)
@@ -177,7 +177,7 @@ def plot_dronbreen_examples(show: bool = True):
     inset.set_xticks([])
     inset.set_yticks([])
     inset.add_patch(outline_polygon())
-    for _, line in data.groupby("radar-key"):
+    for _, line in data.groupby("radar_key"):
         line = line.sort_values("distance")
         inset.plot(
             line.geometry.x, line.geometry.y, linewidth=0.5, color="black", zorder=2
@@ -214,9 +214,9 @@ def plot_user_spread(show: bool = True):
         "filantropbreen-20240406-DAT_0372_A1_1",
     ]
 
-    all_data =svalbardradar.interpretations.merge_all_interpretations()
+    all_data =svalbardradar.interpretations.read_all_interpretations()
 
-    all_data["glacier"] = all_data["radar-key"].str.split("-", expand=True).iloc[:, 0]
+    all_data["glacier"] = all_data["radar_key"].str.split("-", expand=True).iloc[:, 0]
     all_data["part_idx"] = all_data["part_idx"].astype(int)
     all_data["bed_elevation"] = all_data["elevation"] - all_data["thickness"]
 
@@ -225,11 +225,14 @@ def plot_user_spread(show: bool = True):
     )
 
     out_path = Path("figures/all_interpretations.pdf")
+    out_path.parent.mkdir(exist_ok=True)
     radar_keys = []
-    with PdfPages(out_path) as pdf, tqdm.tqdm(total=all_data["radar-key"].unique().shape[0]) as progress_bar:
+    with PdfPages(out_path) as pdf, tqdm.tqdm(total=all_data["radar_key"].unique().shape[0]) as progress_bar:
         for glacier, all_glacier_data in all_data.groupby("glacier"):
-            for radar_key, data in all_glacier_data.groupby("radar-key"):
+            for radar_key, data in all_glacier_data.groupby("radar_key"):
 
+                # if "dronbreen-20200224-DAT_0003_A1_2" not in radar_key:
+                #     continue
                 # if len(radar_keys) > 9:
                 #     break
                 _, date_str, filename = radar_key.split("-")
@@ -255,9 +258,9 @@ def plot_user_spread(show: bool = True):
                 interp_paths = paths.get_latest_submissions(radar_key)
 
                 map: plt.Axes = axes[0].inset_axes([0.5, 0.05, 0.5, 0.95])
-                for _, per_radargram in all_glacier_data.groupby("radar-key"):
+                for _, per_radargram in all_glacier_data.groupby("radar_key"):
                     for _, part in per_radargram.groupby("part_idx"):
-                        if part.iloc[0]["radar-key"] == radar_key:
+                        if part.iloc[0]["radar_key"] == radar_key:
                             style = {"color": "red", "zorder": 2}
                         else:
                             style = {"color": "grey", "zorder": 1}
@@ -276,17 +279,19 @@ def plot_user_spread(show: bool = True):
                         part["bed_elevation"],
                         color="gray",
                     )
+
+                    mask = (~part[["temperate_elevation", "elevation"]].isna()).all(axis=1)
                     topo_ax.fill_between(
-                        distances,
-                        part["temp_elevation"],
-                        part["elevation"],
+                        distances[mask],
+                        part.loc[mask, "temperate_elevation"],
+                        part.loc[mask, "elevation"],
                         color="lightblue",
                         alpha=0.5,
                     )
                     topo_ax.fill_between(
-                        distances,
-                        part["bed_elevation"],
-                        part["temp_elevation"],
+                        distances[mask],
+                        part.loc[mask, "bed_elevation"],
+                        part.loc[mask, "temperate_elevation"],
                         color="red",
                         alpha=0.5,
                     )
@@ -323,22 +328,31 @@ def plot_user_spread(show: bool = True):
                         axes[1].plot(line.geometry.xy[0], y_coords, color=line["color"], linestyle=":", label=line["kind"] if line["kind"] not in labeled else None)
                         labeled.add(line["kind"])
 
-                axes[2].fill_between(data.index, data["thickness"] - data["thickness_std"], data["thickness"] + data["thickness_std"],  color="blue", alpha=0.5,label="Thickness (+- 1std)", zorder=2)
-                axes[2].plot(data.index, data["thickness"], color="blue", path_effects=[
+                axes[2].fill_between(
+                    data["x"],
+                    data["thickness_lower"],
+                    data["thickness_upper"],
+                    color="blue",
+                    alpha=0.5,
+                    label="Thickness (+- 25%)", zorder=2
+                )
+                axes[2].plot(data["x"], data["thickness"], color="blue", path_effects=[
                         matplotlib.patheffects.withStroke(
                             linewidth=3, foreground="black"
                         )
-                ], zorder=4, label="Thickness (mean)")
+                ], zorder=4, label="Thickness (median)")
                 axes[2].fill_between(
-                    data.index,
-                    data["thickness"] - data["thickness"] * (data["temperate_frac"] - data["temperate_frac_std"]),
-                    data["thickness"] - data["thickness"] * (data["temperate_frac"] + data["temperate_frac_std"]),
+                    data["x"],
+                    data["thickness"] - data["temperate_lower"],
+                    data["thickness"] - data["temperate_upper"],
                     color="red",
                     alpha=0.5,
-                    label="Temperate ice (+- 1std)",
+                    label="Temperate ice (+- 25%)",
                     zorder=1,
                 )
-                axes[2].plot(data.index, data["thickness"] - data["thickness"] * data["temperate_frac"], color="red", zorder=3, label="Temperate ice (mean)")
+                # plt.fill_between(out0.index, out["bed_elevation"] + out0["temperate_lower"], out["bed_elevation"] + out0["temperate_upper"], color="red", alpha=0.3)
+                # plt.fill_between(out0.index, out["elevation"] - out0["thickness_lower"], out["elevation"] - out0["thickness_upper"], color="blue", alpha=0.3)
+                axes[2].plot(data["x"], data["thickness"] - data["thickness"] * data["temperate_frac"], color="red", zorder=3, label="Temperate ice (median)")
 
                 for spine in axes[0].spines.values():
                     spine.set_visible(False)
@@ -687,7 +701,7 @@ def overview_map(show: bool = True):
     interp = interpretations.merge_all_interpretations()
 
     tracks = []
-    for radar_key, data in interp.groupby("radar-key"):
+    for radar_key, data in interp.groupby("radar_key"):
 
         easting_model = scipy.interpolate.interp1d(data["distance"], data["easting"])
         northing_model = scipy.interpolate.interp1d(data["distance"], data["northing"])
@@ -701,7 +715,7 @@ def overview_map(show: bool = True):
 
         tracks.append(
             {
-                "radar-key": radar_key,
+                "radar_key": radar_key,
                 "geometry": geometry,
             } | {k: data.iloc[0][k] for k in ["antenna", "date_str"]}
         )
