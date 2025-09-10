@@ -267,9 +267,6 @@ def extract_glacier_raw_data(glacier: str = "dronbreen"):
                 print(rad_fp)
 
 
-RSGPR_PATH = "/home/erikmann/Projects/UiO/rsgpr/target/release/rsgpr"
-
-
 def run_rsgpr(
     input_filepath: Path | str,
     output_filepath: Path | str,
@@ -308,7 +305,7 @@ def run_rsgpr(
 
     cmds = (
         [
-            RSGPR_PATH,
+            "rsgpr",
             "-v",
             "0.168",
             "--steps",
