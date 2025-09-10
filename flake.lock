@@ -57,11 +57,11 @@
         "rsgpr": "rsgpr"
       },
       "locked": {
-        "lastModified": 1742122572,
-        "narHash": "sha256-ALLpzm2fEokbVxAlgM0AALIkcMqEGOdZYEvS/b6rPw4=",
+        "lastModified": 1757499950,
+        "narHash": "sha256-zOyBLB5ect1G2hj7u39TzGb2Y+34haipOBpD2ES3pVY=",
         "owner": "erikmannerfelt",
         "repo": "nixrik",
-        "rev": "c3b1d2c488728a40a76b6872c598418c6635018d",
+        "rev": "8e196691e3c15e86d95f5a467cd8bd0b69f8027f",
         "type": "gitlab"
       },
       "original": {
@@ -82,11 +82,11 @@
         "nixpkgs": "nixpkgs_2"
       },
       "locked": {
-        "lastModified": 1742122480,
-        "narHash": "sha256-qM6BcAmEtkL9VWLEnqPgUxO4jw+c7OaC8J2Fly0RJMk=",
+        "lastModified": 1757499878,
+        "narHash": "sha256-etRfVLg7luWg5RwbhdjgVwj34B18FJp70xgHiwvZk+Y=",
         "owner": "erikmannerfelt",
         "repo": "rsgpr",
-        "rev": "5d671eda02fa859813eefb506e308b17fd4b9bc3",
+        "rev": "53bdf45cc85c444bb7a325be36cff25e9b4e4a9a",
         "type": "github"
       },
       "original": {
