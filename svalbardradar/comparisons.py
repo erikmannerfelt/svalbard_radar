@@ -11,36 +11,17 @@ import rasterio as rio
 import requests
 import scipy.spatial
 
-from svalbardradar.tools import paths
+from svalbardradar.tools import paths, misc
 
 CACHE_PATH = paths.BASE_CACHE_PATH / "comparisons"
 
-
-def download_large_file(output_filepath: Path, url: str):
-    temp_path = output_filepath.with_suffix(f".{output_filepath.suffix}.part")
-    if temp_path.is_file():
-        os.remove(temp_path)
-
-    if output_filepath.is_file():
-        return
-
-    with requests.get(url, stream=True) as response:
-        response.raise_for_status()
-
-        temp_path.parent.mkdir(exist_ok=True, parents=True)
-
-        with open(temp_path, "wb") as outfile:
-            for chunk in response.iter_content(chunk_size=8192 * 4):
-                outfile.write(chunk)
-
-        shutil.move(temp_path, output_filepath)
 
 
 def get_vanpelt() -> Path:
     out_path = CACHE_PATH / "vanpelt/vanpelt_thickness.tif"
     url = "https://zenodo.org/records/11239460/files/Thickness_map.tif?download=1"
 
-    download_large_file(out_path, url)
+    misc.download_large_file(out_path, url)
     return out_path
 
 
@@ -53,7 +34,7 @@ def get_furst() -> Path:
     tar_path = out_path.with_name("svift_v11.tar.gz")
     url = "https://next.api.npolar.no/dataset/57fd0db4-afbf-4c94-ac1c-191c714f1224/attachment/ec2d911f-97c6-4d78-8602-7539b97470a6/_blob"
 
-    download_large_file(tar_path, url)
+    misc.download_large_file(tar_path, url)
 
     from osgeo import gdal
 
@@ -70,7 +51,7 @@ def get_millan() -> Path:
     out_path = CACHE_PATH / "millan/millan_thickness.tif"
     url = "https://cluster.klima.uni-bremen.de/~oggm/velocities/millan22/thickness/RGI-7/THICKNESS_RGI-7.1_2021July09.tif"
 
-    download_large_file(out_path, url)
+    misc.download_large_file(out_path, url)
 
     return out_path
 
@@ -86,7 +67,7 @@ def get_farinotti() -> Path:
     zip_path = out_path.parent / "composite_thickness_RGI60-07.zip"
     url = "https://www.research-collection.ethz.ch/bitstream/handle/20.500.11850/315707/composite_thickness_RGI60-07.zip?sequence=9&isAllowed=y"
 
-    download_large_file(zip_path, url)
+    misc.download_large_file(zip_path, url)
 
     warped_vrt_dir = out_path.parent / "warped"
     warped_vrt_dir.mkdir(exist_ok=True, parents=True)
@@ -140,7 +121,7 @@ def get_glathida():
     # url = "https://gitlab.com/wgms/glathida/-/archive/main/glathida-main.zip"
     url = "https://gitlab.com/wgms/glathida/-/archive/15fd559c84f849637522b8e21e316db958620c08/glathida-15fd559c84f849637522b8e21e316db958620c08.zip"
 
-    download_large_file(zip_path, url)
+    misc.download_large_file(zip_path, url)
 
     data = pd.DataFrame()
     with zipfile.ZipFile(zip_path) as zip_file:
@@ -203,7 +184,7 @@ def sample_models():
         return gpd.read_file(out_path)
 
     # data = gpd.read_file(Path("cache/interpretations/quick_interp_all.gpkg"))
-    data = svalbardradar.interpretations.merge_all_interpretations()
+    data = svalbardradar.interpretations.read_all_interpretations()
     # data = data[data["kind"].str.contains("bed_") & (data["kind"] != "bed_missing")]
 
     model_paths = {
