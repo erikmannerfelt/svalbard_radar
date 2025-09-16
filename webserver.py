@@ -396,7 +396,7 @@ def _recommended() -> list[list[str]]:
         "dronbreen-20240209-DAT_0463_A1_3",
         "edvardbreen-20230305-DAT_0232_A1_1",
         "bergmesterbreen-20230222-DAT_0016_A1_1",
-        "jinnbreen-20240206-DAT_0447_A1_1",
+        "dronbreen-20240209-DAT_0466_A1_1",
         "dronbreen-20250327-DAT_0065_A1_1",
     ]
     # Extract the glacier name such that it's glacier/radar_key
