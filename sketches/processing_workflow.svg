@@ -7,7 +7,7 @@
    viewBox="0 0 210 148"
    version="1.1"
    id="svg1"
-   inkscape:version="1.4 (e7c3feb100, 2024-10-09)"
+   inkscape:version="1.4.2 (ebf0e940d0, 2025-05-08)"
    sodipodi:docname="processing_workflow.svg"
    inkscape:export-filename="../figures/processing_workflow.png"
    inkscape:export-xdpi="300"
@@ -26,11 +26,11 @@
      inkscape:pagecheckerboard="0"
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="mm"
-     inkscape:zoom="1.0267829"
-     inkscape:cx="452.38383"
-     inkscape:cy="257.6007"
-     inkscape:window-width="1868"
-     inkscape:window-height="1011"
+     inkscape:zoom="1.3257814"
+     inkscape:cx="418.9982"
+     inkscape:cy="291.90333"
+     inkscape:window-width="3840"
+     inkscape:window-height="1128"
      inkscape:window-x="0"
      inkscape:window-y="0"
      inkscape:window-maximized="1"
@@ -363,7 +363,7 @@
          id="text1"><tspan
            x="16.41423"
            y="5.7221645"
-           id="tspan3">Raw data</tspan></text>
+           id="tspan1">Raw data</tspan></text>
     </g>
     <g
        id="g16-3"
@@ -407,10 +407,10 @@
            id="text1-3"><tspan
              x="16.41423"
              y="5.7221645"
-             id="tspan4">Processed </tspan><tspan
+             id="tspan2">Processed </tspan><tspan
              x="16.41423"
              y="11.895777"
-             id="tspan5">radargrams</tspan></text>
+             id="tspan3">radargrams</tspan></text>
       </g>
       <g
          id="g16-6-0"
@@ -430,13 +430,13 @@
            id="text1-3-8"><tspan
              x="16.41423"
              y="5.7221645"
-             id="tspan6">DEM </tspan><tspan
+             id="tspan4">DEM </tspan><tspan
              x="16.41423"
              y="11.895777"
-             id="tspan7">elevation </tspan><tspan
+             id="tspan5">elevation </tspan><tspan
              x="16.41423"
              y="18.06939"
-             id="tspan8">correction</tspan></text>
+             id="tspan26">correction</tspan></text>
       </g>
       <text
          xml:space="preserve"
@@ -488,10 +488,10 @@
            id="text1-3-4"><tspan
              x="16.41423"
              y="5.7221645"
-             id="tspan9">Bed </tspan><tspan
+             id="tspan27">Bed </tspan><tspan
              x="16.41423"
              y="11.895777"
-             id="tspan11">interpretations</tspan></text>
+             id="tspan28">interpretations</tspan></text>
       </g>
       <g
          id="g16-6-7-0"
@@ -511,10 +511,10 @@
            id="text1-3-4-9"><tspan
              x="16.41423"
              y="5.7221645"
-             id="tspan12">Temperate ice </tspan><tspan
+             id="tspan29">Temperate ice </tspan><tspan
              x="16.41423"
              y="11.895777"
-             id="tspan13">interpretations</tspan></text>
+             id="tspan30">interpretations</tspan></text>
       </g>
       <text
          xml:space="preserve"
@@ -556,10 +556,10 @@
            id="text1-3-4-3"><tspan
              x="16.41423"
              y="5.7221645"
-             id="tspan14">Glacier </tspan><tspan
+             id="tspan31">Glacier </tspan><tspan
              x="16.41423"
              y="11.895777"
-             id="tspan15">thickness points</tspan></text>
+             id="tspan32">thickness points</tspan></text>
       </g>
       <g
          id="g16-6-7-05"
@@ -579,10 +579,10 @@
            id="text1-3-4-1"><tspan
              x="16.41423"
              y="5.7221645"
-             id="tspan17">Temperate ice </tspan><tspan
+             id="tspan33">Temperate ice </tspan><tspan
              x="16.41423"
              y="11.895777"
-             id="tspan18">fraction points</tspan></text>
+             id="tspan34">fraction points</tspan></text>
       </g>
       <text
          xml:space="preserve"
@@ -594,7 +594,7 @@
            id="tspan16-4-6"
            style="fill:#742626;fill-opacity:1;stroke:none;stroke-width:0.875"
            x="72.301285"
-           y="79.263405">GP regression</tspan></text>
+           y="79.263405">Binned stacking</tspan></text>
     </g>
     <g
        id="g16-6-7-8-7"
@@ -614,10 +614,10 @@
          id="text1-3-4-3-4"><tspan
            x="16.41423"
            y="5.7221645"
-           id="tspan19">GlaThiDa </tspan><tspan
+           id="tspan35">GlaThiDa </tspan><tspan
            x="16.41423"
            y="11.895777"
-           id="tspan20">output</tspan></text>
+           id="tspan36">output</tspan></text>
     </g>
     <g
        id="g16-6-7-8-0"
@@ -637,10 +637,10 @@
          id="text1-3-4-3-1"><tspan
            x="16.41423"
            y="5.7221645"
-           id="tspan21">glenglat </tspan><tspan
+           id="tspan37">glenglat </tspan><tspan
            x="16.41423"
            y="11.895777"
-           id="tspan22">output</tspan></text>
+           id="tspan38">output</tspan></text>
     </g>
     <g
        id="g16-6-7-8-4"
@@ -660,13 +660,13 @@
          id="text1-3-4-3-3"><tspan
            x="16.41423"
            y="5.7221645"
-           id="tspan23">Thickness and </tspan><tspan
+           id="tspan39">Thickness and </tspan><tspan
            x="16.41423"
            y="11.895777"
-           id="tspan24">temperature </tspan><tspan
+           id="tspan40">temperature </tspan><tspan
            x="16.41423"
            y="18.06939"
-           id="tspan25">rasters</tspan></text>
+           id="tspan41">rasters</tspan></text>
     </g>
     <path
        style="fill:#c8edcd;fill-opacity:1;stroke:#000000;stroke-width:0.923;stroke-linejoin:round;stroke-miterlimit:1.2;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Triangle);paint-order:normal"
@@ -675,7 +675,7 @@
        sodipodi:nodetypes="cc" />
     <path
        style="fill:#c8edcd;fill-opacity:1;stroke:#000000;stroke-width:0.923;stroke-linejoin:round;stroke-miterlimit:1.2;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Triangle-3);paint-order:normal"
-       d="M 118.66722,50.520245 99.750101,71.248924"
+       d="M 118.66722,50.520245 102.50814,71.248924"
        id="path19-0"
        sodipodi:nodetypes="cc" />
     <path
