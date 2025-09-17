@@ -44,7 +44,7 @@ def plot_dronbreen_examples(show: bool = True):
 
     # data = gpd.read_feather(Path("cache/interpretations/interp_all.feather"))
 
-    dronbreen_outline = gpd.read_file("temp/dronbreen_outline_20240828.geojson")
+    dronbreen_outline = gpd.read_file("shapes/dronbreen_outline_20240828.geojson")
 
     data = svalbardradar.interpretations.merge_all_interpretations()
     data = data[data.intersects(dronbreen_outline.geometry[0])]
@@ -162,7 +162,7 @@ def plot_dronbreen_examples(show: bool = True):
                 ),
                 cmap="Greys_r",
                 aspect="auto",
-                vmin=0.2,
+                vmin=0.4,
                 vmax=2,
                 interpolation="lanczos",
             )
@@ -234,7 +234,7 @@ def plot_user_spread(show: bool = True):
         "filantropbreen-20240406-DAT_0372_A1_1",
     ]
 
-    all_data =svalbardradar.interpretations.read_all_interpretations()
+    all_data =svalbardradar.interpretations.merge_all_interpretations()
 
     all_data["glacier"] = all_data["radar_key"].str.split("-", expand=True).iloc[:, 0]
     all_data["part_idx"] = all_data["part_idx"].astype(int)
@@ -694,7 +694,9 @@ def plot_glathida_comparison(show: bool = True):
             group["glathida_thickness"],
             # label=label,
             s=9,
+            alpha=0.3,
             color="black",
+            edgecolor="none",
         )
         axis.plot([0, max_thickness], [0, max_thickness], color="black")
 
@@ -713,97 +715,6 @@ def plot_glathida_comparison(show: bool = True):
     if show:
         plt.show()
 
-
-def overview_map(show: bool = True):
-    import scipy.interpolate
-    import shapely.geometry
-
-    interp = interpretations.merge_all_interpretations()
-
-    tracks = []
-    for radar_key, data in interp.groupby("radar_key"):
-
-        easting_model = scipy.interpolate.interp1d(data["distance"], data["easting"])
-        northing_model = scipy.interpolate.interp1d(data["distance"], data["northing"])
-
-        d_eval = np.r_[np.arange(0, data["distance"].max(), 5), [data["distance"].max()]]
-
-        geometry = shapely.geometry.LineString(np.transpose([
-            easting_model(d_eval),
-            northing_model(d_eval),
-        ]))
-
-        tracks.append(
-            {
-                "radar_key": radar_key,
-                "geometry": geometry,
-            } | {k: data.iloc[0][k] for k in ["antenna", "date_str"]}
-        )
-
-
-    tracks = pd.DataFrame.from_records(tracks)
-    tracks = gpd.GeoDataFrame(tracks, crs=32633)
-
-    insets = {
-        "svalbard": [491000, 665000, 8585000, 8893000],
-        "nordaustlandet": [630000, 660000, 8855000, 8890000],
-        "heerland": [535000, 565000, 8625000, 8655000],
-        "central_norden": [518000, 545500, 8650000, 8680000],
-    }
-
-
-    fig = plt.figure(figsize=(8, 5))
-    axes = fig.subplots(2, 3)
-    # aspect = 1.
-
-    for i, key in enumerate(insets, start=0):
-
-        col = i % axes.shape[1]
-        row = int((i - col) / axes.shape[1])
-        axis: plt.Axes = axes[row, col]
-
-        extent = insets[key] or list(tracks.buffer(5000).total_bounds[[0, 2, 1, 3]])
-
-        subset = tracks[
-            (tracks.centroid.x > extent[0]) &
-            (tracks.centroid.x < extent[1]) &
-            (tracks.centroid.y > extent[2]) &
-            (tracks.centroid.y < extent[3])
-        ]
-
-        if i == 0:
-            for j, key2 in enumerate(insets):
-                if j == 0:
-                    continue
-                extent2 = insets[key2]
-                axis.add_patch(
-                    plt.Rectangle(
-                        (extent2[0], extent2[2]),
-                        width=extent2[1] - extent2[0],
-                        height=extent2[3] - extent2[2],
-                    )
-                )
-
-        for _, track in subset.iterrows():
-            axis.plot(*track.geometry.xy, color="black")
-
-
-        # width_m = extent[1] - extent[0]
-        axis.set_xlim(extent[0], extent[1])
-        axis.set_ylim(extent[2], extent[3])
-        axis.set_aspect("equal")
-
-       
-    plt.show()
-
-    return
-    for _, track in tracks.iterrows():
-        plt.plot(*track.geometry.xy, color="black")
-
-    plt.show()
-
-    print(tracks)
-        
 
 def plot_model_temperate_cold_performance(show: bool = True):
     import svalbardradar.comparisons
@@ -1217,7 +1128,7 @@ def overview_map(show: bool = True):
         plt.close()
 
 
-def plot_interpretation_merging():
+def plot_interpretation_merging(show: bool = False):
 
     all_merged = interpretations.merge_all_interpretations()
 
@@ -1287,7 +1198,7 @@ def plot_interpretation_merging():
                 cmap="Greys_r",
                 aspect="auto",
                 vmin=-0.1,
-                vmax=2,
+                vmax=1.7,
                 interpolation="lanczos",
             )
         for _, points in all_points.groupby(["user", "line_i"]):
@@ -1336,11 +1247,14 @@ def plot_interpretation_merging():
             ax_bot.set_xlabel("Trace number")
             
     plt.savefig("figures/interpretation_merging_examples.jpg", dpi=600)
-    # plt.show()
+    if show:
+        plt.show()
+    else:
+        plt.close()
 
     
 
-def plot_cross_track_difference():
+def plot_cross_track_difference(show: bool = False):
     import itertools
 
     all_data = interpretations.merge_all_interpretations()
@@ -1451,11 +1365,13 @@ def plot_cross_track_difference():
     var_axis.set_ylabel("NMAD (m)")
 
     plt.subplots_adjust(left=0.07, bottom=0.1, right=0.986, top=0.99, wspace=0.136, hspace=0.207)
-    print(variance)
     plt.savefig("figures/cross_track_difference.jpg", dpi=600)
-    plt.show()
 
-    print(cmps)
+    if show:
+        plt.show()
+    else:
+        plt.close()
+
 
     
 
@@ -1464,6 +1380,8 @@ def generate_all_figures(show: bool = True):
     plot_centerline_profiles(show=show)
     plot_model_comparison(show=show)
     plot_glathida_comparison(show=show)
+    plot_interpretation_merging(show=show)
+    plot_cross_track_difference(show=show)
 
 
 if __name__ == "__main__":
