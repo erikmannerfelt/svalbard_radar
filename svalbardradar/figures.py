@@ -572,7 +572,7 @@ def plot_centerline_profiles(show: bool = True):
         plt.show()
 
 
-def plot_model_comparison(show: bool = True):
+def plot_model_comparison(show: bool = True, histogram: bool = False):
     import svalbardradar.comparisons
 
     data = svalbardradar.comparisons.sample_models()
@@ -603,13 +603,19 @@ def plot_model_comparison(show: bool = True):
         row = int((i - col) / 2)
         axis: plt.Axes = axes[row, col]
 
-        hist2 = np.histogram2d(
-            data[f"{model}_thickness"], data["thickness"], bins=thickness_bins
-        )[0][::-1, :]
-        hist2 = np.ma.masked_array(hist2, mask=hist2 == 0)
 
         axis.set_title(ref_names[model])
-        axis.imshow(hist2, extent=(0.0, thickness_bins[-1], 0.0, thickness_bins[-1]))
+
+        if histogram:
+            hist2 = np.histogram2d(
+                data[f"{model}_thickness"], data["thickness"], bins=thickness_bins
+            )[0][::-1, :]
+            hist2 = np.ma.masked_array(hist2, mask=hist2 == 0)
+            axis.imshow(hist2, extent=(0.0, thickness_bins[-1], 0.0, thickness_bins[-1]))
+        else:
+            axis.scatter(data["thickness"], data[f"{model}_thickness"], color="black", edgecolor="none", s=2, alpha=0.025)
+            plt.xlim(0, thickness_bins.max())
+            plt.ylim(0, thickness_bins.max())
 
         xlim = axis.get_ylim()
         axis.plot([xlim[0], xlim[1]], [xlim[0], xlim[1]], color="black")
