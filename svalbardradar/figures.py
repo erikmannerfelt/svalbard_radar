@@ -1245,31 +1245,19 @@ def plot_interpretation_merging():
     ]
 
     fig = plt.figure(figsize=(8, 6.5))
-    wspace = 0.05
-    hspace = 0.07
-    whole_box_x = [0.08, 0.98]
-    whole_box_y = [0.09, 0.98]
+    outer_grid = fig.add_gridspec(
+        nrows=2, ncols=2,
+        left=0.08, right=0.98, bottom=0.07, top=0.99,
+        wspace=0.12, hspace=0.09
+    )
+
 
     for i, case in enumerate(cases):
-        if i == 0:
-            box_x = [whole_box_x[0], np.mean(whole_box_x) - wspace / 2]
-            box_y = [np.mean(whole_box_y) + hspace / 2, whole_box_y[1]]
-        elif i == 1:
-            box_x = [whole_box_x[0], np.mean(whole_box_x) - wspace / 2]
-            box_y = [whole_box_y[0], np.mean(whole_box_y) - hspace / 2]
-        elif i == 2:
-            box_x = [np.mean(whole_box_x) + wspace / 2, whole_box_x[1]]
-            box_y = [np.mean(whole_box_y) + hspace / 2, whole_box_y[1]]
-        else:
-            box_x = [np.mean(whole_box_x) + wspace / 2, whole_box_x[1]]
-            box_y = [whole_box_y[0], np.mean(whole_box_y) - hspace / 2]
-
-        y_diff = np.mean(np.diff(box_y))
-            
-        ax2 = fig.add_axes([box_x[0], box_y[0], box_x[1] - box_x[0], (box_y[1] - box_y[0]) / 3])
-        ax1 = fig.add_axes([box_x[0], box_y[0] + y_diff / 3, box_x[1] - box_x[0], (box_y[1] - box_y[0]) / 3])
-        ax0 = fig.add_axes([box_x[0], box_y[0] + 2 * y_diff / 3, box_x[1] - box_x[0], (box_y[1] - box_y[0]) / 3])
-    
+        inner_grid = outer_grid[i % 2, i // 2].subgridspec(3, 1, hspace=0.01)
+        
+        ax_bot = fig.add_subplot(inner_grid[2])
+        ax_mid = fig.add_subplot(inner_grid[1], sharex=ax_bot)
+        ax_top = fig.add_subplot(inner_grid[0], sharex=ax_bot)
 
         merged = all_merged.query(f"radar_key == '{case['radar_key']}'").sort_values("distance")
 
@@ -1287,7 +1275,7 @@ def plot_interpretation_merging():
             lower, upper = np.percentile(dataset.data, [2, 98])
             dataset.data.values = (dataset.data.values - lower) / (upper - lower)
 
-            ax0.imshow(
+            ax_top.imshow(
                 dataset.data,
                 # extent=[*case["xlim"], *case["ylim"]],
                 extent=(
@@ -1303,35 +1291,38 @@ def plot_interpretation_merging():
                 interpolation="lanczos",
             )
         for _, points in all_points.groupby(["user", "line_i"]):
-            ax1.plot(points["x"], points["depth"], color=DIGITIZE_CLASS_PROPS[points.iloc[0]["kind"].replace("temperate_ice", "temperate")]["color"], alpha=0.3)
+            ax_mid.plot(points["x"], points["depth"], color=DIGITIZE_CLASS_PROPS[points.iloc[0]["kind"].replace("temperate_ice", "temperate")]["color"], alpha=0.3)
 
-        ax2.fill_between(
+        ax_bot.fill_between(
             merged["x"],
             merged["thickness"] - merged["temperate_lower"],
             merged["thickness"] - merged["temperate_upper"],
             color="red",
             alpha=0.5,
         )
-        ax2.plot(
+        ax_bot.plot(
             merged["x"],
             merged["thickness"] - merged["temperate"],
             color="red",
         )
-        ax2.fill_between(
+        ax_bot.fill_between(
             merged["x"],
             merged["thickness_lower"],
             merged["thickness_upper"],
             color="blue",
             alpha=0.5,
         )
-        ax2.plot(
+        ax_bot.plot(
             merged["x"],
             merged["thickness"],
             color="blue",
         )
-        for j, axis in enumerate([ax0, ax1, ax2]):
+        for j, axis in enumerate([ax_top, ax_mid, ax_bot]):
             axis.set_xlim(case["xlim"])
             axis.set_ylim(case["ylim"])
+
+            if j < 2:
+                axis.tick_params(labelbottom=False)
 
             plt.text(0.01, 0.98, "abcdefghijklm"[i * 3 + j], ha="left", va="top", transform=axis.transAxes, path_effects=[
                             matplotlib.patheffects.withStroke(
@@ -1339,16 +1330,10 @@ def plot_interpretation_merging():
                             )
                         ])
 
-        for j, axis in enumerate([ax0, ax1, ax2]):
-            axis.set_xticks(ax2.get_xticks())
-
-            if j < 2:
-                axis.set_xticklabels([""] * len(ax2.get_xticks()))
-
         if i in [0, 1]:
-            ax1.set_ylabel("Depth (m)")
+            ax_mid.set_ylabel("Depth (m)")
         if i in [1, 3]:
-            ax2.set_xlabel("Trace number")
+            ax_bot.set_xlabel("Trace number")
             
     plt.savefig("figures/interpretation_merging_examples.jpg", dpi=600)
     # plt.show()
