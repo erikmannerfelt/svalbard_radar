@@ -935,7 +935,7 @@ def get_svalbard_outlines() -> gpd.GeoDataFrame:
 def get_svalbard_glaciers() -> gpd.GeoDataFrame:
     return get_npi_data("CryoClim_GAO_SJ_2001-2010")
 
-def overview_map():
+def overview_map(show: bool = True):
     import rasterio
     import rasterio.features
     import shapely.geometry
@@ -951,25 +951,60 @@ def overview_map():
     new_ax = functools.partial(plt.subplot2grid, shape=(6, 6), fig=fig)
 
     overview_kwargs = {"rowspan": 4, "colspan": 3}
-    overview = new_ax(loc=(0, 0), **overview_kwargs)
+    overview_ax = new_ax(loc=(0, 0), **overview_kwargs)
 
-    hillshade_plot_kwargs = {"cmap":"Greys_r", "vmin":0, "vmax":255}
-
-    outlines = get_svalbard_outlines()
-    overview_plot_kwargs = {
-        "ax": overview,
-        "edgecolor": "black",
-        "linewidth": 0.05,
+    style = {
+        "degree_label": {
+            "fontsize": 8,
+            "color": "gray",
+        },
+        "degree_line": {
+            "linewidth": 0.5,
+            "color": "gray",
+            "alpha": 0.5,
+        },
+        "overview_box": {
+            "alpha": 0.3,
+            "color": "red",
+        },
+        "overview_label": {
+            "color": "darkred",
+            "ha": "left",
+            "va": "top",
+        },
+        "panel_label": {
+            "x": 0.01, "y": 0.99, "va": "top", "ha": "left", "path_effects": [matplotlib.patheffects.withStroke(linewidth=2, foreground="white")], "fontsize":10
+        },
+        "scalebar_line": {
+            "linewidth": 1,
+            "color": "gray",
+            "path_effects": [matplotlib.patheffects.withStroke(linewidth=1.5, foreground="white")]
+        },
+        "scalebar_label": {
+            "fontsize": 8,
+            "color": "gray",
+            "path_effects": [matplotlib.patheffects.withStroke(linewidth=0.7, foreground="white")]
+        },
+        "glacier_label": {
+            "textsize": 8,  # Fontsize
+            "color": "black",
+            "path_effects": [matplotlib.patheffects.withStroke(linewidth=1, foreground="white")]
+        },
+        "glacier_label_line": {
+            "color": "white",
+            "linewidth": 1,
+            "path_effects": [matplotlib.patheffects.withStroke(linewidth=2, foreground="black")]
+        },
     }
 
-    letter_kwargs = {"x": 0.01, "y": 0.99, "va": "top", "ha": "left", "path_effects": [matplotlib.patheffects.withStroke(linewidth=2, foreground="white")], "fontsize":10}
-
-    glacier_outlines = get_svalbard_glaciers().dissolve()
-    # glacier_outlines["used"] = glacier_outlines.geometry.intersects(
-    #     shapely.geometry.MultiPoint(
-    #         np.transpose([glaciers.geometry.x, glaciers.geometry.y])
-    #     )
-    # )
+    outlines = get_svalbard_outlines()
+    glacier_outlines = get_svalbard_glaciers()
+    glacier_outlines["used"] = glacier_outlines.geometry.intersects(
+        shapely.geometry.MultiPoint(
+            np.transpose([glaciers.geometry.x, glaciers.geometry.y])
+        )
+    )
+    outlines_dissolved = glacier_outlines.dissolve()
 
     def plot_background(axis: plt.Axes, xlim, ylim, overview_level):
         with rasterio.open(hillshade_path, overview_level=overview_level) as raster:
@@ -984,16 +1019,18 @@ def overview_map():
 
             arr = np.repeat(arr[:, :, None], 3, axis=2)
 
-            glacier_mask = rasterio.features.rasterize(glacier_outlines.geometry, out_shape=arr.shape[:2], transform=transform) == 1
+            glacier_mask = rasterio.features.rasterize(glacier_outlines.query("~used").geometry, out_shape=arr.shape[:2], transform=transform) == 1
 
             arr[glacier_mask, 0] *= 153 / 255
             arr[glacier_mask, 1] *= 204 / 255
 
-            # outline_mask = 
-            axis.imshow(arr, extent=[*xlim, *ylim], **hillshade_plot_kwargs)
-            glacier_outlines.plot(color="none", edgecolor="black", linewidth=0.05 if overview_level == 4 else 0.2, ax=axis)
+            chosen_glacier_mask = rasterio.features.rasterize(glacier_outlines.query("used").geometry, out_shape=arr.shape[:2], transform=transform) == 1
+            arr[chosen_glacier_mask, 1] *= 172 / 255
+            arr[chosen_glacier_mask, 2] *= 102 / 255
+
+            axis.imshow(arr, extent=[*xlim, *ylim])
+            outlines_dissolved.plot(color="none", edgecolor="black", linewidth=0.05 if overview_level == 2 else 0.2, ax=axis)
         
-    # outlines.dissolve().plot(color="lightgray", **overview_plot_kwargs)
 
     xlim = 3.83e5, 7.5e5
     ymid = 8.71e6
@@ -1002,65 +1039,51 @@ def overview_map():
     xrange = np.diff(xlim).item()
     yrange = xrange * aspect
     ylim = (ymid - yrange / 2, ymid + yrange / 2)
-    # overview = plt.subplot2grid((4, 4), (0, 0), rowspan=2, colspan=2, fig=fig)
 
-    # with rasterio.open(hillshade_path, overview_level=4) as raster:
-    #     window = rasterio.windows.from_bounds(xlim[0], ylim[0], xlim[1], ylim[1], transform=raster.transform)
-    #     arr = np.clip(raster.read(1, masked=True, window=window, boundless=True).filled(181) / 181, min=0, max=1)
-    #     transform = rasterio.windows.transform(window=window,transform=raster.transform)
+    plot_background(overview_ax, xlim=xlim, ylim=ylim, overview_level=2)
 
-    #     land_mask = rasterio.features.rasterize(outlines.geometry, out_shape=arr.shape, transform=transform) == 1
+    for lat in np.arange(77, 81):
+        lines = gpd.GeoSeries(shapely.LineString([(lon, lat) for lon in np.linspace(5, 50)]), crs=4326).to_crs(32633)
+        lines.plot(ax=overview_ax, **style["degree_line"])
+        point = lines.intersection(shapely.geometry.box(xlim[0], ylim[0], xlim[1], ylim[1])).apply(lambda line: line.interpolate(0)).values[0]
+        overview_ax.annotate(f"{lat}°N", (point.x, point.y), **style["degree_label"]) 
 
-    #     arr[~land_mask] = 1
-    #     arr[land_mask] *= 0.8
+    for lon in np.arange(5, 30, step=5):
+        lines = gpd.GeoSeries(shapely.LineString([(lon, lat) for lat in np.linspace(50, 90)]), crs=4326).to_crs(32633)
+        lines.plot(ax=overview_ax, **style["degree_line"])
 
-    #     arr = np.repeat(arr[:, :, None], 3, axis=2)
+        if lon in [15, 20]:
+            point = lines.intersection(shapely.geometry.box(xlim[0], ylim[0], xlim[1], ylim[1])).apply(lambda line: line.interpolate(0)).values[0]
+            overview_ax.annotate(f"{lon}°E", (point.x, point.y + (ylim[1] - ylim[0]) * 1e-2), **style["degree_label"]) 
 
-    #     glacier_mask = rasterio.features.rasterize(glacier_outlines.geometry, out_shape=arr.shape[:2], transform=transform) == 1
-
-    #     arr[glacier_mask, :2] *= 0.7
-
-    #     # outline_mask = 
-    #     overview.imshow(arr, extent=[*xlim, *ylim], **hillshade_plot_kwargs)
-
-    plot_background(overview, xlim=xlim, ylim=ylim, overview_level=4)
-
-    # overview.scatter(glaciers.geometry.x, glaciers.geometry.y, color="black")
-
-    overview.set_xlim(xlim)
-    overview.set_ylim(ylim)
-    # overview.set_ylim(8.5e6, 8.98e6)
-    # overview.axis("equal")
-    overview.set_xticks([])
-    overview.set_yticks([])
-    overview.text(s="a", transform=overview.transAxes, **letter_kwargs)
-
+    overview_ax.set_xlim(xlim)
+    overview_ax.set_ylim(ylim)
+    overview_ax.set_xticks([])
+    overview_ax.set_yticks([])
+    overview_ax.text(s="a", transform=overview_ax.transAxes, **style["panel_label"])
 
     zooms = [
-        { # Southern spitsbergen
+        { # Southern Spitsbergen
             "letter": "c",
             "loc": (4, 0),
-            "xlim": (491500, 544000),
-            "ymid": 8.614e6,
-            "ylim": (8.58e6, 8.62e6),
+            "xlim": (491500, 546000),
+            "ymid": 8.612e6,
             "colspan": 3,
             "rowspan": 2,
         },
         { # Nordaustlandet
             "letter": "d",
             "loc": (4, 3),
-            "xlim": (610000, 670000),
+            "xlim": (610000, 665000),
             "ymid": 8.874e6,
-            "ylim": (8.85e6, 8.90e6),
             "colspan": 3,
             "rowspan": 2,
         },
         { # Central Spitsbergen
             "letter": "b",
             "loc": (0, 3),
-            "xlim": (519000, 584000),
-            "ymid": 8.674e6,
-            "ylim": (8.62e6, 8.71e6),
+            "xlim": (517000, 584000),
+            "ymid": 8.671e6,
             "rowspan": 4,
             "colspan": 3,
         }
@@ -1079,16 +1102,8 @@ def overview_map():
         axis.set_xlim(xlim)
         axis.set_ylim(ylim)
 
-        # with rasterio.open(hillshade_path, overview_level=2) as raster:
-        #     window = rasterio.windows.from_bounds(xlim[0], ylim[0], xlim[1], ylim[1], transform=raster.transform)
-        #     axis.imshow(raster.read(1, masked=True, window=window, boundless=True).filled(181), extent=[*xlim, *ylim], **hillshade_plot_kwargs)
-        plot_background(axis=axis, xlim=xlim, ylim=ylim, overview_level=2)
+        plot_background(axis=axis, xlim=xlim, ylim=ylim, overview_level=None)
     
-        axis.scatter(glaciers.geometry.x, glaciers.geometry.y, color="white", edgecolor="black", linewidth=0.8)
-
-        # for _, glacier in glaciers.iterrows():
-        #     axis.annotate(glacier["short"].capitalize(), (glacier.geometry.x, glacier.geometry.y),path_effects=[matplotlib.patheffects.withStroke(linewidth=2, foreground="white")])
-        #
         glaciers_sub = glaciers.loc[~glaciers.intersection(shapely.geometry.box(xlim[0], ylim[0], xlim[1], ylim[1])).is_empty]
 
         # Annotate the locations of the glaciers with their labels. This is nontrivial as the labels would
@@ -1100,13 +1115,13 @@ def overview_map():
             glaciers_sub["name"].values,#.apply(lambda s: s[:3]).values,
             x_scatter=glaciers_sub.geometry.x.values,
             y_scatter=glaciers_sub.geometry.y.values,
-            textsize=9,
             draw_lines=False,
             min_distance=0.0,
             margin=0.0,
             ha="center",
             va="center",
-            path_effects=[matplotlib.patheffects.withStroke(linewidth=2, foreground="white")]
+            zorder=3,
+            **style["glacier_label"],
         )
 
         # Draw lines from each label to the location's exact position
@@ -1122,35 +1137,49 @@ def overview_map():
             )
             # Extract and then plot the part of the line that's outside the bounding box.
             line_diff = line.difference(shapely.geometry.box(*bbox.extents))
-            axis.plot(*line_diff.xy, color="white", linewidth=2)
+            axis.plot(*line_diff.xy, zorder=1, **style["glacier_label_line"])
 
             # axis.axis("equal")
             axis.set_xticks([])
             axis.set_yticks([])
 
-        overview.add_patch(
-            plt.Rectangle((axis.get_xlim()[0], axis.get_ylim()[0]), width=np.diff(axis.get_xlim()).item(), height=np.diff(axis.get_ylim()).item(), alpha=0.3, color="red")
+        overview_ax.add_patch(
+            plt.Rectangle((axis.get_xlim()[0], axis.get_ylim()[0]), width=np.diff(axis.get_xlim()).item(), height=np.diff(axis.get_ylim()).item(), **style["overview_box"])
         )
-        overview.annotate(
+        overview_ax.annotate(
             zoom["letter"],
             (xlim[0], ylim[1]),
-            color="darkred",
-            ha="left",
-            va="top",
+            **style["overview_label"]
         )
-        axis.text(s=zoom["letter"], transform=axis.transAxes, **letter_kwargs)
+        axis.text(s=zoom["letter"], transform=axis.transAxes, **style["panel_label"])
+
+        # Make a scalebar
+        upper_left_in = fig.dpi_scale_trans.inverted().transform(axis.transAxes.transform([0, 1]))
+        upper_left_in[0] += 0.2  # Shift this many inches right of the upper left corner
+        upper_left_in[1] -= 0.1  # Shift this many inches down of the upper left corner
+        upper_left_data = axis.transData.inverted().transform(fig.dpi_scale_trans.transform(upper_left_in))
+        km = 1
+
+        x_locs = upper_left_data[0] + np.arange(km + 1) * 1e4
+        y_locs = np.repeat(upper_left_data[1], km + 1)
+        bar_height = 1e3
+
+        axis.plot([x_locs[0], x_locs[0], x_locs[1], x_locs[1]], [y_locs[0] - bar_height, y_locs[0], y_locs[1], y_locs[1] - bar_height], **style["scalebar_line"])
+        # axis.errorbar(x=x_locs, y=y_locs, yerr=np.repeat(np.array((bar_height, 0))[:, None], km + 1, axis=1), **style["scalebar_line"])
+        for i in range(km + 1):
+            axis.annotate(f"{i * 10} km", (x_locs[i], y_locs[i] - bar_height * 1.1), va="top", ha="center", **style["scalebar_label"])
         
 
 
     panel_spacing = 0
     plt.subplots_adjust(left=0.01, right=0.99, bottom=0.01, top=0.99, wspace=panel_spacing, hspace=panel_spacing * (figsize[1] / figsize[0]))
     plt.savefig("figures/location_overview.jpg", dpi=600)
-    plt.show()
-    
-    print(glaciers)
-    return
-    
 
+    if show:
+        plt.show()
+    else:
+        plt.close()
+    
 
 def generate_all_figures(show: bool = True):
     plot_dronbreen_examples(show=show)

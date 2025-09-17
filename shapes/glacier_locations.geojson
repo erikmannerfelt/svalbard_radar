@@ -1,32 +1,362 @@
 {
-"type": "FeatureCollection",
-"name": "glacier_locations",
-"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:EPSG::32633" } },
-"features": [
-{ "type": "Feature", "properties": { "name": "Etonbreen", "short": "eto", "key": "etonbreen" }, "geometry": { "type": "Point", "coordinates": [ 642987.163154025678523, 8861848.294782161712646 ] } },
-{ "type": "Feature", "properties": { "name": "Filantropbreen", "short": "fil", "key": "filantropbreen" }, "geometry": { "type": "Point", "coordinates": [ 539927.821597287314944, 8626746.796023938804865 ] } },
-{ "type": "Feature", "properties": { "name": "Vallåkrabreen", "short": "vlr", "key": "vallakrabreen" }, "geometry": { "type": "Point", "coordinates": [ 550184.571338997222483, 8644777.082412023097277 ] } },
-{ "type": "Feature", "properties": { "name": "Mettebreen", "short": "met", "key": "mettebreeen" }, "geometry": { "type": "Point", "coordinates": [ 553819.419493077439256, 8640218.526971254497766 ] } },
-{ "type": "Feature", "properties": { "name": "Ragna-Mariebreen", "short": "rag", "key": "ragna_mariebreen" }, "geometry": { "type": "Point", "coordinates": [ 557106.377889836439863, 8638754.990750797092915 ] } },
-{ "type": "Feature", "properties": { "name": "Finsterwalderbreen", "short": "fin", "key": "finsterwalderbreen" }, "geometry": { "type": "Point", "coordinates": [ 505726.659593055781443, 8599719.360739599913359 ] } },
-{ "type": "Feature", "properties": { "name": "Antoniabreen", "short": "ant", "key": "antoniabreen" }, "geometry": { "type": "Point", "coordinates": [ 498504.948079008725472, 8602214.570033492520452 ] } },
-{ "type": "Feature", "properties": { "name": "Slakbreen", "short": "sla", "key": "slakbreen" }, "geometry": { "type": "Point", "coordinates": [ 536292.973443205934018, 8656149.478616885840893 ] } },
-{ "type": "Feature", "properties": { "name": "Drønbreen", "short": "dro", "key": "dronbreen" }, "geometry": { "type": "Point", "coordinates": [ 540563.620119286002591, 8671264.688762588426471 ] } },
-{ "type": "Feature", "properties": { "name": "Møysalbreen", "short": "moy", "key": "moysalbreen" }, "geometry": { "type": "Point", "coordinates": [ 535237.307972713373601, 8672824.194571269676089 ] } },
-{ "type": "Feature", "properties": { "name": "Bergmesterbreen", "short": "ber", "key": "bergmesterbreen" }, "geometry": { "type": "Point", "coordinates": [ 542746.928251439705491, 8669537.236174505203962 ] } },
-{ "type": "Feature", "properties": { "name": "Rugaasfonna", "short": "rug", "key": "rugaasfonna" }, "geometry": { "type": "Point", "coordinates": [ 536113.030465280637145, 8668997.40724073164165 ] } },
-{ "type": "Feature", "properties": { "name": "Scott Turnerbreen", "short": "sco", "key": "scott_turnerbreen" }, "geometry": { "type": "Point", "coordinates": [ 521141.774701941758394, 8669681.190556844696403 ] } },
-{ "type": "Feature", "properties": { "name": "Von Postbreen", "short": "von", "key": "von_postbreen" }, "geometry": { "type": "Point", "coordinates": [ 562072.804080555099063, 8707205.299553468823433 ] } },
-{ "type": "Feature", "properties": { "name": "Rabotbreen", "short": "rab", "key": "rabotbreen" }, "geometry": { "type": "Point", "coordinates": [ 570086.264697470935062, 8696792.599230876192451 ] } },
-{ "type": "Feature", "properties": { "name": "Amenfonna", "short": "ame", "key": "amenfonna" }, "geometry": { "type": "Point", "coordinates": [ 635681.478250281070359, 8875032.116964787244797 ] } },
-{ "type": "Feature", "properties": { "name": "Jinnbreen", "short": "jin", "key": "jinnbreen" }, "geometry": { "type": "Point", "coordinates": [ 557310.313264815718867, 8675607.312629841268063 ] } },
-{ "type": "Feature", "properties": { "name": "Edvardbreen", "short": "edv", "key": "edvardbreen" }, "geometry": { "type": "Point", "coordinates": [ 558917.803867612150498, 8644285.238272359594703 ] } },
-{ "type": "Feature", "properties": { "name": "Kroppbreen", "short": "kro", "key": "kroppbreen" }, "geometry": { "type": "Point", "coordinates": [ 555846.777044362970628, 8647020.371536817401648 ] } },
-{ "type": "Feature", "properties": { "name": "Fimbulisen", "short": "fim", "key": "fimbulisen" }, "geometry": { "type": "Point", "coordinates": [ 559109.743044061586261, 8700535.413171716034412 ] } },
-{ "type": "Feature", "properties": { "name": "Winsnesbreen", "short": "win", "key": "winsnesbreen" }, "geometry": { "type": "Point", "coordinates": [ 645434.38765380170662, 8868146.299009518697858 ] } },
-{ "type": "Feature", "properties": { "name": "Austfonna", "short": "aus", "key": "austfonna" }, "geometry": { "type": "Point", "coordinates": [ 655895.072770489496179, 8884904.98835358582437 ] } },
-{ "type": "Feature", "properties": { "name": "Elfenbeinbreen", "short": "elf", "key": "elfenbeinbreen" }, "geometry": { "type": "Point", "coordinates": [ 571981.664064946817234, 8678174.499114891514182 ] } },
-{ "type": "Feature", "properties": { "name": "Svellnosbreen", "short": "sve", "key": "svellnosbreen" }, "geometry": { "type": "Point", "coordinates": [ 531944.351476691430435, 8668331.618222396820784 ] } },
-{ "type": "Feature", "properties": { "name": "Lofthusbreen", "short": "lof", "key": "lofthusbreen" }, "geometry": { "type": "Point", "coordinates": [ 538722.203645189874806, 8672224.384644845500588 ] } }
-]
+  "type": "FeatureCollection",
+  "name": "glacier_locations",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::32633"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Etonbreen",
+        "key": "etonbreen"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          640172.267574046971276,
+          8862016.009434821084142
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Filantropbreen",
+        "key": "filantropbreen"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          539927.821597287314944,
+          8626746.796023938804865
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Vallåkrabreen",
+        "key": "vallakrabreen"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          550184.571338997222483,
+          8644777.082412023097277
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Mettebreen",
+        "key": "mettebreeen"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          553819.419493077439256,
+          8640218.526971254497766
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Ragna-Mariebreen",
+        "key": "ragna_mariebreen"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          557106.377889836439863,
+          8638754.990750797092915
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Finsterwalderbreen",
+        "key": "finsterwalderbreen"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          505726.659593055781443,
+          8599719.360739599913359
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Antoniabreen",
+        "key": "antoniabreen"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          498113.86348575836746,
+          8604104.149584859609604
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Slakbreen",
+        "key": "slakbreen"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          536292.973443205934018,
+          8656149.478616885840893
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Drønbreen",
+        "key": "dronbreen"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          540563.620119286002591,
+          8671264.688762588426471
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Møysalbreen",
+        "key": "moysalbreen"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          535237.307972713373601,
+          8672824.194571269676089
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Bergmesterbreen",
+        "key": "bergmesterbreen"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          542746.928251439705491,
+          8669537.236174505203962
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Rugaasfonna",
+        "key": "rugaasfonna"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          536113.030465280637145,
+          8668997.40724073164165
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Scott Turnerbreen",
+        "key": "scott_turnerbreen"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          521141.774701941758394,
+          8669681.190556844696403
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Von Postbreen",
+        "key": "von_postbreen"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          562072.804080555099063,
+          8707205.299553468823433
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Rabotbreen",
+        "key": "rabotbreen"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          569548.070996955502778,
+          8691957.497651927173138
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Amenfonna",
+        "key": "amenfonna"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          635681.478250281070359,
+          8875032.116964787244797
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Jinnbreen",
+        "key": "jinnbreen"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          557310.313264815718867,
+          8675607.312629841268063
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Edvardbreen",
+        "key": "edvardbreen"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          558917.803867612150498,
+          8644285.238272359594703
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Kroppbreen",
+        "key": "kroppbreen"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          555846.777044362970628,
+          8647020.371536817401648
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Fimbulisen",
+        "key": "fimbulisen"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          557682.505422003101557,
+          8700626.803865374997258
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Winsnesbreen",
+        "key": "winsnesbreen"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          642996.359749634168111,
+          8867007.428163772448897
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "NW Austfonna",
+        "key": "austfonna"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          655895.072770489496179,
+          8884904.98835358582437
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Elfenbeinbreen",
+        "key": "elfenbeinbreen"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          571981.664064946817234,
+          8678174.499114891514182
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Svellnosbreen",
+        "key": "svellnosbreen"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          531944.351476691430435,
+          8668331.618222396820784
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Lofthusbreen",
+        "key": "lofthusbreen"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          538722.203645189874806,
+          8672224.384644845500588
+        ]
+      }
+    }
+  ]
 }
