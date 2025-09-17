@@ -19,9 +19,25 @@ from svalbardradar import interpretations
 import svalbardradar.tools.statistics as statistics
 from svalbardradar.tools import paths, statistics, misc
 
-
 CACHE_PATH = paths.BASE_CACHE_PATH / "figures"
-
+DIGITIZE_CLASS_PROPS = {
+    "bed_cold": {
+      "name": "Glacier bed (no temperate ice)",
+      "color": "#002EBD",
+    },
+    "temperate": {
+      "name": "Temperate ice",
+      "color": "red",
+    },
+    "bed_unspecified": {
+      "name": "Glacier bed",
+      "color": "#CE00FF",
+    },
+    "bed_missing": {
+      "name": "Glacier bed not visible",
+      "color": "#62F700",
+    },
+  }
 def plot_dronbreen_examples(show: bool = True):
     import svalbardradar.interpretations
     import svalbardradar.tools.rasters
@@ -1199,6 +1215,145 @@ def overview_map(show: bool = True):
         plt.show()
     else:
         plt.close()
+
+
+def plot_interpretation_merging():
+
+    all_merged = interpretations.merge_all_interpretations()
+
+    cases = [
+        {
+            "radar_key": "ragna_mariebreen-20240412-DAT_0404_A1_1",
+            "xlim": [2000, 6500],
+            "ylim": [230, -10],
+        },
+        {
+            "radar_key": "bergmesterbreen-20230222-DAT_0033_A1_3",
+            "xlim": [3000, 5500],
+            "ylim": [150, -10],
+        },
+        {
+            "radar_key": "dronbreen-20200224-DAT_0003_A1_2",
+            "xlim": [1100, 4400],
+            "ylim": [170, 80],
+        },
+        {
+            "radar_key": "filantropbreen-20240406-DAT_0372_A1_1",
+            "xlim": [1300, 2800],
+            "ylim": [140, 30],
+        }
+    ]
+
+    fig = plt.figure(figsize=(8, 6.5))
+    wspace = 0.05
+    hspace = 0.07
+    whole_box_x = [0.08, 0.98]
+    whole_box_y = [0.09, 0.98]
+
+    for i, case in enumerate(cases):
+        if i == 0:
+            box_x = [whole_box_x[0], np.mean(whole_box_x) - wspace / 2]
+            box_y = [np.mean(whole_box_y) + hspace / 2, whole_box_y[1]]
+        elif i == 1:
+            box_x = [whole_box_x[0], np.mean(whole_box_x) - wspace / 2]
+            box_y = [whole_box_y[0], np.mean(whole_box_y) - hspace / 2]
+        elif i == 2:
+            box_x = [np.mean(whole_box_x) + wspace / 2, whole_box_x[1]]
+            box_y = [np.mean(whole_box_y) + hspace / 2, whole_box_y[1]]
+        else:
+            box_x = [np.mean(whole_box_x) + wspace / 2, whole_box_x[1]]
+            box_y = [whole_box_y[0], np.mean(whole_box_y) - hspace / 2]
+
+        y_diff = np.mean(np.diff(box_y))
+            
+        ax2 = fig.add_axes([box_x[0], box_y[0], box_x[1] - box_x[0], (box_y[1] - box_y[0]) / 3])
+        ax1 = fig.add_axes([box_x[0], box_y[0] + y_diff / 3, box_x[1] - box_x[0], (box_y[1] - box_y[0]) / 3])
+        ax0 = fig.add_axes([box_x[0], box_y[0] + 2 * y_diff / 3, box_x[1] - box_x[0], (box_y[1] - box_y[0]) / 3])
+    
+
+        merged = all_merged.query(f"radar_key == '{case['radar_key']}'").sort_values("distance")
+
+        all_points = interpretations.read_interpretations(radar_key=case["radar_key"], step_m=5.).reset_index()
+
+        line_list = []
+        with xr.open_dataset(paths.processed_radar_path(case["radar_key"])) as dataset:
+            dataset.coords["trace_n"] = "x", np.arange(dataset.x.shape[0])
+            dataset = dataset.swap_dims(x="trace_n", y="depth")#.sel(
+            # I'm avoiding a strange bug here where if I clip the data exactly to xlim, it cuts too much!
+            # By trial and error, I found that adding an extra 300/1000 traces "solves" it.
+            dataset = dataset.sel(trace_n=slice(max(case["xlim"][0] - 300, 0), case["xlim"][1] + 1000), depth=slice(*case["ylim"][::-1]))
+            dataset["data"] = np.abs(dataset.data)
+
+            lower, upper = np.percentile(dataset.data, [2, 98])
+            dataset.data.values = (dataset.data.values - lower) / (upper - lower)
+
+            ax0.imshow(
+                dataset.data,
+                # extent=[*case["xlim"], *case["ylim"]],
+                extent=(
+                    dataset["trace_n"].min().item(),
+                    dataset["trace_n"].max().item(),
+                    dataset["depth"].max(),
+                    dataset["depth"].min(),
+                ),
+                cmap="Greys_r",
+                aspect="auto",
+                vmin=-0.1,
+                vmax=2,
+                interpolation="lanczos",
+            )
+        for _, points in all_points.groupby(["user", "line_i"]):
+            ax1.plot(points["x"], points["depth"], color=DIGITIZE_CLASS_PROPS[points.iloc[0]["kind"].replace("temperate_ice", "temperate")]["color"], alpha=0.3)
+
+        ax2.fill_between(
+            merged["x"],
+            merged["thickness"] - merged["temperate_lower"],
+            merged["thickness"] - merged["temperate_upper"],
+            color="red",
+            alpha=0.5,
+        )
+        ax2.plot(
+            merged["x"],
+            merged["thickness"] - merged["temperate"],
+            color="red",
+        )
+        ax2.fill_between(
+            merged["x"],
+            merged["thickness_lower"],
+            merged["thickness_upper"],
+            color="blue",
+            alpha=0.5,
+        )
+        ax2.plot(
+            merged["x"],
+            merged["thickness"],
+            color="blue",
+        )
+        for j, axis in enumerate([ax0, ax1, ax2]):
+            axis.set_xlim(case["xlim"])
+            axis.set_ylim(case["ylim"])
+
+            plt.text(0.01, 0.98, "abcdefghijklm"[i * 3 + j], ha="left", va="top", transform=axis.transAxes, path_effects=[
+                            matplotlib.patheffects.withStroke(
+                                linewidth=1, foreground="white"
+                            )
+                        ])
+
+        for j, axis in enumerate([ax0, ax1, ax2]):
+            axis.set_xticks(ax2.get_xticks())
+
+            if j < 2:
+                axis.set_xticklabels([""] * len(ax2.get_xticks()))
+
+        if i in [0, 1]:
+            ax1.set_ylabel("Depth (m)")
+        if i in [1, 3]:
+            ax2.set_xlabel("Trace number")
+            
+    plt.savefig("figures/interpretation_merging_examples.jpg", dpi=600)
+    # plt.show()
+
+    
     
 
 def generate_all_figures(show: bool = True):
