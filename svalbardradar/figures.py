@@ -339,14 +339,11 @@ def plot_user_spread(show: bool = True):
                 )
 
                 labeled = set()
-                for interp_path in interp_paths:
-
-                    interp =svalbardradar.interpretations.read_interpretation_lines(interp_path)
-                    for _, line in interp.iterrows():
-                        y_coords = depth_model(line.geometry.xy[1])
-
-                        axes[1].plot(line.geometry.xy[0], y_coords, color=line["color"], linestyle=":", label=line["kind"] if line["kind"] not in labeled else None)
-                        labeled.add(line["kind"])
+                all_points = interpretations.read_interpretations(radar_key=radar_key, step_m=5.).reset_index()
+                for _, points in all_points.groupby(["user", "line_i"]):
+                    kind = points["kind"].iloc[0].replace("temperate_ice", "temperate")
+                    axes[1].plot(points["x"], points["depth"], color=DIGITIZE_CLASS_PROPS[kind]["color"], alpha=0.3, label=DIGITIZE_CLASS_PROPS[kind]["name"] if kind not in labeled else None)
+                    labeled.add(kind)
 
                 axes[2].fill_between(
                     data["x"],
