@@ -995,6 +995,10 @@ def overview_map(show: bool = True):
             "linewidth": 1,
             "path_effects": [matplotlib.patheffects.withStroke(linewidth=2, foreground="black")]
         },
+        "radar_lines": {
+            "color": "red",
+            "linewidth": 1,
+        },
     }
 
     outlines = get_svalbard_outlines()
@@ -1005,6 +1009,19 @@ def overview_map(show: bool = True):
         )
     )
     outlines_dissolved = glacier_outlines.dissolve()
+
+    radar_track_pts = gpd.read_feather("cache/interpretations/interp_all.feather")
+    radar_lines_list = []
+    for (radar_key, part_idx), pts in radar_track_pts.groupby(["radar_key", "part_idx"]):
+        if pts.shape[0] < 2:
+            continue
+
+        radar_lines_list.append({
+            "radar_key": radar_key,
+            "part_idx": part_idx,
+            "geometry": shapely.geometry.LineString(pts.sort_values("distance").geometry.values),
+        })
+    radar_lines = gpd.GeoDataFrame(pd.DataFrame.from_records(radar_lines_list), crs=radar_track_pts.crs)
 
     def plot_background(axis: plt.Axes, xlim, ylim, overview_level):
         with rasterio.open(hillshade_path, overview_level=overview_level) as raster:
@@ -1066,8 +1083,8 @@ def overview_map(show: bool = True):
         { # Southern Spitsbergen
             "letter": "c",
             "loc": (4, 0),
-            "xlim": (491500, 546000),
-            "ymid": 8.612e6,
+            "xlim": (491000, 547000),
+            "ymid": 8.611e6,
             "colspan": 3,
             "rowspan": 2,
         },
@@ -1103,6 +1120,8 @@ def overview_map(show: bool = True):
         axis.set_ylim(ylim)
 
         plot_background(axis=axis, xlim=xlim, ylim=ylim, overview_level=None)
+
+        radar_lines.plot(ax=axis, **style["radar_lines"])
     
         glaciers_sub = glaciers.loc[~glaciers.intersection(shapely.geometry.box(xlim[0], ylim[0], xlim[1], ylim[1])).is_empty]
 
@@ -1112,7 +1131,7 @@ def overview_map(show: bool = True):
             axis,
             glaciers_sub.geometry.x.values,
             glaciers_sub.geometry.y.values,
-            glaciers_sub["name"].values,#.apply(lambda s: s[:3]).values,
+            glaciers_sub["name"].apply(lambda s: s if len(s) < 15 else s.replace(" ", "\n")).values,
             x_scatter=glaciers_sub.geometry.x.values,
             y_scatter=glaciers_sub.geometry.y.values,
             draw_lines=False,
@@ -1152,6 +1171,7 @@ def overview_map(show: bool = True):
             **style["overview_label"]
         )
         axis.text(s=zoom["letter"], transform=axis.transAxes, **style["panel_label"])
+
 
         # Make a scalebar
         upper_left_in = fig.dpi_scale_trans.inverted().transform(axis.transAxes.transform([0, 1]))
