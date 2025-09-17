@@ -1339,6 +1339,124 @@ def plot_interpretation_merging():
     # plt.show()
 
     
+
+def plot_cross_track_difference():
+    import itertools
+
+    all_data = interpretations.merge_all_interpretations()
+    tree = scipy.spatial.KDTree(
+        np.transpose([all_data.geometry.x, all_data.geometry.y])
+    )
+
+    distances, indices = tree.query(all_data[["easting", "northing"]])
+
+    radar_keys = pd.Series(all_data["radar_key"].unique(), name="radar_key").to_frame()
+    radar_keys[["glacier", "date_str"]] = radar_keys["radar_key"].str.split("-", expand=True).iloc[:, :2]
+    radar_keys["year"] = radar_keys["date_str"].str.slice(0, 4)
+
+    pairs = []
+    for glacier, glacier_keys in radar_keys.groupby("glacier"):
+
+        for year, in_year in glacier_keys.groupby("year"):
+            
+            pairs += list(itertools.combinations_with_replacement(in_year["radar_key"].values, 2))
+
+
+    out_list = []
+    for first_key, second_key in pairs:
+        if first_key == second_key:
+            continue
+
+        first = all_data[all_data["radar_key"] == first_key]
+        second = all_data[all_data["radar_key"] == second_key]
+
+        tree = scipy.spatial.KDTree(
+            np.transpose([first.geometry.x, first.geometry.y])
+        )
+
+        distances, indices = tree.query(np.transpose([second.geometry.x, second.geometry.y]))
+
+        distance_mask = distances < 10
+
+        if np.count_nonzero(distance_mask) == 0:
+            continue
+
+        second = second[distance_mask]
+        second["other_thickness"] = first["thickness"].values[indices[distance_mask]]
+        second["other_temperate"] = first["temperate"].values[indices[distance_mask]]
+
+        out_list.append(second[["thickness", "other_thickness", "temperate_frac", "temperate", "other_temperate"]])
+
+    cmps = pd.concat(out_list)
+    cmps["temperate_frac"] *= 100
+
+    cmps["diff"] = cmps["thickness"] - cmps["other_thickness"]
+    cmps["temperate_diff"] = cmps["temperate"] - cmps["other_temperate"]
+
+    temperate_bins = np.linspace(-0.01, 101, 11)
+    bin_centers = (temperate_bins[1:] - np.diff(temperate_bins) / 2)
+    cmps["temperate_bin"] = bin_centers[np.digitize(cmps["temperate_frac"], bins=temperate_bins) - 1]
+
+    variances = []
+
+    plt.figure(figsize=(8, 5))
+    var_axis = plt.subplot2grid((3, 2),(1, 1), rowspan=2)
+    for i in range(100):
+
+        # binned = cmps.groupby("temperate_bin")["diff"].quantile([0.25, 0.5, 0.75])
+        variance = cmps.sample(frac=0.2, random_state=i).groupby("temperate_bin")["diff"].apply(lambda s: 1.426 * np.median(np.abs(s - np.median(s))))
+        variances.append(variance)
+
+        var_axis.plot(variance, alpha=0.05, color="black")
+
+    variance = pd.concat(variances)
+    var_axis.plot(variance.groupby(variance.index).median(), color="black")
+
+    for i, (name, color, data) in enumerate([("All bed data","gray",  cmps), ("Temperate bed", "purple", cmps[cmps["temperate_frac"] > 10]), ("Cold bed", "blue", cmps[cmps["temperate_frac"] <= 10]), ("Temperate ice", "red", cmps.drop(columns=["diff"]).rename(columns={"temperate_diff": "diff"}))]):
+        axis = plt.subplot2grid((3, 2), (i % 3, i // 3))
+
+        data = data[data["diff"] != 0.]
+
+        axis.hist(data["diff"], bins=np.linspace(-10, 10, 100), color=color, alpha=0.5)
+        if i < 2:
+            axis.tick_params(labelbottom=False)
+        if i == 1:
+            axis.set_ylabel("Frequency")
+
+        if i == 2:
+            axis.set_xlabel("Cross-track difference (m)")
+
+        plt.text(0.02, 0.97, "abcd"[i], transform=axis.transAxes, va="top", ha="left")
+        plt.text(0.98, 0.97, name, transform=axis.transAxes, va="top", ha="right")
+        plt.text(
+            x=0.02,
+            y=0.5,
+            s="\n".join(
+                [
+                    f"Median: {data["diff"].median():.1f} m",
+                    f"NMAD: {1.426 * np.median(np.abs(data["diff"] - np.median(data["diff"]))): .1f} m",
+                ]
+            ),
+            transform=axis.transAxes,
+            va="center",
+            path_effects=[
+                matplotlib.patheffects.withStroke(
+                    linewidth=4, foreground="white"
+                )
+            ],
+        )
+        
+    plt.text(0.02, 0.99, "e", transform=var_axis.transAxes, va="top", ha="left")
+    var_axis.set_xlabel("Temperate ice fraction (%)")
+    var_axis.set_ylabel("NMAD (m)")
+
+    plt.subplots_adjust(left=0.07, bottom=0.1, right=0.986, top=0.99, wspace=0.136, hspace=0.207)
+    print(variance)
+    plt.savefig("figures/cross_track_difference.jpg", dpi=600)
+    plt.show()
+
+    print(cmps)
+
     
 
 def generate_all_figures(show: bool = True):
