@@ -948,15 +948,17 @@ def overview_map(show: bool = True):
     figsize = (8, 7)
     fig = plt.figure(figsize=figsize)
 
-    new_ax = functools.partial(plt.subplot2grid, shape=(6, 6), fig=fig)
+    # NOTE TO FUTURE SELF: If the shape isn't equal (e.g. (12, 9)), the aspect calculation gets messed up.
+    # Either it always needs to stay equal, or the aspect calculation needs to be fixed.
+    new_ax = functools.partial(plt.subplot2grid, shape=(12,) * 2, fig=fig)
 
-    overview_kwargs = {"rowspan": 4, "colspan": 3}
+    overview_kwargs = {"rowspan": 6, "colspan": 4}
     overview_ax = new_ax(loc=(0, 0), **overview_kwargs)
 
     style = {
         "degree_label": {
             "fontsize": 8,
-            "color": "gray",
+            "color": "#333",
         },
         "degree_line": {
             "linewidth": 0.5,
@@ -977,16 +979,16 @@ def overview_map(show: bool = True):
         },
         "scalebar_line": {
             "linewidth": 1,
-            "color": "gray",
+            "color": "#333",
             "path_effects": [matplotlib.patheffects.withStroke(linewidth=1.5, foreground="white")]
         },
         "scalebar_label": {
             "fontsize": 8,
-            "color": "gray",
+            "color": "#333",
             "path_effects": [matplotlib.patheffects.withStroke(linewidth=0.7, foreground="white")]
         },
         "glacier_label": {
-            "textsize": 8,  # Fontsize
+            "textsize": 10,  # Fontsize
             "color": "black",
             "path_effects": [matplotlib.patheffects.withStroke(linewidth=1, foreground="white")]
         },
@@ -998,6 +1000,7 @@ def overview_map(show: bool = True):
         "radar_lines": {
             "color": "red",
             "linewidth": 1,
+            "path_effects": [matplotlib.patheffects.withStroke(linewidth=1, foreground="black")]
         },
     }
 
@@ -1029,6 +1032,9 @@ def overview_map(show: bool = True):
             arr = np.clip(raster.read(1, masked=True, window=window, boundless=True).filled(181) / 181, min=0, max=1)
             transform = rasterio.windows.transform(window=window,transform=raster.transform)
 
+            lighten_scale = 0.5
+            arr = (arr * lighten_scale) + (1 - lighten_scale) 
+
             land_mask = rasterio.features.rasterize(outlines.geometry, out_shape=arr.shape, transform=transform) == 1
 
             arr[~land_mask] = 1
@@ -1038,12 +1044,12 @@ def overview_map(show: bool = True):
 
             glacier_mask = rasterio.features.rasterize(glacier_outlines.query("~used").geometry, out_shape=arr.shape[:2], transform=transform) == 1
 
-            arr[glacier_mask, 0] *= 153 / 255
-            arr[glacier_mask, 1] *= 204 / 255
+            arr[glacier_mask, 0] *= 173 / 255
+            arr[glacier_mask, 1] *= 235 / 255
 
             chosen_glacier_mask = rasterio.features.rasterize(glacier_outlines.query("used").geometry, out_shape=arr.shape[:2], transform=transform) == 1
-            arr[chosen_glacier_mask, 1] *= 172 / 255
-            arr[chosen_glacier_mask, 2] *= 102 / 255
+            arr[chosen_glacier_mask, 1] *= 204 / 255
+            arr[chosen_glacier_mask, 2] *= 153 / 255
 
             axis.imshow(arr, extent=[*xlim, *ylim])
             outlines_dissolved.plot(color="none", edgecolor="black", linewidth=0.05 if overview_level == 2 else 0.2, ax=axis)
@@ -1081,35 +1087,35 @@ def overview_map(show: bool = True):
 
     zooms = [
         { # Southern Spitsbergen
-            "letter": "c",
-            "loc": (4, 0),
+            "letter": "b",
+            "loc": (6, 0),
             "xlim": (491000, 547000),
             "ymid": 8.611e6,
-            "colspan": 3,
-            "rowspan": 2,
+            "colspan": 4,
+            "rowspan": 3,
         },
         { # Nordaustlandet
-            "letter": "d",
-            "loc": (4, 3),
-            "xlim": (610000, 665000),
-            "ymid": 8.874e6,
-            "colspan": 3,
-            "rowspan": 2,
+            "letter": "c",
+            "loc": (9, 0),
+            "xlim": (617000, 662000),
+            "ymid": 8.872e6,
+            "colspan": 4,
+            "rowspan": 3,
         },
         { # Central Spitsbergen
-            "letter": "b",
-            "loc": (0, 3),
-            "xlim": (517000, 584000),
+            "letter": "d",
+            "loc": (0, 4),
+            "xlim": (519000, 578000),
             "ymid": 8.671e6,
-            "rowspan": 4,
-            "colspan": 3,
+            "rowspan": 12,
+            "colspan": 8,
         }
     ]
 
     for zoom in zooms:
         axis: plt.Axes = new_ax(loc=zoom["loc"], rowspan=zoom.get("rowspan", 1), colspan=zoom.get("colspan", 1))
 
-        aspect = figsize[1] / figsize[0] * zoom.get("rowspan", 1) / zoom.get("colspan", 1)
+        aspect = (figsize[1] / figsize[0]) * (zoom.get("rowspan", 1) / zoom.get("colspan", 1))
 
         xlim = zoom["xlim"]
         xrange = np.diff(xlim).item()
