@@ -32,7 +32,8 @@ def read_interpretation_xy(filepath: Path, x_vals: np.ndarray | None = None) -> 
 
     Returns
     -------
-    pd.Series with name 'y' and MultiIndex ['radar_key', 'user', 'kind', 'x'] where
+    pd.DataFrame with the fields 'y' and 'i' and MultiIndex ['radar_key', 'user', 'kind', 'x'] where
+    The field 'y' represents the y pixel, and i represents the line index.
     'x' is dtype uint16 and 'y' is dtype uint16.
     """
     # ---- load JSON ----
@@ -147,6 +148,7 @@ def read_interpretation_xy(filepath: Path, x_vals: np.ndarray | None = None) -> 
 
     # ---- concatenate once ----
     y_all = np.concatenate(y_chunks)  # uint16
+    i_all = np.concatenate([[np.uint16(i)] * len(vals) for i, vals in enumerate(y_chunks)])
     x_all = np.concatenate(x_chunks)  # uint16
     kind_all = np.concatenate(kind_chunks)  # object
     n_total = y_all.size
@@ -161,10 +163,71 @@ def read_interpretation_xy(filepath: Path, x_vals: np.ndarray | None = None) -> 
         names=["radar_key", "user", "kind", "x"],
     )
 
-    return pd.Series(y_all, index=mi, name="y")
+    return pd.DataFrame({"y": y_all, "i": i_all}, index=mi)
 
 
-def read_all_interpretations(step_m: float = 5., overwrite_cache: bool = False):
+def read_interpretations(radar_key: str, step_m: float):
+    interp_paths = paths.get_latest_submissions(radar_key)
+
+    with xr.open_dataset(paths.processed_radar_path(radar_key)) as dataset, warnings.catch_warnings():
+
+
+        depth_model = scipy.interpolate.interp1d(
+            np.arange(dataset["data"].shape[0])[::-1],
+            dataset["depth"].values,
+            bounds_error=False,
+        )
+
+        diffs = np.r_[[0], np.diff(dataset["distance"].values)]
+        dataset["distance"] = np.cumsum(np.where(diffs < 100, diffs, step_m))
+
+        models = {
+            key: scipy.interpolate.interp1d(
+                dataset["x"].values,
+                dataset[key].values,
+                bounds_error=False,
+            )
+            for key in ["easting", "northing", "distance", "elevation"]
+        }
+
+        warnings.filterwarnings("ignore", message="invalid value encountered")
+        warnings.filterwarnings("ignore", message="divide by zero")
+        distance_model = scipy.interpolate.interp1d(dataset["distance"].values, dataset["x"].values, bounds_error=False)
+        distance_bins = np.arange(dataset["distance"].min(), dataset["distance"].max(), step_m)
+        x_inds = np.unique(np.round(distance_model(distance_bins)).astype(np.uint16))
+
+        # The part_idx represents potential jumps in location. So each idx should be treated as a separate radargram.
+        models["part_idx"] = scipy.interpolate.interp1d(
+            dataset["x"].values,
+            np.cumsum(diffs > 100),
+            bounds_error=False,
+            kind="nearest",
+        )
+        antenna = dataset.attrs["antenna"].split("MHz")[0] + "MHz"
+        crs = dataset.attrs["crs"]
+
+    data = pd.concat([read_interpretation_xy(fp, x_vals=x_inds) for fp in interp_paths]).rename(columns={"i": "line_i"})
+
+    data["depth"] = depth_model(data["y"].astype(float))
+    for key in models:
+        data[key] = models[key](data.index.get_level_values("x").astype(float))
+
+    data = data.sort_values("distance").reset_index(level='x', drop=False).set_index('distance', append=True).dropna(subset=["depth", "easting"])
+    data = data[~data.index.duplicated(keep='first')]
+
+    if crs != "EPSG:32633":
+        points = gpd.points_from_xy(data["easting"], data["northing"], crs=crs).to_crs(
+            32633
+        )
+        data["easting"] = points.x
+        data["northing"] = points.y
+
+    data["antenna"] = antenna
+    return data
+    
+
+
+def merge_all_interpretations(step_m: float = 5., overwrite_cache: bool = False):
     out_path = CACHE_PATH / "interp_all.feather"
 
     if out_path.is_file() and not overwrite_cache:
@@ -178,75 +241,8 @@ def read_all_interpretations(step_m: float = 5., overwrite_cache: bool = False):
 
     all_data_list = []
     for radar_key in radar_keys:
-        # if radar_key != testkey:
-        #     continue
-        # warnings.warn("Debug: filtering by key")
-        interp_paths = paths.get_latest_submissions(radar_key)
-
-        with xr.open_dataset(paths.processed_radar_path(radar_key)) as dataset, warnings.catch_warnings():
-
-
-            depth_model = scipy.interpolate.interp1d(
-                np.arange(dataset["data"].shape[0])[::-1],
-                dataset["depth"].values,
-                bounds_error=False,
-            )
-
-            diffs = np.r_[[0], np.diff(dataset["distance"].values)]
-            dataset["distance"] = np.cumsum(np.where(diffs < 100, diffs, step_m))
-
-            models = {
-                key: scipy.interpolate.interp1d(
-                    dataset["x"].values,
-                    dataset[key].values,
-                    bounds_error=False,
-                )
-                for key in ["easting", "northing", "distance", "elevation"]
-            }
-
-            warnings.filterwarnings("ignore", message="invalid value encountered")
-            warnings.filterwarnings("ignore", message="divide by zero")
-            distance_model = scipy.interpolate.interp1d(dataset["distance"].values, dataset["x"].values, bounds_error=False)
-            distance_bins = np.arange(dataset["distance"].min(), dataset["distance"].max(), step_m)
-            x_inds = np.unique(np.round(distance_model(distance_bins)).astype(np.uint16))
-
-            # The part_idx represents potential jumps in location. So each idx should be treated as a separate radargram.
-            models["part_idx"] = scipy.interpolate.interp1d(
-                dataset["x"].values,
-                np.cumsum(diffs > 100),
-                bounds_error=False,
-                kind="nearest",
-            )
-            antenna = dataset.attrs["antenna"].split("MHz")[0] + "MHz"
-            crs = dataset.attrs["crs"]
-
-        data = pd.concat([read_interpretation_xy(fp, x_vals=x_inds) for fp in interp_paths]).to_frame()
-
-        data["depth"] = depth_model(data["y"].astype(float))
-        for key in models:
-            data[key] = models[key](data.index.get_level_values("x").astype(float))
-
-        data = data.sort_values("distance").reset_index(level='x', drop=False).set_index('distance', append=True).drop(columns=["y"]).dropna(subset=["depth", "easting"])
-        data = data[~data.index.duplicated(keep='first')]
-
-        if crs != "EPSG:32633":
-            points = gpd.points_from_xy(data["easting"], data["northing"], crs=crs).to_crs(
-                32633
-            )
-            data["easting"] = points.x
-            data["northing"] = points.y
-
-        data["antenna"] = antenna
-        all_data_list.append(data)
-        # Ugly and slow way of standardizing the distance index to the exact step size
-        # good_distances = np.arange(0, data.index.get_level_values("distance").max() + step_m, step_m)
-        # for idxs, part in data.groupby(["radar_key", "user", "kind"]):
-        #     part = part.reset_index().set_index("distance").drop(columns=part.index.names[:-1])
-        #     resampled = part.reindex(np.unique(np.r_[good_distances, part.index.values])).interpolate().loc[good_distances].dropna(how="all")
-        #     resampled.index = pd.MultiIndex.from_arrays([*[[str(idx)] * resampled.shape[0] for idx in idxs], resampled.index], names=data.index.names)
-        #     all_data_list.append(resampled)
-
-    data = pd.concat(all_data_list)
+        all_data_list.append(read_interpretations(radar_key=radar_key, step_m=step_m))
+    data = pd.concat(all_data_list).drop(columns=["line_i", "y"])
 
     bed_data_list = []
     for key in ["bed_cold", "bed_unspecified"]:
@@ -331,7 +327,7 @@ def grid_interpretations(
             out["bounds"] = bounds
         return out
 
-    data = read_all_interpretations()
+    data = merge_all_interpretations()
     data = data[data.intersects(outline, align=False)]
 
     for col in cols:

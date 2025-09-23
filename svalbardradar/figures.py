@@ -19,16 +19,32 @@ from svalbardradar import interpretations
 import svalbardradar.tools.statistics as statistics
 from svalbardradar.tools import paths, statistics, misc
 
-
 CACHE_PATH = paths.BASE_CACHE_PATH / "figures"
-
+DIGITIZE_CLASS_PROPS = {
+    "bed_cold": {
+      "name": "Glacier bed (no temperate ice)",
+      "color": "#002EBD",
+    },
+    "temperate": {
+      "name": "Temperate ice",
+      "color": "red",
+    },
+    "bed_unspecified": {
+      "name": "Glacier bed",
+      "color": "#CE00FF",
+    },
+    "bed_missing": {
+      "name": "Glacier bed not visible",
+      "color": "#62F700",
+    },
+  }
 def plot_dronbreen_examples(show: bool = True):
     import svalbardradar.interpretations
     import svalbardradar.tools.rasters
 
     # data = gpd.read_feather(Path("cache/interpretations/interp_all.feather"))
 
-    dronbreen_outline = gpd.read_file("temp/dronbreen_outline_20240828.geojson")
+    dronbreen_outline = gpd.read_file("shapes/dronbreen_outline_20240828.geojson")
 
     data = svalbardradar.interpretations.merge_all_interpretations()
     data = data[data.intersects(dronbreen_outline.geometry[0])]
@@ -146,7 +162,7 @@ def plot_dronbreen_examples(show: bool = True):
                 ),
                 cmap="Greys_r",
                 aspect="auto",
-                vmin=0.2,
+                vmin=0.4,
                 vmax=2,
                 interpolation="lanczos",
             )
@@ -218,7 +234,7 @@ def plot_user_spread(show: bool = True):
         "filantropbreen-20240406-DAT_0372_A1_1",
     ]
 
-    all_data =svalbardradar.interpretations.read_all_interpretations()
+    all_data =svalbardradar.interpretations.merge_all_interpretations()
 
     all_data["glacier"] = all_data["radar_key"].str.split("-", expand=True).iloc[:, 0]
     all_data["part_idx"] = all_data["part_idx"].astype(int)
@@ -323,14 +339,11 @@ def plot_user_spread(show: bool = True):
                 )
 
                 labeled = set()
-                for interp_path in interp_paths:
-
-                    interp =svalbardradar.interpretations.read_interpretation_lines(interp_path)
-                    for _, line in interp.iterrows():
-                        y_coords = depth_model(line.geometry.xy[1])
-
-                        axes[1].plot(line.geometry.xy[0], y_coords, color=line["color"], linestyle=":", label=line["kind"] if line["kind"] not in labeled else None)
-                        labeled.add(line["kind"])
+                all_points = interpretations.read_interpretations(radar_key=radar_key, step_m=5.).reset_index()
+                for _, points in all_points.groupby(["user", "line_i"]):
+                    kind = points["kind"].iloc[0].replace("temperate_ice", "temperate")
+                    axes[1].plot(points["x"], points["depth"], color=DIGITIZE_CLASS_PROPS[kind]["color"], alpha=0.3, label=DIGITIZE_CLASS_PROPS[kind]["name"] if kind not in labeled else None)
+                    labeled.add(kind)
 
                 axes[2].fill_between(
                     data["x"],
@@ -556,7 +569,7 @@ def plot_centerline_profiles(show: bool = True):
         plt.show()
 
 
-def plot_model_comparison(show: bool = True):
+def plot_model_comparison(show: bool = True, histogram: bool = False):
     import svalbardradar.comparisons
 
     data = svalbardradar.comparisons.sample_models()
@@ -587,13 +600,19 @@ def plot_model_comparison(show: bool = True):
         row = int((i - col) / 2)
         axis: plt.Axes = axes[row, col]
 
-        hist2 = np.histogram2d(
-            data[f"{model}_thickness"], data["thickness"], bins=thickness_bins
-        )[0][::-1, :]
-        hist2 = np.ma.masked_array(hist2, mask=hist2 == 0)
 
         axis.set_title(ref_names[model])
-        axis.imshow(hist2, extent=(0.0, thickness_bins[-1], 0.0, thickness_bins[-1]))
+
+        if histogram:
+            hist2 = np.histogram2d(
+                data[f"{model}_thickness"], data["thickness"], bins=thickness_bins
+            )[0][::-1, :]
+            hist2 = np.ma.masked_array(hist2, mask=hist2 == 0)
+            axis.imshow(hist2, extent=(0.0, thickness_bins[-1], 0.0, thickness_bins[-1]))
+        else:
+            axis.scatter(data["thickness"], data[f"{model}_thickness"], color="black", edgecolor="none", s=2, alpha=0.025)
+            plt.xlim(0, thickness_bins.max())
+            plt.ylim(0, thickness_bins.max())
 
         xlim = axis.get_ylim()
         axis.plot([xlim[0], xlim[1]], [xlim[0], xlim[1]], color="black")
@@ -678,7 +697,9 @@ def plot_glathida_comparison(show: bool = True):
             group["glathida_thickness"],
             # label=label,
             s=9,
+            alpha=0.3,
             color="black",
+            edgecolor="none",
         )
         axis.plot([0, max_thickness], [0, max_thickness], color="black")
 
@@ -697,97 +718,6 @@ def plot_glathida_comparison(show: bool = True):
     if show:
         plt.show()
 
-
-def overview_map(show: bool = True):
-    import scipy.interpolate
-    import shapely.geometry
-
-    interp = interpretations.merge_all_interpretations()
-
-    tracks = []
-    for radar_key, data in interp.groupby("radar_key"):
-
-        easting_model = scipy.interpolate.interp1d(data["distance"], data["easting"])
-        northing_model = scipy.interpolate.interp1d(data["distance"], data["northing"])
-
-        d_eval = np.r_[np.arange(0, data["distance"].max(), 5), [data["distance"].max()]]
-
-        geometry = shapely.geometry.LineString(np.transpose([
-            easting_model(d_eval),
-            northing_model(d_eval),
-        ]))
-
-        tracks.append(
-            {
-                "radar_key": radar_key,
-                "geometry": geometry,
-            } | {k: data.iloc[0][k] for k in ["antenna", "date_str"]}
-        )
-
-
-    tracks = pd.DataFrame.from_records(tracks)
-    tracks = gpd.GeoDataFrame(tracks, crs=32633)
-
-    insets = {
-        "svalbard": [491000, 665000, 8585000, 8893000],
-        "nordaustlandet": [630000, 660000, 8855000, 8890000],
-        "heerland": [535000, 565000, 8625000, 8655000],
-        "central_norden": [518000, 545500, 8650000, 8680000],
-    }
-
-
-    fig = plt.figure(figsize=(8, 5))
-    axes = fig.subplots(2, 3)
-    # aspect = 1.
-
-    for i, key in enumerate(insets, start=0):
-
-        col = i % axes.shape[1]
-        row = int((i - col) / axes.shape[1])
-        axis: plt.Axes = axes[row, col]
-
-        extent = insets[key] or list(tracks.buffer(5000).total_bounds[[0, 2, 1, 3]])
-
-        subset = tracks[
-            (tracks.centroid.x > extent[0]) &
-            (tracks.centroid.x < extent[1]) &
-            (tracks.centroid.y > extent[2]) &
-            (tracks.centroid.y < extent[3])
-        ]
-
-        if i == 0:
-            for j, key2 in enumerate(insets):
-                if j == 0:
-                    continue
-                extent2 = insets[key2]
-                axis.add_patch(
-                    plt.Rectangle(
-                        (extent2[0], extent2[2]),
-                        width=extent2[1] - extent2[0],
-                        height=extent2[3] - extent2[2],
-                    )
-                )
-
-        for _, track in subset.iterrows():
-            axis.plot(*track.geometry.xy, color="black")
-
-
-        # width_m = extent[1] - extent[0]
-        axis.set_xlim(extent[0], extent[1])
-        axis.set_ylim(extent[2], extent[3])
-        axis.set_aspect("equal")
-
-       
-    plt.show()
-
-    return
-    for _, track in tracks.iterrows():
-        plt.plot(*track.geometry.xy, color="black")
-
-    plt.show()
-
-    print(tracks)
-        
 
 def plot_model_temperate_cold_performance(show: bool = True):
     import svalbardradar.comparisons
@@ -1205,6 +1135,253 @@ def overview_map(show: bool = True):
         plt.show()
     else:
         plt.close()
+
+
+def plot_interpretation_merging(show: bool = False):
+
+    all_merged = interpretations.merge_all_interpretations()
+
+    cases = [
+        {
+            "radar_key": "ragna_mariebreen-20240412-DAT_0404_A1_1",
+            "xlim": [2000, 6500],
+            "ylim": [230, -10],
+        },
+        {
+            "radar_key": "bergmesterbreen-20230222-DAT_0033_A1_3",
+            "xlim": [3000, 5500],
+            "ylim": [150, -10],
+        },
+        {
+            "radar_key": "dronbreen-20200224-DAT_0003_A1_2",
+            "xlim": [1100, 4400],
+            "ylim": [170, 80],
+        },
+        {
+            "radar_key": "filantropbreen-20240406-DAT_0372_A1_1",
+            "xlim": [1300, 2800],
+            "ylim": [140, 30],
+        }
+    ]
+
+    fig = plt.figure(figsize=(8, 6.5))
+    outer_grid = fig.add_gridspec(
+        nrows=2, ncols=2,
+        left=0.08, right=0.98, bottom=0.07, top=0.99,
+        wspace=0.12, hspace=0.09
+    )
+
+
+    for i, case in enumerate(cases):
+        inner_grid = outer_grid[i % 2, i // 2].subgridspec(3, 1, hspace=0.01)
+        
+        ax_bot = fig.add_subplot(inner_grid[2])
+        ax_mid = fig.add_subplot(inner_grid[1], sharex=ax_bot)
+        ax_top = fig.add_subplot(inner_grid[0], sharex=ax_bot)
+
+        merged = all_merged.query(f"radar_key == '{case['radar_key']}'").sort_values("distance")
+
+        all_points = interpretations.read_interpretations(radar_key=case["radar_key"], step_m=5.).reset_index()
+
+        line_list = []
+        with xr.open_dataset(paths.processed_radar_path(case["radar_key"])) as dataset:
+            dataset.coords["trace_n"] = "x", np.arange(dataset.x.shape[0])
+            dataset = dataset.swap_dims(x="trace_n", y="depth")#.sel(
+            # I'm avoiding a strange bug here where if I clip the data exactly to xlim, it cuts too much!
+            # By trial and error, I found that adding an extra 300/1000 traces "solves" it.
+            dataset = dataset.sel(trace_n=slice(max(case["xlim"][0] - 300, 0), case["xlim"][1] + 1000), depth=slice(*case["ylim"][::-1]))
+            dataset["data"] = np.abs(dataset.data)
+
+            lower, upper = np.percentile(dataset.data, [2, 98])
+            dataset.data.values = (dataset.data.values - lower) / (upper - lower)
+
+            ax_top.imshow(
+                dataset.data,
+                # extent=[*case["xlim"], *case["ylim"]],
+                extent=(
+                    dataset["trace_n"].min().item(),
+                    dataset["trace_n"].max().item(),
+                    dataset["depth"].max(),
+                    dataset["depth"].min(),
+                ),
+                cmap="Greys_r",
+                aspect="auto",
+                vmin=-0.1,
+                vmax=1.7,
+                interpolation="lanczos",
+            )
+        for _, points in all_points.groupby(["user", "line_i"]):
+            ax_mid.plot(points["x"], points["depth"], color=DIGITIZE_CLASS_PROPS[points.iloc[0]["kind"].replace("temperate_ice", "temperate")]["color"], alpha=0.3)
+
+        ax_bot.fill_between(
+            merged["x"],
+            merged["thickness"] - merged["temperate_lower"],
+            merged["thickness"] - merged["temperate_upper"],
+            color="red",
+            alpha=0.5,
+        )
+        ax_bot.plot(
+            merged["x"],
+            merged["thickness"] - merged["temperate"],
+            color="red",
+        )
+        ax_bot.fill_between(
+            merged["x"],
+            merged["thickness_lower"],
+            merged["thickness_upper"],
+            color="blue",
+            alpha=0.5,
+        )
+        ax_bot.plot(
+            merged["x"],
+            merged["thickness"],
+            color="blue",
+        )
+        for j, axis in enumerate([ax_top, ax_mid, ax_bot]):
+            axis.set_xlim(case["xlim"])
+            axis.set_ylim(case["ylim"])
+
+            if j < 2:
+                axis.tick_params(labelbottom=False)
+
+            plt.text(0.01, 0.98, "abcdefghijklm"[i * 3 + j], ha="left", va="top", transform=axis.transAxes, path_effects=[
+                            matplotlib.patheffects.withStroke(
+                                linewidth=1, foreground="white"
+                            )
+                        ])
+
+        if i in [0, 1]:
+            ax_mid.set_ylabel("Depth (m)")
+        if i in [1, 3]:
+            ax_bot.set_xlabel("Trace number")
+            
+    plt.savefig("figures/interpretation_merging_examples.jpg", dpi=600)
+    if show:
+        plt.show()
+    else:
+        plt.close()
+
+    
+
+def plot_cross_track_difference(show: bool = False):
+    import itertools
+
+    all_data = interpretations.merge_all_interpretations()
+    tree = scipy.spatial.KDTree(
+        np.transpose([all_data.geometry.x, all_data.geometry.y])
+    )
+
+    distances, indices = tree.query(all_data[["easting", "northing"]])
+
+    radar_keys = pd.Series(all_data["radar_key"].unique(), name="radar_key").to_frame()
+    radar_keys[["glacier", "date_str"]] = radar_keys["radar_key"].str.split("-", expand=True).iloc[:, :2]
+    radar_keys["year"] = radar_keys["date_str"].str.slice(0, 4)
+
+    pairs = []
+    for glacier, glacier_keys in radar_keys.groupby("glacier"):
+
+        for year, in_year in glacier_keys.groupby("year"):
+            
+            pairs += list(itertools.combinations_with_replacement(in_year["radar_key"].values, 2))
+
+
+    out_list = []
+    for first_key, second_key in pairs:
+        if first_key == second_key:
+            continue
+
+        first = all_data[all_data["radar_key"] == first_key]
+        second = all_data[all_data["radar_key"] == second_key]
+
+        tree = scipy.spatial.KDTree(
+            np.transpose([first.geometry.x, first.geometry.y])
+        )
+
+        distances, indices = tree.query(np.transpose([second.geometry.x, second.geometry.y]))
+
+        distance_mask = distances < 10
+
+        if np.count_nonzero(distance_mask) == 0:
+            continue
+
+        second = second[distance_mask]
+        second["other_thickness"] = first["thickness"].values[indices[distance_mask]]
+        second["other_temperate"] = first["temperate"].values[indices[distance_mask]]
+
+        out_list.append(second[["thickness", "other_thickness", "temperate_frac", "temperate", "other_temperate"]])
+
+    cmps = pd.concat(out_list)
+    cmps["temperate_frac"] *= 100
+
+    cmps["diff"] = cmps["thickness"] - cmps["other_thickness"]
+    cmps["temperate_diff"] = cmps["temperate"] - cmps["other_temperate"]
+
+    temperate_bins = np.linspace(-0.01, 101, 11)
+    bin_centers = (temperate_bins[1:] - np.diff(temperate_bins) / 2)
+    cmps["temperate_bin"] = bin_centers[np.digitize(cmps["temperate_frac"], bins=temperate_bins) - 1]
+
+    variances = []
+
+    plt.figure(figsize=(8, 5))
+    var_axis = plt.subplot2grid((3, 2),(1, 1), rowspan=2)
+    for i in range(100):
+
+        # binned = cmps.groupby("temperate_bin")["diff"].quantile([0.25, 0.5, 0.75])
+        variance = cmps.sample(frac=0.2, random_state=i).groupby("temperate_bin")["diff"].apply(lambda s: 1.426 * np.median(np.abs(s - np.median(s))))
+        variances.append(variance)
+
+        var_axis.plot(variance, alpha=0.05, color="black")
+
+    variance = pd.concat(variances)
+    var_axis.plot(variance.groupby(variance.index).median(), color="black")
+
+    for i, (name, color, data) in enumerate([("All bed data","gray",  cmps), ("Temperate bed", "purple", cmps[cmps["temperate_frac"] > 10]), ("Cold bed", "blue", cmps[cmps["temperate_frac"] <= 10]), ("Temperate ice", "red", cmps.drop(columns=["diff"]).rename(columns={"temperate_diff": "diff"}))]):
+        axis = plt.subplot2grid((3, 2), (i % 3, i // 3))
+
+        data = data[data["diff"] != 0.]
+
+        axis.hist(data["diff"], bins=np.linspace(-10, 10, 100), color=color, alpha=0.5)
+        if i < 2:
+            axis.tick_params(labelbottom=False)
+        if i == 1:
+            axis.set_ylabel("Frequency")
+
+        if i == 2:
+            axis.set_xlabel("Cross-track difference (m)")
+
+        plt.text(0.02, 0.97, "abcd"[i], transform=axis.transAxes, va="top", ha="left")
+        plt.text(0.98, 0.97, name, transform=axis.transAxes, va="top", ha="right")
+        plt.text(
+            x=0.02,
+            y=0.5,
+            s="\n".join(
+                [
+                    f"Median: {data["diff"].median():.1f} m",
+                    f"NMAD: {1.426 * np.median(np.abs(data["diff"] - np.median(data["diff"]))): .1f} m",
+                ]
+            ),
+            transform=axis.transAxes,
+            va="center",
+            path_effects=[
+                matplotlib.patheffects.withStroke(
+                    linewidth=4, foreground="white"
+                )
+            ],
+        )
+        
+    plt.text(0.02, 0.99, "e", transform=var_axis.transAxes, va="top", ha="left")
+    var_axis.set_xlabel("Temperate ice fraction (%)")
+    var_axis.set_ylabel("NMAD (m)")
+
+    plt.subplots_adjust(left=0.07, bottom=0.1, right=0.986, top=0.99, wspace=0.136, hspace=0.207)
+    plt.savefig("figures/cross_track_difference.jpg", dpi=600)
+
+    if show:
+        plt.show()
+    else:
+        plt.close()
+
+
     
 
 def generate_all_figures(show: bool = True):
@@ -1212,6 +1389,8 @@ def generate_all_figures(show: bool = True):
     plot_centerline_profiles(show=show)
     plot_model_comparison(show=show)
     plot_glathida_comparison(show=show)
+    plot_interpretation_merging(show=show)
+    plot_cross_track_difference(show=show)
 
 
 if __name__ == "__main__":

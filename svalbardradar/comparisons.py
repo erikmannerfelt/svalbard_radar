@@ -175,16 +175,16 @@ def sample_glathida() -> pd.DataFrame:
     return data
 
 
-def sample_models():
+def sample_models(overwrite_cache: bool = False):
     import svalbardradar.interpretations
 
-    out_path = CACHE_PATH / "interp_thickness_sampled.gpkg"
+    out_path = CACHE_PATH / "interp_thickness_sampled.feather"
 
-    if out_path.is_file():
-        return gpd.read_file(out_path)
+    if out_path.is_file() and not overwrite_cache:
+        return gpd.read_feather(out_path)
 
     # data = gpd.read_file(Path("cache/interpretations/quick_interp_all.gpkg"))
-    data = svalbardradar.interpretations.read_all_interpretations()
+    data = svalbardradar.interpretations.merge_all_interpretations()
     # data = data[data["kind"].str.contains("bed_") & (data["kind"] != "bed_missing")]
 
     model_paths = {
@@ -204,5 +204,5 @@ def sample_models():
 
     data = data.dropna(subset=[f"{key}_thickness" for key in model_paths], how="all")
 
-    data.to_file(out_path)
-    return gpd.read_file(out_path)
+    data.to_feather(out_path)
+    return gpd.read_feather(out_path)
