@@ -569,7 +569,7 @@ def plot_centerline_profiles(show: bool = True):
         plt.show()
 
 
-def plot_model_comparison(show: bool = True, histogram: bool = False):
+def plot_model_comparison(show: bool = True, histogram: bool = True):
     import svalbardradar.comparisons
 
     data = svalbardradar.comparisons.sample_models()
@@ -1142,9 +1142,9 @@ def plot_interpretation_merging(show: bool = False):
             "ylim": [230, -10],
         },
         {
-            "radar_key": "bergmesterbreen-20230222-DAT_0033_A1_3",
-            "xlim": [3000, 5500],
-            "ylim": [150, -10],
+            "radar_key": "amenfonna-20240510-DAT_0044_A1_1",
+            "xlim": [250, 750],
+            "ylim": [120, 25],
         },
         {
             "radar_key": "dronbreen-20200224-DAT_0003_A1_2",
@@ -1177,17 +1177,17 @@ def plot_interpretation_merging(show: bool = False):
 
         all_points = interpretations.read_interpretations(radar_key=case["radar_key"], step_m=5.).reset_index()
 
-        line_list = []
         with xr.open_dataset(paths.processed_radar_path(case["radar_key"])) as dataset:
             dataset.coords["trace_n"] = "x", np.arange(dataset.x.shape[0])
             dataset = dataset.swap_dims(x="trace_n", y="depth")#.sel(
+            dataset["data"] = np.abs(dataset.data)
+
+            lower, upper = np.percentile(dataset.data[:50], [1, 97])
+            dataset.data.values = (dataset.data.values - lower) / (upper - lower)
             # I'm avoiding a strange bug here where if I clip the data exactly to xlim, it cuts too much!
             # By trial and error, I found that adding an extra 300/1000 traces "solves" it.
             dataset = dataset.sel(trace_n=slice(max(case["xlim"][0] - 300, 0), case["xlim"][1] + 1000), depth=slice(*case["ylim"][::-1]))
-            dataset["data"] = np.abs(dataset.data)
 
-            lower, upper = np.percentile(dataset.data, [2, 98])
-            dataset.data.values = (dataset.data.values - lower) / (upper - lower)
 
             ax_top.imshow(
                 dataset.data,
@@ -1200,8 +1200,8 @@ def plot_interpretation_merging(show: bool = False):
                 ),
                 cmap="Greys_r",
                 aspect="auto",
-                vmin=-0.1,
-                vmax=1.7,
+                vmin=-0.25,
+                vmax=1,
                 interpolation="lanczos",
             )
         for _, points in all_points.groupby(["user", "line_i"]):
@@ -1223,13 +1223,13 @@ def plot_interpretation_merging(show: bool = False):
             merged["x"],
             merged["thickness_lower"],
             merged["thickness_upper"],
-            color="blue",
+            color="#555",
             alpha=0.5,
         )
         ax_bot.plot(
             merged["x"],
             merged["thickness"],
-            color="blue",
+            color="#555",
         )
         for j, axis in enumerate([ax_top, ax_mid, ax_bot]):
             axis.set_xlim(case["xlim"])
