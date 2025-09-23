@@ -1147,21 +1147,25 @@ def plot_interpretation_merging(show: bool = False):
             "radar_key": "ragna_mariebreen-20240412-DAT_0404_A1_1",
             "xlim": [2000, 6500],
             "ylim": [230, -10],
+            "vlim": [0.9, 4.], 
         },
         {
             "radar_key": "amenfonna-20240510-DAT_0044_A1_1",
             "xlim": [250, 750],
             "ylim": [120, 25],
+            "vlim": [0.7, 3.3],
         },
         {
             "radar_key": "dronbreen-20200224-DAT_0003_A1_2",
             "xlim": [1100, 4400],
             "ylim": [170, 80],
+            "vlim": [0.5, 3.],
         },
         {
             "radar_key": "filantropbreen-20240406-DAT_0372_A1_1",
             "xlim": [1300, 2800],
             "ylim": [140, 30],
+            "vlim": [0.5, 2.8],
         }
     ]
 
@@ -1187,14 +1191,11 @@ def plot_interpretation_merging(show: bool = False):
         with xr.open_dataset(paths.processed_radar_path(case["radar_key"])) as dataset:
             dataset.coords["trace_n"] = "x", np.arange(dataset.x.shape[0])
             dataset = dataset.swap_dims(x="trace_n", y="depth")#.sel(
-            dataset["data"] = np.abs(dataset.data)
 
-            lower, upper = np.percentile(dataset.data[:50], [1, 97])
-            dataset.data.values = (dataset.data.values - lower) / (upper - lower)
             # I'm avoiding a strange bug here where if I clip the data exactly to xlim, it cuts too much!
             # By trial and error, I found that adding an extra 300/1000 traces "solves" it.
             dataset = dataset.sel(trace_n=slice(max(case["xlim"][0] - 300, 0), case["xlim"][1] + 1000), depth=slice(*case["ylim"][::-1]))
-
+            dataset["data"] = np.abs(dataset.data)
 
             ax_top.imshow(
                 dataset.data,
@@ -1207,8 +1208,8 @@ def plot_interpretation_merging(show: bool = False):
                 ),
                 cmap="Greys_r",
                 aspect="auto",
-                vmin=-0.25,
-                vmax=1,
+                vmin=case["vlim"][0],
+                vmax=case["vlim"][1],
                 interpolation="lanczos",
             )
         for _, points in all_points.groupby(["user", "line_i"]):
