@@ -974,8 +974,9 @@ def overview_map(show: bool = True):
 
             glacier_mask = rasterio.features.rasterize(glacier_outlines.query("~used").geometry, out_shape=arr.shape[:2], transform=transform) == 1
 
-            arr[glacier_mask, 0] *= 173 / 255
-            arr[glacier_mask, 1] *= 235 / 255
+            arr[glacier_mask, 0] *= 166 / 255
+            arr[glacier_mask, 1] *= 225 / 255
+            arr[glacier_mask, 2] *= 243 / 255
 
             chosen_glacier_mask = rasterio.features.rasterize(glacier_outlines.query("used").geometry, out_shape=arr.shape[:2], transform=transform) == 1
             arr[chosen_glacier_mask, 1] *= 204 / 255
