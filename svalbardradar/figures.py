@@ -1147,25 +1147,25 @@ def plot_interpretation_merging(show: bool = False):
             "radar_key": "ragna_mariebreen-20240412-DAT_0404_A1_1",
             "xlim": [2000, 6500],
             "ylim": [230, -10],
-            "vlim": [0.9, 4.], 
+            "vlim": [0.7, 4.], 
         },
         {
             "radar_key": "amenfonna-20240510-DAT_0044_A1_1",
             "xlim": [250, 750],
             "ylim": [120, 25],
-            "vlim": [0.7, 3.3],
+            "vlim": [0.5, 3.3],
         },
         {
             "radar_key": "dronbreen-20200224-DAT_0003_A1_2",
             "xlim": [1100, 4400],
             "ylim": [170, 80],
-            "vlim": [0.5, 3.],
+            "vlim": [0.3, 3.],
         },
         {
             "radar_key": "filantropbreen-20240406-DAT_0372_A1_1",
             "xlim": [1300, 2800],
             "ylim": [140, 30],
-            "vlim": [0.5, 2.8],
+            "vlim": [0.3, 2.8],
         }
     ]
 
@@ -1214,6 +1214,13 @@ def plot_interpretation_merging(show: bool = False):
             )
         for _, points in all_points.groupby(["user", "line_i"]):
             ax_mid.plot(points["x"], points["depth"], color=DIGITIZE_CLASS_PROPS[points.iloc[0]["kind"].replace("temperate_ice", "temperate")]["color"], alpha=0.3)
+
+        ax_mid.text(
+            0.01,
+            0.03,
+            f"n={all_points['user'].unique().shape[0]}",
+            transform=ax_mid.transAxes,
+        )
 
         ax_bot.fill_between(
             merged["x"],
