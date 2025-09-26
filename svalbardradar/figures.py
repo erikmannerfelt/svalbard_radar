@@ -1221,31 +1221,34 @@ def plot_interpretation_merging(show: bool = False):
             f"n={all_points['user'].unique().shape[0]}",
             transform=ax_mid.transAxes,
         )
-
-        ax_bot.fill_between(
-            merged["x"],
-            merged["thickness"] - merged["temperate_lower"],
-            merged["thickness"] - merged["temperate_upper"],
-            color="red",
-            alpha=0.5,
-        )
-        ax_bot.plot(
-            merged["x"],
-            merged["thickness"] - merged["temperate"],
-            color="red",
-        )
-        ax_bot.fill_between(
-            merged["x"],
-            merged["thickness_lower"],
-            merged["thickness_upper"],
-            color="#555",
-            alpha=0.5,
-        )
-        ax_bot.plot(
-            merged["x"],
-            merged["thickness"],
-            color="#555",
-        )
+        # Lines where the x coordinate suddenly changes are probably due to missing data. They should
+        # be plotted separately.
+        diffs = (merged["x"].diff().fillna(0) > 50).cumsum()
+        for _, merged_split in merged.groupby(diffs):
+            ax_bot.fill_between(
+                merged_split["x"],
+                merged_split["thickness"] - merged_split["temperate_lower"],
+                merged_split["thickness"] - merged_split["temperate_upper"],
+                color="red",
+                alpha=0.5,
+            )
+            ax_bot.plot(
+                merged_split["x"],
+                merged_split["thickness"] - merged_split["temperate"],
+                color="red",
+            )
+            ax_bot.fill_between(
+                merged_split["x"],
+                merged_split["thickness_lower"],
+                merged_split["thickness_upper"],
+                color="#555",
+                alpha=0.5,
+            )
+            ax_bot.plot(
+                merged_split["x"],
+                merged_split["thickness"],
+                color="#555",
+            )
         for j, axis in enumerate([ax_top, ax_mid, ax_bot]):
             axis.set_xlim(case["xlim"])
             axis.set_ylim(case["ylim"])

@@ -256,7 +256,14 @@ def merge_all_interpretations(step_m: float = 5., overwrite_cache: bool = False)
     # bed_data = data.loc[(slice(None), slice(None), ["bed_cold", "bed_unspecified"])]
     bed_grouped = bed_data.select_dtypes(np.number).groupby(level=["radar_key", "distance"])
 
-    out = bed_grouped.median().rename(columns={"depth": "thickness"})
+    # Identify areas where the majority of people say the bed is missing
+    bed_existing_count = bed_grouped["depth"].count()
+    bed_missing_count = data.loc[(slice(None), slice(None), "bed_missing")]["depth"].groupby(level=[0, 2]).count()
+    missing_, existing_ = bed_missing_count.align(bed_existing_count, join="inner")
+    mask = missing_ > existing_
+    idx_missing = mask[mask].index
+
+    out = bed_grouped.median().rename(columns={"depth": "thickness"}).drop(idx_missing)
 
     out = pd.merge(out, bed_data.select_dtypes(object).groupby(level=["radar_key", "distance"]).first(), right_index=True, left_index=True)
     out["date_str"] = out.index.get_level_values("radar_key").str.extract(r"(202\d{5})").iloc[:, 0].astype(str).values
