@@ -420,10 +420,6 @@ def plot_user_spread(show: bool = True):
 def plot_centerline_profiles(show: bool = True):
     import svalbardradar.interpretations
 
-    better_but_need_gps = [
-        "dronbreen-20230220-DAT_0009_A1_1",
-    ]
-
     radar_keys = [
         "mettebreen-20230305-DAT_0235_A1_8",
         # "filantropbreen-20240406-DAT_0372_A1_1",
@@ -446,11 +442,7 @@ def plot_centerline_profiles(show: bool = True):
 
     meta = {
         "mettebreen-20230305-DAT_0235_A1_8": {
-            "start_distance": 7180,
-        },
-        "dronbreen-20250327-DAT_0065_A1_1": {
-            # "stop_distance": 5650,
-            "start_distance": 200,
+            "stop_distance": 3.35,
         },
     }
 
@@ -463,24 +455,22 @@ def plot_centerline_profiles(show: bool = True):
     fig = plt.figure(figsize=(6, 8))
     axes = fig.subplots(nrows=n_rows, ncols=n_cols)
 
+    all_data = svalbardradar.interpretations.merge_all_interpretations()
+
     for i, radar_key in enumerate(radar_keys):
         row = int(i / n_cols)
         col = i - row * n_cols
         axis: plt.Axes = axes[row, col]
 
         # data = gpd.read_feather(Path(f"cache/interpretations/per_radargram/{radar_key}.feather"))
-        data = svalbardradar.interpretations.merge_interpretations(radar_key)
+        # data = svalbardradar.interpretations.merge_interpretations(radar_key)
+        data = all_data[all_data["radar_key"] == radar_key]
 
         radar_meta = meta.get(radar_key, {})
 
         data = data.sort_values("distance")
 
         glacier = radar_key.split("-")[0]
-
-        if "start_distance" in radar_meta:
-            data = data[data["distance"] > radar_meta["start_distance"]]
-        if "stop_distance" in radar_meta:
-            data = data[data["distance"] < radar_meta["stop_distance"]]
 
         if data.iloc[10]["elevation"] > data.iloc[-10]["elevation"]:
             data["distance"] = data["distance"].max() - data["distance"]
@@ -492,6 +482,12 @@ def plot_centerline_profiles(show: bool = True):
             )
             ** 0.5
         ).cumsum() / 1e3
+
+        if "start_distance" in radar_meta:
+            data = data[data["distance"] > radar_meta["start_distance"]]
+        if "stop_distance" in radar_meta:
+            data = data[data["distance"] < radar_meta["stop_distance"]]
+
 
         data["bed_elevation"] = data["elevation"] - data["thickness"]
 
@@ -1397,11 +1393,17 @@ def plot_cross_track_difference(show: bool = False):
     
 
 def generate_all_figures(show: bool = True):
+    print("Generating Drønbreen example figure.")
     plot_dronbreen_examples(show=show)
+    print("Generating centerline profiles figure.")
     plot_centerline_profiles(show=show)
+    print("Generating inversion model comparison figure.")
     plot_model_comparison(show=show)
+    print("Generating glathida comparison figure.")
     plot_glathida_comparison(show=show)
+    print("Generating interpretation merging figure.")
     plot_interpretation_merging(show=show)
+    print("Generating cross-track difference figure.")
     plot_cross_track_difference(show=show)
 
 
