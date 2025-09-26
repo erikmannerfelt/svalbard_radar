@@ -617,7 +617,7 @@ def plot_model_comparison(show: bool = True, histogram: bool = True):
         xlim = axis.get_ylim()
         axis.plot([xlim[0], xlim[1]], [xlim[0], xlim[1]], color="black")
 
-        diff = data[f"{model}_thickness"] - data["thickness"]
+        diff = (data[f"{model}_thickness"] - data["thickness"]).dropna()
 
         axis.text(
             x=0.05,
