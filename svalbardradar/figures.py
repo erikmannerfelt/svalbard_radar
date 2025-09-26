@@ -1143,25 +1143,25 @@ def plot_interpretation_merging(show: bool = False):
             "radar_key": "ragna_mariebreen-20240412-DAT_0404_A1_1",
             "xlim": [2000, 6500],
             "ylim": [230, -10],
-            "vlim": [0.7, 4.], 
+            "vlim": [0.5, 4.], 
         },
         {
             "radar_key": "amenfonna-20240510-DAT_0044_A1_1",
             "xlim": [250, 750],
             "ylim": [120, 25],
-            "vlim": [0.5, 3.3],
+            "vlim": [0.1, 3.],
         },
         {
             "radar_key": "dronbreen-20200224-DAT_0003_A1_2",
             "xlim": [1100, 4400],
             "ylim": [170, 80],
-            "vlim": [0.3, 3.],
+            "vlim": [0.1, 2.8],
         },
         {
             "radar_key": "filantropbreen-20240406-DAT_0372_A1_1",
             "xlim": [1300, 2800],
             "ylim": [140, 30],
-            "vlim": [0.3, 2.8],
+            "vlim": [0.15, 2.8],
         }
     ]
 
