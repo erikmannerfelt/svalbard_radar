@@ -420,10 +420,6 @@ def plot_user_spread(show: bool = True):
 def plot_centerline_profiles(show: bool = True):
     import svalbardradar.interpretations
 
-    better_but_need_gps = [
-        "dronbreen-20230220-DAT_0009_A1_1",
-    ]
-
     radar_keys = [
         "mettebreen-20230305-DAT_0235_A1_8",
         # "filantropbreen-20240406-DAT_0372_A1_1",
@@ -446,11 +442,7 @@ def plot_centerline_profiles(show: bool = True):
 
     meta = {
         "mettebreen-20230305-DAT_0235_A1_8": {
-            "start_distance": 7180,
-        },
-        "dronbreen-20250327-DAT_0065_A1_1": {
-            # "stop_distance": 5650,
-            "start_distance": 200,
+            "stop_distance": 3.35,
         },
     }
 
@@ -463,24 +455,22 @@ def plot_centerline_profiles(show: bool = True):
     fig = plt.figure(figsize=(6, 8))
     axes = fig.subplots(nrows=n_rows, ncols=n_cols)
 
+    all_data = svalbardradar.interpretations.merge_all_interpretations()
+
     for i, radar_key in enumerate(radar_keys):
         row = int(i / n_cols)
         col = i - row * n_cols
         axis: plt.Axes = axes[row, col]
 
         # data = gpd.read_feather(Path(f"cache/interpretations/per_radargram/{radar_key}.feather"))
-        data = svalbardradar.interpretations.merge_interpretations(radar_key)
+        # data = svalbardradar.interpretations.merge_interpretations(radar_key)
+        data = all_data[all_data["radar_key"] == radar_key]
 
         radar_meta = meta.get(radar_key, {})
 
         data = data.sort_values("distance")
 
         glacier = radar_key.split("-")[0]
-
-        if "start_distance" in radar_meta:
-            data = data[data["distance"] > radar_meta["start_distance"]]
-        if "stop_distance" in radar_meta:
-            data = data[data["distance"] < radar_meta["stop_distance"]]
 
         if data.iloc[10]["elevation"] > data.iloc[-10]["elevation"]:
             data["distance"] = data["distance"].max() - data["distance"]
@@ -492,6 +482,12 @@ def plot_centerline_profiles(show: bool = True):
             )
             ** 0.5
         ).cumsum() / 1e3
+
+        if "start_distance" in radar_meta:
+            data = data[data["distance"] > radar_meta["start_distance"]]
+        if "stop_distance" in radar_meta:
+            data = data[data["distance"] < radar_meta["stop_distance"]]
+
 
         data["bed_elevation"] = data["elevation"] - data["thickness"]
 
@@ -569,7 +565,7 @@ def plot_centerline_profiles(show: bool = True):
         plt.show()
 
 
-def plot_model_comparison(show: bool = True, histogram: bool = False):
+def plot_model_comparison(show: bool = True, histogram: bool = True):
     import svalbardradar.comparisons
 
     data = svalbardradar.comparisons.sample_models()
@@ -617,7 +613,7 @@ def plot_model_comparison(show: bool = True, histogram: bool = False):
         xlim = axis.get_ylim()
         axis.plot([xlim[0], xlim[1]], [xlim[0], xlim[1]], color="black")
 
-        diff = data[f"{model}_thickness"] - data["thickness"]
+        diff = (data[f"{model}_thickness"] - data["thickness"]).dropna()
 
         axis.text(
             x=0.05,
@@ -878,15 +874,17 @@ def overview_map(show: bool = True):
     figsize = (8, 7)
     fig = plt.figure(figsize=figsize)
 
-    new_ax = functools.partial(plt.subplot2grid, shape=(6, 6), fig=fig)
+    # NOTE TO FUTURE SELF: If the shape isn't equal (e.g. (12, 9)), the aspect calculation gets messed up.
+    # Either it always needs to stay equal, or the aspect calculation needs to be fixed.
+    new_ax = functools.partial(plt.subplot2grid, shape=(12,) * 2, fig=fig)
 
-    overview_kwargs = {"rowspan": 4, "colspan": 3}
+    overview_kwargs = {"rowspan": 6, "colspan": 4}
     overview_ax = new_ax(loc=(0, 0), **overview_kwargs)
 
     style = {
         "degree_label": {
             "fontsize": 8,
-            "color": "gray",
+            "color": "#333",
         },
         "degree_line": {
             "linewidth": 0.5,
@@ -907,16 +905,16 @@ def overview_map(show: bool = True):
         },
         "scalebar_line": {
             "linewidth": 1,
-            "color": "gray",
+            "color": "#333",
             "path_effects": [matplotlib.patheffects.withStroke(linewidth=1.5, foreground="white")]
         },
         "scalebar_label": {
             "fontsize": 8,
-            "color": "gray",
+            "color": "#333",
             "path_effects": [matplotlib.patheffects.withStroke(linewidth=0.7, foreground="white")]
         },
         "glacier_label": {
-            "textsize": 8,  # Fontsize
+            "textsize": 10,  # Fontsize
             "color": "black",
             "path_effects": [matplotlib.patheffects.withStroke(linewidth=1, foreground="white")]
         },
@@ -928,6 +926,7 @@ def overview_map(show: bool = True):
         "radar_lines": {
             "color": "red",
             "linewidth": 1,
+            "path_effects": [matplotlib.patheffects.withStroke(linewidth=1, foreground="black")]
         },
     }
 
@@ -959,6 +958,9 @@ def overview_map(show: bool = True):
             arr = np.clip(raster.read(1, masked=True, window=window, boundless=True).filled(181) / 181, min=0, max=1)
             transform = rasterio.windows.transform(window=window,transform=raster.transform)
 
+            lighten_scale = 0.5
+            arr = (arr * lighten_scale) + (1 - lighten_scale) 
+
             land_mask = rasterio.features.rasterize(outlines.geometry, out_shape=arr.shape, transform=transform) == 1
 
             arr[~land_mask] = 1
@@ -968,12 +970,13 @@ def overview_map(show: bool = True):
 
             glacier_mask = rasterio.features.rasterize(glacier_outlines.query("~used").geometry, out_shape=arr.shape[:2], transform=transform) == 1
 
-            arr[glacier_mask, 0] *= 153 / 255
-            arr[glacier_mask, 1] *= 204 / 255
+            arr[glacier_mask, 0] *= 166 / 255
+            arr[glacier_mask, 1] *= 225 / 255
+            arr[glacier_mask, 2] *= 243 / 255
 
             chosen_glacier_mask = rasterio.features.rasterize(glacier_outlines.query("used").geometry, out_shape=arr.shape[:2], transform=transform) == 1
-            arr[chosen_glacier_mask, 1] *= 172 / 255
-            arr[chosen_glacier_mask, 2] *= 102 / 255
+            arr[chosen_glacier_mask, 1] *= 204 / 255
+            arr[chosen_glacier_mask, 2] *= 153 / 255
 
             axis.imshow(arr, extent=[*xlim, *ylim])
             outlines_dissolved.plot(color="none", edgecolor="black", linewidth=0.05 if overview_level == 2 else 0.2, ax=axis)
@@ -1011,35 +1014,35 @@ def overview_map(show: bool = True):
 
     zooms = [
         { # Southern Spitsbergen
-            "letter": "c",
-            "loc": (4, 0),
+            "letter": "b",
+            "loc": (6, 0),
             "xlim": (491000, 547000),
             "ymid": 8.611e6,
-            "colspan": 3,
-            "rowspan": 2,
+            "colspan": 4,
+            "rowspan": 3,
         },
         { # Nordaustlandet
-            "letter": "d",
-            "loc": (4, 3),
-            "xlim": (610000, 665000),
-            "ymid": 8.874e6,
-            "colspan": 3,
-            "rowspan": 2,
+            "letter": "c",
+            "loc": (9, 0),
+            "xlim": (617000, 662000),
+            "ymid": 8.872e6,
+            "colspan": 4,
+            "rowspan": 3,
         },
         { # Central Spitsbergen
-            "letter": "b",
-            "loc": (0, 3),
-            "xlim": (517000, 584000),
+            "letter": "d",
+            "loc": (0, 4),
+            "xlim": (519000, 578000),
             "ymid": 8.671e6,
-            "rowspan": 4,
-            "colspan": 3,
+            "rowspan": 12,
+            "colspan": 8,
         }
     ]
 
     for zoom in zooms:
         axis: plt.Axes = new_ax(loc=zoom["loc"], rowspan=zoom.get("rowspan", 1), colspan=zoom.get("colspan", 1))
 
-        aspect = figsize[1] / figsize[0] * zoom.get("rowspan", 1) / zoom.get("colspan", 1)
+        aspect = (figsize[1] / figsize[0]) * (zoom.get("rowspan", 1) / zoom.get("colspan", 1))
 
         xlim = zoom["xlim"]
         xrange = np.diff(xlim).item()
@@ -1140,21 +1143,25 @@ def plot_interpretation_merging(show: bool = False):
             "radar_key": "ragna_mariebreen-20240412-DAT_0404_A1_1",
             "xlim": [2000, 6500],
             "ylim": [230, -10],
+            "vlim": [0.5, 4.], 
         },
         {
-            "radar_key": "bergmesterbreen-20230222-DAT_0033_A1_3",
-            "xlim": [3000, 5500],
-            "ylim": [150, -10],
+            "radar_key": "amenfonna-20240510-DAT_0044_A1_1",
+            "xlim": [250, 750],
+            "ylim": [120, 25],
+            "vlim": [0.1, 3.],
         },
         {
             "radar_key": "dronbreen-20200224-DAT_0003_A1_2",
             "xlim": [1100, 4400],
             "ylim": [170, 80],
+            "vlim": [0.1, 2.8],
         },
         {
             "radar_key": "filantropbreen-20240406-DAT_0372_A1_1",
             "xlim": [1300, 2800],
             "ylim": [140, 30],
+            "vlim": [0.15, 2.8],
         }
     ]
 
@@ -1177,17 +1184,14 @@ def plot_interpretation_merging(show: bool = False):
 
         all_points = interpretations.read_interpretations(radar_key=case["radar_key"], step_m=5.).reset_index()
 
-        line_list = []
         with xr.open_dataset(paths.processed_radar_path(case["radar_key"])) as dataset:
             dataset.coords["trace_n"] = "x", np.arange(dataset.x.shape[0])
             dataset = dataset.swap_dims(x="trace_n", y="depth")#.sel(
+
             # I'm avoiding a strange bug here where if I clip the data exactly to xlim, it cuts too much!
             # By trial and error, I found that adding an extra 300/1000 traces "solves" it.
             dataset = dataset.sel(trace_n=slice(max(case["xlim"][0] - 300, 0), case["xlim"][1] + 1000), depth=slice(*case["ylim"][::-1]))
             dataset["data"] = np.abs(dataset.data)
-
-            lower, upper = np.percentile(dataset.data, [2, 98])
-            dataset.data.values = (dataset.data.values - lower) / (upper - lower)
 
             ax_top.imshow(
                 dataset.data,
@@ -1200,37 +1204,47 @@ def plot_interpretation_merging(show: bool = False):
                 ),
                 cmap="Greys_r",
                 aspect="auto",
-                vmin=-0.1,
-                vmax=1.7,
+                vmin=case["vlim"][0],
+                vmax=case["vlim"][1],
                 interpolation="lanczos",
             )
         for _, points in all_points.groupby(["user", "line_i"]):
             ax_mid.plot(points["x"], points["depth"], color=DIGITIZE_CLASS_PROPS[points.iloc[0]["kind"].replace("temperate_ice", "temperate")]["color"], alpha=0.3)
 
-        ax_bot.fill_between(
-            merged["x"],
-            merged["thickness"] - merged["temperate_lower"],
-            merged["thickness"] - merged["temperate_upper"],
-            color="red",
-            alpha=0.5,
+        ax_mid.text(
+            0.01,
+            0.03,
+            f"n={all_points['user'].unique().shape[0]}",
+            transform=ax_mid.transAxes,
         )
-        ax_bot.plot(
-            merged["x"],
-            merged["thickness"] - merged["temperate"],
-            color="red",
-        )
-        ax_bot.fill_between(
-            merged["x"],
-            merged["thickness_lower"],
-            merged["thickness_upper"],
-            color="blue",
-            alpha=0.5,
-        )
-        ax_bot.plot(
-            merged["x"],
-            merged["thickness"],
-            color="blue",
-        )
+        # Lines where the x coordinate suddenly changes are probably due to missing data. They should
+        # be plotted separately.
+        diffs = (merged["x"].diff().fillna(0) > 50).cumsum()
+        for _, merged_split in merged.groupby(diffs):
+            ax_bot.fill_between(
+                merged_split["x"],
+                merged_split["thickness"] - merged_split["temperate_lower"],
+                merged_split["thickness"] - merged_split["temperate_upper"],
+                color="red",
+                alpha=0.5,
+            )
+            ax_bot.plot(
+                merged_split["x"],
+                merged_split["thickness"] - merged_split["temperate"],
+                color="red",
+            )
+            ax_bot.fill_between(
+                merged_split["x"],
+                merged_split["thickness_lower"],
+                merged_split["thickness_upper"],
+                color="#555",
+                alpha=0.5,
+            )
+            ax_bot.plot(
+                merged_split["x"],
+                merged_split["thickness"],
+                color="#555",
+            )
         for j, axis in enumerate([ax_top, ax_mid, ax_bot]):
             axis.set_xlim(case["xlim"])
             axis.set_ylim(case["ylim"])
@@ -1379,11 +1393,17 @@ def plot_cross_track_difference(show: bool = False):
     
 
 def generate_all_figures(show: bool = True):
+    print("Generating Drønbreen example figure.")
     plot_dronbreen_examples(show=show)
+    print("Generating centerline profiles figure.")
     plot_centerline_profiles(show=show)
+    print("Generating inversion model comparison figure.")
     plot_model_comparison(show=show)
+    print("Generating glathida comparison figure.")
     plot_glathida_comparison(show=show)
+    print("Generating interpretation merging figure.")
     plot_interpretation_merging(show=show)
+    print("Generating cross-track difference figure.")
     plot_cross_track_difference(show=show)
 
 

@@ -65,7 +65,7 @@ def get_farinotti() -> Path:
     from osgeo import gdal
 
     zip_path = out_path.parent / "composite_thickness_RGI60-07.zip"
-    url = "https://www.research-collection.ethz.ch/bitstream/handle/20.500.11850/315707/composite_thickness_RGI60-07.zip?sequence=9&isAllowed=y"
+    url = "https://www.research-collection.ethz.ch/server/api/core/bitstreams/e855deb2-a2b3-47f1-8d2a-7ffc5c1a52dd/content"
 
     misc.download_large_file(zip_path, url)
 
@@ -196,11 +196,14 @@ def sample_models(overwrite_cache: bool = False):
 
     for key in model_paths:
         with rio.open(model_paths[key]) as raster:
-            data[f"{key}_thickness"] = np.fromiter(
+            arr = np.fromiter(
                 raster.sample(data[["easting", "northing"]].values),
                 dtype=raster.dtypes[0],
                 count=data.shape[0],
             )
+            # There seem to be extreme outliers now and then.
+            arr[(arr < 0) | (arr > 1000)] = np.nan
+            data[f"{key}_thickness"] = arr
 
     data = data.dropna(subset=[f"{key}_thickness" for key in model_paths], how="all")
 
