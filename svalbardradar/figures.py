@@ -737,7 +737,7 @@ def plot_model_temperate_cold_performance(show: bool = True):
     models = [str(col).replace("_thickness", "") for col in data if "_thickness" in col] + ["glathida"]
 
     colors = {
-        "cold": "white",
+        "cold": "lightblue",
         "temperate": "red",
         "all": "grey",
     }
@@ -757,10 +757,10 @@ def plot_model_temperate_cold_performance(show: bool = True):
     plt.figure(figsize=(8, 5))
     for i, model in enumerate(models):
         if model != "glathida":
-            temperate = data["temperate_frac"] > 0.1
+            temperate = data["temperate_frac"] > 0.03
             diff = data[f"{model}_thickness"] - data["thickness"]
         else:
-            temperate = glathida["temperate_frac"] > 0.1
+            temperate = glathida["temperate_frac"] > 0.03
             diff =glathida["glathida_diff"]
 
         for j, (case, arr) in enumerate([("cold", diff[~temperate]), ("temperate", diff[temperate]), ("all", diff)]):
@@ -1154,25 +1154,25 @@ def plot_interpretation_merging(show: bool = False):
             "radar_key": "ragna_mariebreen-20240412-DAT_0404_A1_1",
             "xlim": [2000, 6500],
             "ylim": [230, -10],
-            "vlim": [0.5, 4.], 
+            "vlim": [0.1, 4.], 
         },
         {
             "radar_key": "amenfonna-20240510-DAT_0044_A1_1",
             "xlim": [250, 750],
             "ylim": [120, 25],
-            "vlim": [0.1, 3.],
+            "vlim": [0., 3.],
         },
         {
             "radar_key": "dronbreen-20200224-DAT_0003_A1_2",
             "xlim": [1100, 4400],
             "ylim": [170, 80],
-            "vlim": [0.1, 2.8],
+            "vlim": [-0.05, 2.8],
         },
         {
             "radar_key": "filantropbreen-20240406-DAT_0372_A1_1",
             "xlim": [1300, 2800],
             "ylim": [140, 30],
-            "vlim": [0.15, 2.8],
+            "vlim": [0.00, 2.8],
         }
     ]
 
@@ -1354,7 +1354,7 @@ def plot_cross_track_difference(show: bool = False):
     variance = pd.concat(variances)
     var_axis.plot(variance.groupby(variance.index).median(), color="black")
 
-    for i, (name, color, data) in enumerate([("All bed data","gray",  cmps), ("Temperate bed", "purple", cmps[cmps["temperate_frac"] > 10]), ("Cold bed", "blue", cmps[cmps["temperate_frac"] <= 10]), ("Temperate ice", "red", cmps.drop(columns=["diff"]).rename(columns={"temperate_diff": "diff"}))]):
+    for i, (name, color, data) in enumerate([("All bed data","gray",  cmps), ("Temperate bed", "purple", cmps[cmps["temperate_frac"] > 3]), ("Cold bed", "blue", cmps[cmps["temperate_frac"] <= 3]), ("Temperate ice", "red", cmps.drop(columns=["diff"]).rename(columns={"temperate_diff": "diff"}))]):
         axis = plt.subplot2grid((3, 2), (i % 3, i // 3))
 
         data = data[data["diff"] != 0.]
