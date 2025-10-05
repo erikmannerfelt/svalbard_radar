@@ -21,3 +21,6 @@ web-debug:
 
 make-figures:
     ipython svalbardradar/figures.py
+
+make-user-report:
+    ipython -c 'from svalbardradar.figures import *; plot_user_spread()'

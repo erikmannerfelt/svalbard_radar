@@ -345,31 +345,33 @@ def plot_user_spread(show: bool = True):
                     axes[1].plot(points["x"], points["depth"], color=DIGITIZE_CLASS_PROPS[kind]["color"], alpha=0.3, label=DIGITIZE_CLASS_PROPS[kind]["name"] if kind not in labeled else None)
                     labeled.add(kind)
 
-                axes[2].fill_between(
-                    data["x"],
-                    data["thickness_lower"],
-                    data["thickness_upper"],
-                    color="blue",
-                    alpha=0.5,
-                    label="Thickness (+- 25%)", zorder=2
-                )
-                axes[2].plot(data["x"], data["thickness"], color="blue", path_effects=[
-                        matplotlib.patheffects.withStroke(
-                            linewidth=3, foreground="black"
-                        )
-                ], zorder=4, label="Thickness (median)")
-                axes[2].fill_between(
-                    data["x"],
-                    data["thickness"] - data["temperate_lower"],
-                    data["thickness"] - data["temperate_upper"],
-                    color="red",
-                    alpha=0.5,
-                    label="Temperate ice (+- 25%)",
-                    zorder=1,
-                )
-                # plt.fill_between(out0.index, out["bed_elevation"] + out0["temperate_lower"], out["bed_elevation"] + out0["temperate_upper"], color="red", alpha=0.3)
-                # plt.fill_between(out0.index, out["elevation"] - out0["thickness_lower"], out["elevation"] - out0["thickness_upper"], color="blue", alpha=0.3)
-                axes[2].plot(data["x"], data["thickness"] - data["thickness"] * data["temperate_frac"], color="red", zorder=3, label="Temperate ice (median)")
+                diffs = (data["x"].diff().fillna(0) > 100).cumsum()
+                for _, data_split in data.groupby(diffs):
+                    axes[2].fill_between(
+                        data_split["x"],
+                        data_split["thickness_lower"],
+                        data_split["thickness_upper"],
+                        color="#555",
+                        alpha=0.5,
+                        label="Thickness (+- 25%)", zorder=2
+                    )
+                    axes[2].plot(data_split["x"], data_split["thickness"], color="#555", path_effects=[
+                            matplotlib.patheffects.withStroke(
+                                linewidth=3, foreground="black"
+                            )
+                    ], zorder=4, label="Thickness (median)")
+                    axes[2].fill_between(
+                        data_split["x"],
+                        data_split["thickness"] - data_split["temperate_lower"],
+                        data_split["thickness"] - data_split["temperate_upper"],
+                        color="red",
+                        alpha=0.5,
+                        label="Temperate ice (+- 25%)",
+                        zorder=1,
+                    )
+                    # plt.fill_between(out0.index, out["bed_elevation"] + out0["temperate_lower"], out["bed_elevation"] + out0["temperate_upper"], color="red", alpha=0.3)
+                    # plt.fill_between(out0.index, out["elevation"] - out0["thickness_lower"], out["elevation"] - out0["thickness_upper"], color="blue", alpha=0.3)
+                    axes[2].plot(data_split["x"], data_split["thickness"] - data_split["thickness"] * data_split["temperate_frac"], color="red", zorder=3, label="Temperate ice (median)")
 
                 for spine in axes[0].spines.values():
                     spine.set_visible(False)
@@ -394,7 +396,16 @@ def plot_user_spread(show: bool = True):
                 axes[2].text(0.5, 1., "Merged interpretations", ha="center", va="bottom", transform=axes[-1].transAxes)
                 axes[2].set_ylabel("Depth (m)")
                 axes[2].set_xlabel("Traces")
-                axes[2].legend()
+
+                # Because of split lines, legend entries may be repeated
+                hand, labl = axes[2].get_legend_handles_labels()
+                handout=[]
+                lablout=[]
+                for h,l in zip(hand,labl):
+                   if l not in lablout:
+                        lablout.append(l)
+                        handout.append(h)
+                axes[2].legend(handout, lablout)
 
                 ylim = axes[2].get_ylim()
                 axes[2].set_ylim(min(ylim[1], 350), -10)
