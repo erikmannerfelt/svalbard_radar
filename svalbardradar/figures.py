@@ -576,7 +576,7 @@ def plot_centerline_profiles(show: bool = True):
         plt.show()
 
 
-def plot_model_comparison(show: bool = True, histogram: bool = True):
+def plot_model_comparison(show: bool = True, histogram: bool = False):
     import svalbardradar.comparisons
 
     data = svalbardradar.comparisons.sample_models()
@@ -610,21 +610,30 @@ def plot_model_comparison(show: bool = True, histogram: bool = True):
 
         axis.set_title(ref_names[model])
 
+        subset = data.dropna(subset=["thickness", f"{model}_thickness"], how="any")
+
         if histogram:
             hist2 = np.histogram2d(
-                data[f"{model}_thickness"], data["thickness"], bins=thickness_bins
+                subset[f"{model}_thickness"], subset["thickness"], bins=thickness_bins
             )[0][::-1, :]
             hist2 = np.ma.masked_array(hist2, mask=hist2 == 0)
             axis.imshow(hist2, extent=(0.0, thickness_bins[-1], 0.0, thickness_bins[-1]))
         else:
-            axis.scatter(data["thickness"], data[f"{model}_thickness"], color="black", edgecolor="none", s=2, alpha=0.025)
+            kde = scipy.stats.gaussian_kde(subset[["thickness", f"{model}_thickness"]].sample(n=5000, random_state=0).astype("float32").T)
+            axis.scatter(
+                subset["thickness"],
+                subset[f"{model}_thickness"],
+                c=kde.evaluate(subset[["thickness", f"{model}_thickness"]].astype("float32").T),
+                edgecolor="none",
+                s=2,
+            )
             plt.xlim(0, thickness_bins.max())
             plt.ylim(0, thickness_bins.max())
 
         xlim = axis.get_ylim()
         axis.plot([xlim[0], xlim[1]], [xlim[0], xlim[1]], color="black")
 
-        diff = (data[f"{model}_thickness"] - data["thickness"]).dropna()
+        diff = (subset[f"{model}_thickness"] - subset["thickness"])
 
         axis.text(
             x=0.05,
@@ -633,7 +642,7 @@ def plot_model_comparison(show: bool = True, histogram: bool = True):
                 [
                     f"Median: {diff.median():.1f} m",
                     f"NMAD: {1.426 * np.median(np.abs(diff - np.median(diff))): .1f} m",
-                    f"r = {data['thickness'].corr(data[f'{model}_thickness']):.2f}",
+                    f"r = {subset['thickness'].corr(subset[f'{model}_thickness']):.2f}",
                 ]
             ),
             transform=axis.transAxes,
@@ -660,7 +669,7 @@ def plot_model_comparison(show: bool = True, histogram: bool = True):
         plt.show()
 
 
-def plot_glathida_comparison(show: bool = True):
+def plot_glathida_comparison(show: bool = True, histogram: bool = False):
     import scipy.spatial
 
     import svalbardradar.comparisons
@@ -672,6 +681,11 @@ def plot_glathida_comparison(show: bool = True):
 
     data["glathida_group"] = np.digitize(data["glathida_year"], year_intervals)
     max_thickness = data[["glathida_thickness", "thickness"]].max().max()
+
+    step_size = 5
+    thickness_bins = np.arange(
+        0, max_thickness - (max_thickness % step_size) + step_size * 2, step_size
+    )
 
     fig = plt.figure(figsize=(9, 3.5))
     axes = fig.subplots(ncols=3, sharex=True, sharey=True)
@@ -699,15 +713,26 @@ def plot_glathida_comparison(show: bool = True):
                 )
             ],
         ) 
-        axis.scatter(
-            group["thickness"],
-            group["glathida_thickness"],
-            # label=label,
-            s=9,
-            alpha=0.3,
-            color="black",
-            edgecolor="none",
-        )
+        if histogram:
+            hist2 = np.histogram2d(
+                group[f"glathida_thickness"], group["thickness"], bins=thickness_bins
+            )[0][::-1, :]
+            hist2 = np.ma.masked_array(hist2, mask=hist2 == 0)
+            axis.imshow(hist2, extent=(0.0, thickness_bins[-1], 0.0, thickness_bins[-1]))
+        else:
+            kde = scipy.stats.gaussian_kde(group[["thickness", "glathida_thickness"]].astype("float32").T)
+            axis.scatter(
+                group["thickness"],
+                group["glathida_thickness"],
+                s=5,
+                alpha=1,
+                c=kde.evaluate(group[["thickness", "glathida_thickness"]].astype("float32").T),
+                edgecolor="none",
+
+            )
+            plt.xlim(0, thickness_bins.max())
+            plt.ylim(0, thickness_bins.max())
+
         axis.plot([0, max_thickness], [0, max_thickness], color="black")
 
         if i == 0:
