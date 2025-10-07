@@ -209,3 +209,17 @@ def sample_models(overwrite_cache: bool = False):
 
     data.to_feather(out_path)
     return gpd.read_feather(out_path)
+
+
+def sample_for_karlijn(overwrite_cache: bool = False):
+
+    model_cmps = sample_models()
+    glathida_cmps = sample_glathida()
+
+    for df in [model_cmps, glathida_cmps]:
+        df["glacier"] = df["radar_key"].str.split("-", expand=True).iloc[:, 0]
+
+    Path("temp/").mkdir(exist_ok=True)
+    model_cmps.to_csv("temp/karlijn_model_cmps.csv")
+    glathida_cmps.to_csv("temp/karlijn_glathida_cmps.csv")
+
