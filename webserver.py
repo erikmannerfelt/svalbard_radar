@@ -303,6 +303,14 @@ def get_n_user_submissions():
 
 parse_all_radargrams = functools.cache(format_radargrams.parse_all_radargrams)
 
+def get_n_required_submissions(radar_key: str) -> int:
+
+    match radar_key:
+        case "ragna_mariebreen-20240412-DAT_0404_A1_1":
+            return 100
+
+    return 8
+    
 
 @functools.lru_cache(maxsize=10)
 def get_all_radargrams(username: str):
@@ -313,9 +321,13 @@ def get_all_radargrams(username: str):
             n_user_submissions = len(
                 SUBMISSIONS.get_user_submissions(username=username, key=key)
             )
+            n_total_submissions = SUBMISSIONS.get_n_users_submitted(key=key)
+            n_required_submissions = get_n_required_submissions(key)
             radargrams[glacier_key][key].update(
                 {
-                    "n_total_submissions": SUBMISSIONS.get_n_users_submitted(key=key),
+                    "n_total_submissions": n_total_submissions,
+                    "n_required_submission": n_required_submissions,
+                    "is_finished": n_total_submissions >= n_required_submissions,
                     "n_submitted_by_user": n_user_submissions,
                 }
             )

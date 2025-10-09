@@ -65,10 +65,12 @@
 
         <div class="index-location-group index-recommended-container" style="">
             <h2 class="index-location-title">Recommended radargrams</h2>
-            <div class="index-dataset-container">
-                {% for glacier_key, radar_key in recommendations %}
-                    {{ radargram(radar_key, all_radargrams[glacier_key][radar_key]) }}
-                {% endfor %}
+            <div>
+                <div class="index-dataset-grid">
+                    {% for glacier_key, radar_key in recommendations %}
+                        {{ radargram(radar_key, all_radargrams[glacier_key][radar_key]) }}
+                    {% endfor %}
+                </div>
             </div>
         </div>
 
@@ -78,12 +80,44 @@
         <div class="index-location-group" id="group-{{glacier_key}}">
             <h2 class="index-location-title">Glacier: {{glacier_radargrams._meta.nice_name}}</h2>
             <p>This glacier has a total of {{glacier_radargrams._meta.n_total_submissions}}  {{"submission" if glacier_radargrams._meta.n_total_submissions == 1 else "submissions"}}</p>
-            <div class="index-dataset-container">
-                {% for radar_key, values in glacier_radargrams.items() %}
-                    {% if radar_key != "_meta" %}
-                        {{ radargram(radar_key, values) }}
+            <div>
+
+                {% set parts = namespace(finished=[], unfinished=[]) %}
+                {% for k, v in glacier_radargrams.items() %}
+                    {% if k != "_meta" %}
+                        {% if v.is_finished %}
+                            {% set parts.finished = parts.finished + [(k, v)] %}
+                        {% else %}
+                            {% set parts.unfinished = parts.unfinished + [(k, v)] %}
+                        {% endif %}
                     {% endif %}
                 {% endfor %}
+
+                {% if parts.unfinished|length > 0 %}
+                    <div class="index-dataset-container-important">
+                        <p>These radargrams need more contributors!</p>
+                        <div class="index-dataset-grid">
+                            {% for radar_key, values in parts.unfinished %}
+                                {% if radar_key != "_meta" %}
+                                    {{ radargram(radar_key, values) }}
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                {% if parts.finished|length > 0 %}
+                    <div>
+                        <p>These radargrams have at least the minimum amount of contributors. Please feel free to help anyway!</p>
+                        <div class="index-dataset-grid">
+                            {% for radar_key, values in parts.finished %}
+                                {% if radar_key != "_meta" %}
+                                    {{ radargram(radar_key, values) }}
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
             </div>
         </div>
     {% endfor %}
