@@ -27,8 +27,8 @@
      inkscape:deskcolor="#d1d1d1"
      inkscape:document-units="mm"
      inkscape:zoom="1.3257814"
-     inkscape:cx="418.9982"
-     inkscape:cy="291.90333"
+     inkscape:cx="418.99818"
+     inkscape:cy="237.59573"
      inkscape:window-width="3840"
      inkscape:window-height="1128"
      inkscape:window-x="0"
@@ -363,7 +363,7 @@
          id="text1"><tspan
            x="16.41423"
            y="5.7221645"
-           id="tspan1">Raw data</tspan></text>
+           id="tspan6">Raw data</tspan></text>
     </g>
     <g
        id="g16-3"
@@ -407,10 +407,10 @@
            id="text1-3"><tspan
              x="16.41423"
              y="5.7221645"
-             id="tspan2">Processed </tspan><tspan
+             id="tspan7">Processed </tspan><tspan
              x="16.41423"
              y="11.895777"
-             id="tspan3">radargrams</tspan></text>
+             id="tspan8">radargrams</tspan></text>
       </g>
       <g
          id="g16-6-0"
@@ -430,13 +430,13 @@
            id="text1-3-8"><tspan
              x="16.41423"
              y="5.7221645"
-             id="tspan4">DEM </tspan><tspan
+             id="tspan9">DEM </tspan><tspan
              x="16.41423"
              y="11.895777"
-             id="tspan5">elevation </tspan><tspan
+             id="tspan11">elevation </tspan><tspan
              x="16.41423"
              y="18.06939"
-             id="tspan26">correction</tspan></text>
+             id="tspan12">correction</tspan></text>
       </g>
       <text
          xml:space="preserve"
@@ -488,10 +488,10 @@
            id="text1-3-4"><tspan
              x="16.41423"
              y="5.7221645"
-             id="tspan27">Bed </tspan><tspan
+             id="tspan13">Bed </tspan><tspan
              x="16.41423"
              y="11.895777"
-             id="tspan28">interpretations</tspan></text>
+             id="tspan14">interpretations</tspan></text>
       </g>
       <g
          id="g16-6-7-0"
@@ -511,10 +511,10 @@
            id="text1-3-4-9"><tspan
              x="16.41423"
              y="5.7221645"
-             id="tspan29">Temperate ice </tspan><tspan
+             id="tspan15">Temperate ice </tspan><tspan
              x="16.41423"
              y="11.895777"
-             id="tspan30">interpretations</tspan></text>
+             id="tspan17">interpretations</tspan></text>
       </g>
       <text
          xml:space="preserve"
@@ -556,10 +556,10 @@
            id="text1-3-4-3"><tspan
              x="16.41423"
              y="5.7221645"
-             id="tspan31">Glacier </tspan><tspan
+             id="tspan18">Glacier </tspan><tspan
              x="16.41423"
              y="11.895777"
-             id="tspan32">thickness points</tspan></text>
+             id="tspan19">thickness points</tspan></text>
       </g>
       <g
          id="g16-6-7-05"
@@ -579,10 +579,10 @@
            id="text1-3-4-1"><tspan
              x="16.41423"
              y="5.7221645"
-             id="tspan33">Temperate ice </tspan><tspan
+             id="tspan20">Temperate ice </tspan><tspan
              x="16.41423"
              y="11.895777"
-             id="tspan34">fraction points</tspan></text>
+             id="tspan21">fraction points</tspan></text>
       </g>
       <text
          xml:space="preserve"
@@ -614,10 +614,10 @@
          id="text1-3-4-3-4"><tspan
            x="16.41423"
            y="5.7221645"
-           id="tspan35">GlaThiDa </tspan><tspan
+           id="tspan22">GlaThiDa </tspan><tspan
            x="16.41423"
            y="11.895777"
-           id="tspan36">output</tspan></text>
+           id="tspan23">output</tspan></text>
     </g>
     <g
        id="g16-6-7-8-0"
@@ -637,10 +637,10 @@
          id="text1-3-4-3-1"><tspan
            x="16.41423"
            y="5.7221645"
-           id="tspan37">glenglat </tspan><tspan
+           id="tspan24">glenglat </tspan><tspan
            x="16.41423"
            y="11.895777"
-           id="tspan38">output</tspan></text>
+           id="tspan25">output</tspan></text>
     </g>
     <g
        id="g16-6-7-8-4"
@@ -660,13 +660,13 @@
          id="text1-3-4-3-3"><tspan
            x="16.41423"
            y="5.7221645"
-           id="tspan39">Thickness and </tspan><tspan
+           id="tspan26">Thickness and </tspan><tspan
            x="16.41423"
            y="11.895777"
-           id="tspan40">temperature </tspan><tspan
+           id="tspan27">thermal regime </tspan><tspan
            x="16.41423"
            y="18.06939"
-           id="tspan41">rasters</tspan></text>
+           id="tspan28">profiles</tspan></text>
     </g>
     <path
        style="fill:#c8edcd;fill-opacity:1;stroke:#000000;stroke-width:0.923;stroke-linejoin:round;stroke-miterlimit:1.2;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Triangle);paint-order:normal"
