@@ -354,7 +354,8 @@ def get_all_radargrams(username: str):
         k: v
         for k, v in sorted(
             radargrams.items(),
-            key=lambda item: item[1]["_meta"]["n_total_submissions"] / len(item[1]),
+            # I'm setting Drønbreen to be the last one because it's so big.
+            key=lambda item: 9999 if item[0] == "dronbreen" else (item[1]["_meta"]["n_total_submissions"] / (len(item[1]) - 1)),
         )
     }
 
