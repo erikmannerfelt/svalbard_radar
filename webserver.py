@@ -304,10 +304,10 @@ def get_n_user_submissions():
 parse_all_radargrams = functools.cache(format_radargrams.parse_all_radargrams)
 
 def get_n_required_submissions(radar_key: str) -> int:
-
-    match radar_key:
-        case "ragna_mariebreen-20240412-DAT_0404_A1_1":
-            return 100
+    """Placeholder function in case we want to complicate the logic of how many submissions are required."""
+    # match radar_key:
+    #     case "ragna_mariebreen-20240412-DAT_0404_A1_1":
+    #         return 100
 
     return 8
     

@@ -95,7 +95,9 @@ async function setup_map() {
           if (logged_in) {
             if (n_submitted_by_user > 0) {
               card.classList.add("index-card-finished");
-            } else if (n_submitted_by_user == 0) {
+            } else if ((n_submitted_by_user == 0) & (meta["n_total_submissions"] < 5)) {
+              card.classList.add("index-card-important");             
+            } else if ((n_submitted_by_user == 0) & !meta["is_finished"]) {
               card.classList.add("index-card-unfinished");
             };
           } else {

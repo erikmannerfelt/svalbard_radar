@@ -48,6 +48,12 @@
                     <div id="progress-percentage" class="progress-percentage">0%</div>
                     <div class="progress-bar" id="progress-bar"></div>
                 </div>
+                <p><b>Radargram box color explanation</b></p>
+                <p><span class="color-box index-card-important" style="width: 30px;"></span> Focus on these (done by very few)!</p>
+                <p><span class="color-box index-card-unfinished" style="width: 30px;"></span> Still need more contributions!</p>
+                <p><span class="color-box background-color: white;" style="width: 30px;"></span> We have enough for statistics, but even more is better!</p>
+                <p><span class="color-box index-card-finished" style="width: 30px;"></span> Finished by you!</p>
+
             </div>
         </div>
         <div style="min-width: 49%; margin-right: 5px;">
@@ -108,7 +114,7 @@
 
                 {% if parts.finished|length > 0 %}
                     <div>
-                        <p>These radargrams have at least the minimum amount of contributors. Please feel free to help anyway!</p>
+                        <p>These radargrams have at least the minimum amount of contributions. Please feel free to help anyway!</p>
                         <div class="index-dataset-grid">
                             {% for radar_key, values in parts.finished %}
                                 {% if radar_key != "_meta" %}

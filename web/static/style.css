@@ -412,7 +412,9 @@ tr:hover {
 }
 
 .index-dataset-container-important {
-  background-color: #ffd;
+  /* background-color: #ffd; */
+  border: 1px solid #aa3;
+  border-radius: 3px;
   margin-bottom: 20px;
   padding: 10px;
 }
@@ -481,6 +483,10 @@ tr:hover {
 
 .index-card-unfinished {
   background: linear-gradient(135deg, #fff9e3 0%, #ffe6b3 100%);
+}
+
+.index-card-important {
+  background: linear-gradient(135deg, #ffbbbb 0%, #ffe6b3 100%);
 }
 
 .index-instructions-link {
