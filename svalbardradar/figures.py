@@ -774,21 +774,24 @@ def plot_model_temperate_cold_performance(show: bool = True):
         "glathida": "GlaThiDa 2000-"
     }
     case_names = {
-        "temperate": "Temperate ice",
-        "cold": "Cold ice",
+        "temperate": "Temperate bed",
+        "cold": "Cold bed",
         "all": "All data",
     }
     box_distance = 5
     plt.figure(figsize=(8, 5))
     for i, model in enumerate(models):
         if model != "glathida":
-            temperate = data["temperate_frac"] > 0.03
+            df = data
             diff = data[f"{model}_thickness"] - data["thickness"]
         else:
-            temperate = glathida["temperate_frac"] > 0.03
+            df = glathida
             diff =glathida["glathida_diff"]
 
-        for j, (case, arr) in enumerate([("cold", diff[~temperate]), ("temperate", diff[temperate]), ("all", diff)]):
+        cold = (df["temperate_lower"] /  df["thickness"]) < 0.001
+        temperate = (df["temperate_upper"] / df["thickness"]) > 0.001
+
+        for j, (case, arr) in enumerate([("cold", diff[cold]), ("temperate", diff[temperate]), ("all", diff)]):
             arr = arr[np.abs(arr) < 300]
             plt.boxplot([arr], positions=[j - 1 + box_distance * i],  showfliers=False, manage_ticks=False, widths=0.8, patch_artist=True, boxprops={"facecolor": colors[case], "alpha": 0.5}, medianprops={"color": "black"}, label=case_names[case] if i == 0 else None)
             # violins = plt.violinplot([arr], positions=[j - 1 + box_distance * i], widths=1)
@@ -817,7 +820,6 @@ def plot_model_temperate_cold_performance(show: bool = True):
 
         
 
-    print(data.iloc[0])
 
 
 def s20_hillshade() -> Path:
