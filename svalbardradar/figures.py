@@ -695,9 +695,9 @@ def plot_glathida_comparison(show: bool = True, histogram: bool = False):
 
 
         if i == 0:
-            label = f"–{year_intervals[0]}\n{stats}"
+            label = f"before {year_intervals[0]}\n{stats}"
         elif i == (len(year_intervals) - 1):
-            label = f"{year_intervals[-2]}–\n{stats}"
+            label = f"after {year_intervals[-2]}\n{stats}"
         else:
             label = f"{year_intervals[i - 1]}–{year_intervals[i]}\n{stats}"
 
