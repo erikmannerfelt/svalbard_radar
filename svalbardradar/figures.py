@@ -1362,6 +1362,11 @@ def plot_cross_track_difference(show: bool = False):
     cmps["diff"] = cmps["thickness"] - cmps["other_thickness"]
     cmps["temperate_diff"] = cmps["temperate"] - cmps["other_temperate"]
 
+    # Filter the temperate differences to only look at transition zones
+    # 0% could be a "cold bed" measurement, and 100% could be a clamped value. Only those in between are truly
+    # representative of the uncertainty. 
+    cmps.loc[(cmps["temperate_frac"] < 10) | (cmps["temperate_frac"] > 90), "temperate_diff"] = np.nan
+
     temperate_bins = np.linspace(-0.01, 101, 11)
     bin_centers = (temperate_bins[1:] - np.diff(temperate_bins) / 2)
     cmps["temperate_bin"] = bin_centers[np.digitize(cmps["temperate_frac"], bins=temperate_bins) - 1]
@@ -1384,9 +1389,8 @@ def plot_cross_track_difference(show: bool = False):
     for i, (name, color, data) in enumerate([("All bed data","gray",  cmps), ("Temperate bed", "purple", cmps[cmps["temperate_frac"] > 3]), ("Cold bed", "blue", cmps[cmps["temperate_frac"] <= 3]), ("Temperate ice", "red", cmps.drop(columns=["diff"]).rename(columns={"temperate_diff": "diff"}))]):
         axis = plt.subplot2grid((3, 2), (i % 3, i // 3))
 
-        data = data[data["diff"] != 0.]
-
-        axis.hist(data["diff"], bins=np.linspace(-10, 10, 100), color=color, alpha=0.5)
+        bin_edge = 10
+        axis.hist(data["diff"], bins=np.linspace(-bin_edge, bin_edge, 100), color=color, alpha=0.5)
         if i < 2:
             axis.tick_params(labelbottom=False)
         if i == 1:
@@ -1403,7 +1407,7 @@ def plot_cross_track_difference(show: bool = False):
             s="\n".join(
                 [
                     f"Median: {data["diff"].median():.1f} m",
-                    f"NMAD: {1.426 * np.median(np.abs(data["diff"] - np.median(data["diff"]))): .1f} m",
+                    f"NMAD: {1.426 * np.nanmedian(np.abs(data["diff"] - np.nanmedian(data["diff"]))): .1f} m",
                 ]
             ),
             transform=axis.transAxes,
