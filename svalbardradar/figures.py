@@ -1206,7 +1206,7 @@ def plot_interpretation_merging(show: bool = False):
     fig = plt.figure(figsize=(8, 6.5))
     outer_grid = fig.add_gridspec(
         nrows=2, ncols=2,
-        left=0.08, right=0.98, bottom=0.07, top=0.99,
+        left=0.08, right=0.97, bottom=0.07, top=0.99,
         wspace=0.12, hspace=0.09
     )
 
