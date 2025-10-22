@@ -4,7 +4,7 @@ from pathlib import Path
 
 def main(target_avg_per_radargram: int = 8):
 
-    active_user_dirs = list(Path("./submitted").iterdir())
+    active_user_dirs = list((Path(__file__).parent.parent / "submitted").iterdir())
 
 
     n_submissions_per_radargram = {}
