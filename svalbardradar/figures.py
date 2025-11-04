@@ -576,22 +576,33 @@ def plot_centerline_profiles(show: bool = True):
         plt.show()
 
 
-def plot_model_comparison(show: bool = True, histogram: bool = False):
+def plot_model_comparison(show: bool = True, histogram: bool = False, correct_topo: bool = True):
     import svalbardradar.comparisons
 
     data = svalbardradar.comparisons.sample_models()
+    if not correct_topo:
+        for col in ["thickness"]:
+            data[col] = data[f"{col}_uncorr"]
 
     models = [str(col).replace("_thickness", "") for col in data if "_thickness" in col]
+    models = ["furst", "millan", "vanpelt"]
 
     ref_names = {
         "furst": "Fürst et al., (2018)",
         "farinotti": "Farinotti et al., (2019)",
         "millan": "Millan et al., (2022)",
         "vanpelt": "van Pelt & Frank (2025)",
+        "frank": "Frank et al., (in review)",
     }
 
-    fig = plt.figure(figsize=(7, 7))
-    axes = fig.subplots(nrows=2, ncols=2, sharex=True, sharey=True)
+    n_rows = 1
+    n_cols = 3
+    fig = plt.figure(figsize=(8.3, 8.3 * (n_rows / n_cols)))
+    axes = fig.subplots(nrows=n_rows, ncols=n_cols, sharex=True, sharey=True)
+
+    # Hack to make sure the array is always indexable as [row, col]
+    if len(axes.shape) == 1:
+        axes = axes[None, :]
 
     max_thickness = (
         data[["thickness", *[f"{model}_thickness" for model in models]]].max().max()
@@ -602,9 +613,9 @@ def plot_model_comparison(show: bool = True, histogram: bool = False):
         0, max_thickness - (max_thickness % step_size) + step_size * 2, step_size
     )
 
-    for i, model in enumerate(ref_names):
-        col = i % 2
-        row = int((i - col) / 2)
+    for i, model in enumerate(models):
+        col = i % n_cols
+        row = int((i - col) / n_cols)
         axis: plt.Axes = axes[row, col]
 
 
@@ -663,18 +674,24 @@ def plot_model_comparison(show: bool = True, histogram: bool = False):
     plt.tight_layout()
 
     Path("figures/").mkdir(exist_ok=True)
-    plt.savefig("figures/thickness_vs_models.jpg", dpi=400)
+    plt.savefig(f"figures/thickness_vs_models{'_uncorr' if not correct_topo else ''}.jpg", dpi=400)
 
     if show:
         plt.show()
 
 
-def plot_glathida_comparison(show: bool = True, histogram: bool = False):
+def plot_glathida_comparison(show: bool = True, histogram: bool = False, correct_topo: bool = True):
     import scipy.spatial
 
     import svalbardradar.comparisons
 
     data = svalbardradar.comparisons.sample_glathida()
+
+    if not correct_topo:
+        for col in ["glathida_thickness", "thickness"]:
+            data[col] = data[f"{col}_uncorr"]
+        data["glathida_diff"] = data["glathida_thickness"] - data["thickness"]
+        # data = data.rename(columns={"glathida_thickness_uncorr": "glathida_thickness"
 
     year_intervals = [1990, 2010, 2025]
     markers = ["x", "s", "o"]
@@ -691,7 +708,7 @@ def plot_glathida_comparison(show: bool = True, histogram: bool = False):
     axes = fig.subplots(ncols=3, sharex=True, sharey=True)
     for i, group in data.groupby("glathida_group"):
         axis: plt.Axes = axes[i]
-        stats = f"n={group.shape[0]}, ΔT: {group['glathida_diff'].median():.1f}±{statistics.nmad(group['glathida_diff']):.1f} m"
+        stats = f"n={group.shape[0]}, ΔH: {group['glathida_diff'].median():.1f}±{statistics.nmad(group['glathida_diff']):.1f} m"
 
 
         if i == 0:
@@ -745,7 +762,7 @@ def plot_glathida_comparison(show: bool = True, histogram: bool = False):
     # plt.legend()
     plt.tight_layout()
     Path("figures/").mkdir(exist_ok=True)
-    plt.savefig("figures/thickness_vs_glathida.jpg", dpi=400)
+    plt.savefig(f"figures/thickness_vs_glathida{'_uncorr' if not correct_topo else ''}.jpg", dpi=400)
 
     if show:
         plt.show()
@@ -755,11 +772,16 @@ def plot_model_temperate_cold_performance(show: bool = True):
     import svalbardradar.comparisons
 
     data = svalbardradar.comparisons.sample_models()
-    glathida = svalbardradar.comparisons.sample_glathida()
-    glathida = glathida[glathida["glathida_year"] > 2000]
+    # glathida = svalbardradar.comparisons.sample_glathida()
+    # glathida = glathida[glathida["glathida_year"] > 2000]
     # data = svalbardradar.comparisons.sample_glathida(data.copy())
+    #
+    #
+    data["glacier"] = data["radar_key"].str.split("-", expand=True).iloc[:, 0]
 
-    models = [str(col).replace("_thickness", "") for col in data if "_thickness" in col] + ["glathida"]
+    glaciers = ["kroppbreen", "filantropbreen", "vallakrabreen"]
+
+    models = [str(col).replace("_thickness", "") for col in data if "_thickness" in col if "farinotti" not in col]
 
     colors = {
         "cold": "lightblue",
@@ -771,29 +793,47 @@ def plot_model_temperate_cold_performance(show: bool = True):
         "farinotti": "Farinotti et al.\n(2019)",
         "millan": "Millan et al.\n(2022)",
         "vanpelt": "van Pelt & Frank\n(2025)",
+        "frank": "Frank et al., (in review)",
         "glathida": "GlaThiDa 2000-"
     }
+    short_names = {
+        "furst": "Fü",
+        "millan": "Mi",
+        "vanpelt": "vP",
+        # "frank": "Fr",
+    }
+    models = list(short_names.keys())
     case_names = {
         "temperate": "Temperate bed",
         "cold": "Cold bed",
         "all": "All data",
     }
     box_distance = 5
-    plt.figure(figsize=(8, 5))
-    for i, model in enumerate(models):
-        if model != "glathida":
+    fig=  plt.figure(figsize=(8, 5))
+    # axes = fig.subplots(2, 2)
+    axes = []
+    for k, glacier in enumerate([*glaciers, "all"]):
+        if glacier == "all":
             df = data
-            diff = data[f"{model}_thickness"] - data["thickness"]
+            axis = plt.subplot2grid((3, len(glaciers)), (1, 0), rowspan=2, colspan=3)
         else:
-            df = glathida
-            diff =glathida["glathida_diff"]
+            df = data[data["glacier"] == glacier]
+            axis = plt.subplot2grid((3, len(glaciers)), (0, k), rowspan=1, colspan=1)
 
-        cold = (df["temperate_lower"] /  df["thickness"]) < 0.001
-        temperate = (df["temperate_upper"] / df["thickness"]) > 0.001
+        axes.append(axis)
+        for i, model in enumerate(models):
 
-        for j, (case, arr) in enumerate([("cold", diff[cold]), ("temperate", diff[temperate]), ("all", diff)]):
-            arr = arr[np.abs(arr) < 300]
-            plt.boxplot([arr], positions=[j - 1 + box_distance * i],  showfliers=False, manage_ticks=False, widths=0.8, patch_artist=True, boxprops={"facecolor": colors[case], "alpha": 0.5}, medianprops={"color": "black"}, label=case_names[case] if i == 0 else None)
+            # axis = axes.ravel()[k]
+
+            # df = data
+            diff = df[f"{model}_thickness"] - df["thickness"]
+
+            cold = (df["temperate_lower"] /  df["thickness"]) < 0.01
+            temperate = (df["temperate_upper"] / df["thickness"]) > 0.01
+
+            for j, (case, arr) in enumerate([("cold", diff[cold]), ("temperate", diff[temperate]), ("all", diff)]):
+                arr = arr[np.abs(arr) < 300]
+                axis.boxplot([arr], positions=[j - 1 + box_distance * i],  showfliers=False, manage_ticks=False, widths=0.8, patch_artist=True, boxprops={"facecolor": colors[case], "alpha": 0.5}, medianprops={"color": "black"}, label=case_names[case] if i == 0 else None)
             # violins = plt.violinplot([arr], positions=[j - 1 + box_distance * i], widths=1)
             # for violin in violins["bodies"]:
             #     violin.set_facecolor(colors[case])
@@ -803,14 +843,37 @@ def plot_model_temperate_cold_performance(show: bool = True):
             #         continue
             #     violins[key].set_edgecolor(colors[case] if colors[case] != "white" else "grey")
             #     violins[key].set_alpha(0.5)
-    plt.xticks(np.arange(len(models)) * box_distance, [ref_names[model] for model in models])
-    plt.ylabel("Thickness difference (m)")
-    plt.legend()
-    xlim = plt.gca().get_xlim()
 
-    plt.hlines(0, *xlim, zorder=0, color="grey", linestyles="--")
-    plt.xlim(xlim)
+            xtick_vals = np.arange(len(models)) * box_distance
+            axis.set_xticks(xtick_vals, [ref_names[model] if glacier =="all" else short_names[model] for model in models])
+
+            axis.set_ylim(-200, 200)
+            yticks = axis.get_yticks()
+            if k in [0, 3]:
+                axis.set_yticks(yticks)
+            else:
+                axis.set_yticks(yticks, labels=[""] * len(yticks))
+            xlim = (-2, xtick_vals.max() + 2)
+            # xlim = axis.get_xlim()
+            axis.hlines(0, *xlim, zorder=0, color="grey", linestyles="--")
+            axis.set_xlim(xlim)
+
+            if k == 3:
+                axis.set_ylabel("Thickness difference (m)")
+                axis.legend(loc="lower center", ncols=3)
+            elif k == 0:
+                axis.set_ylabel("Thickness diff. (m)")
+
     plt.tight_layout()
+
+    for i, axis in enumerate(axes):
+        axis.text(0.03 if i < 3 else 0.01, 0.97, "abcdef"[i], transform=axis.transAxes, va="top", path_effects=[
+                            matplotlib.patheffects.withStroke(
+                                linewidth=2, foreground="white"
+                            )
+                        ])
+        if i < (len(axes) - 1):
+            axis.text(0.5, 0.97, glaciers[i].capitalize().replace("akra", "åkra"), transform=axis.transAxes, va="top", ha="center", fontsize=8)
 
     Path("figures/").mkdir(exist_ok=True)
     plt.savefig("figures/thickness_vs_cold_temperate.jpg", dpi=400)
@@ -1440,13 +1503,17 @@ def generate_all_figures(show: bool = True):
     print("Generating centerline profiles figure.")
     plot_centerline_profiles(show=show)
     print("Generating inversion model comparison figure.")
-    plot_model_comparison(show=show)
+    plot_model_comparison(show=show, correct_topo=True)
+    plot_model_comparison(show=show, correct_topo=False)
     print("Generating glathida comparison figure.")
-    plot_glathida_comparison(show=show)
+    plot_glathida_comparison(show=show, correct_topo=False)
+    plot_glathida_comparison(show=show, correct_topo=False)
     print("Generating interpretation merging figure.")
     plot_interpretation_merging(show=show)
     print("Generating cross-track difference figure.")
     plot_cross_track_difference(show=show)
+    print("Generating cold/temperate performance difference figure.")
+    plot_model_temperate_cold_performance(show=show)
 
 
 if __name__ == "__main__":
