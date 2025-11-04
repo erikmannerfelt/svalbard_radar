@@ -407,7 +407,7 @@ def _recommended() -> list[list[str]]:
         "dronbreen-20250325-DAT_0007_A1_1",
         "ragna_mariebreen-20240405-DAT_0357_A1_1",
         "dronbreen-20250326-DAT_0004_A1_1",
-        "elfenbeinbreen-20250326-DAT_0435_B1_1",
+        "dronbreen-20250325-DAT_0015_A1_7",
         "slakbreen-20240310-DAT_0289_A1_1",
          "elfenbeinbreen-20250326-DAT_0436_B1_1",
         "ragna_mariebreen-20240317-DAT_0332_A1_2",

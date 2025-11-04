@@ -9,3 +9,5 @@ if ! [[ -d "$target_dir" ]]; then
 fi
 
 zip -r9 "$target_dir/svalbard_radar_backup_$date.zip" submitted/
+
+echo -e "\nSaved to $target_dir"
