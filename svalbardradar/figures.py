@@ -1239,6 +1239,11 @@ def plot_interpretation_merging(show: bool = False):
 
     all_merged = interpretations.merge_all_interpretations()
 
+    colors = {
+        "bed": "#555",
+        "temperate": "red",
+    }
+
     cases = [
         {
             "radar_key": "ragna_mariebreen-20240412-DAT_0404_A1_1",
@@ -1266,7 +1271,7 @@ def plot_interpretation_merging(show: bool = False):
         }
     ]
 
-    fig = plt.figure(figsize=(8, 6.5))
+    fig = plt.figure(figsize=(8.3, 6.4))
     outer_grid = fig.add_gridspec(
         nrows=2, ncols=2,
         left=0.08, right=0.97, bottom=0.07, top=0.99,
@@ -1321,30 +1326,34 @@ def plot_interpretation_merging(show: bool = False):
         # Lines where the x coordinate suddenly changes are probably due to missing data. They should
         # be plotted separately.
         diffs = (merged["x"].diff().fillna(0) > 50).cumsum()
-        for _, merged_split in merged.groupby(diffs):
+        for k, (_, merged_split) in enumerate(merged.groupby(diffs)):
             ax_bot.fill_between(
                 merged_split["x"],
                 merged_split["thickness"] - merged_split["temperate_lower"],
                 merged_split["thickness"] - merged_split["temperate_upper"],
-                color="red",
+                color=colors["temperate"],
                 alpha=0.5,
+                label="CTS (±25%)" if k == 0 else None,
             )
             ax_bot.plot(
                 merged_split["x"],
                 merged_split["thickness"] - merged_split["temperate"],
-                color="red",
+                color=colors["temperate"],
+                label="CTS (median)" if k == 0 else None,
             )
             ax_bot.fill_between(
                 merged_split["x"],
                 merged_split["thickness_lower"],
                 merged_split["thickness_upper"],
-                color="#555",
+                color=colors["bed"],
                 alpha=0.5,
+                label="Bed (±25%)" if k == 0 else None,
             )
             ax_bot.plot(
                 merged_split["x"],
                 merged_split["thickness"],
-                color="#555",
+                color=colors["bed"],
+                label="Bed (median)" if k == 0 else None,
             )
         for j, axis in enumerate([ax_top, ax_mid, ax_bot]):
             axis.set_xlim(case["xlim"])
@@ -1363,6 +1372,18 @@ def plot_interpretation_merging(show: bool = False):
             ax_mid.set_ylabel("Depth (m)")
         if i in [1, 3]:
             ax_bot.set_xlabel("Trace number")
+
+        # Add legends for the middle and bottom panels
+        if i == 3:
+            lines = []
+            for key in sorted(DIGITIZE_CLASS_PROPS.keys(), key=lambda s: len(DIGITIZE_CLASS_PROPS[s]["name"]), reverse=True):
+                props = DIGITIZE_CLASS_PROPS[key]
+                lines.append(plt.Line2D([], [], color=props["color"], label=props["name"]))
+            legend = ax_mid.legend(handles=lines, fontsize=8, loc="upper left", bbox_to_anchor=(0.02, 0., 0.98, 1.), framealpha=0)
+            legend.set_zorder(-1)
+
+            ax_bot.legend(fontsize=8, loc="upper left", bbox_to_anchor=(0.02, 0., 0.98, 1.), framealpha=0)
+
             
     plt.savefig("figures/interpretation_merging_examples.jpg", dpi=600)
     if show:
