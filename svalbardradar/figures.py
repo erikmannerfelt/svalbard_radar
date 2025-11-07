@@ -1375,14 +1375,15 @@ def plot_interpretation_merging(show: bool = False):
 
         # Add legends for the middle and bottom panels
         if i == 3:
+            legend_kwargs = {"fontsize": 8, "loc": "upper left", "bbox_to_anchor":(0.02, 0., 0.98, 1), "framealpha": 0, "labelspacing": 0.25} 
             lines = []
             for key in sorted(DIGITIZE_CLASS_PROPS.keys(), key=lambda s: len(DIGITIZE_CLASS_PROPS[s]["name"]), reverse=True):
                 props = DIGITIZE_CLASS_PROPS[key]
                 lines.append(plt.Line2D([], [], color=props["color"], label=props["name"]))
-            legend = ax_mid.legend(handles=lines, fontsize=8, loc="upper left", bbox_to_anchor=(0.02, 0.02, 0.98, 1), framealpha=0)
+            legend = ax_mid.legend(handles=lines, **legend_kwargs)
             legend.set_zorder(-1)
 
-            ax_bot.legend(fontsize=8, loc="upper left", bbox_to_anchor=(0.02, 0.02, 0.98, 1.), framealpha=0)
+            ax_bot.legend(**legend_kwargs)
 
             
     plt.savefig("figures/interpretation_merging_examples.jpg", dpi=600)
