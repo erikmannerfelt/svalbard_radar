@@ -14,7 +14,7 @@ import shapely.geometry
 import tqdm
 import xarray as xr
 
-from svalbardradar.tools import paths, rasters
+from svalbardradar.tools import paths, rasters, statistics
 
 CACHE_PATH = paths.BASE_CACHE_PATH / "interpretations"
 
@@ -316,14 +316,11 @@ def merge_all_interpretations(step_m: float = 5., overwrite_cache: bool = False)
         return gpd.read_feather(out_path)
 
     radar_keys = paths.get_all_interpreted_radargrams()
-    # testkey = "ragna_mariebreen-20240412-DAT_0404_A1_1"
-    # testkey = "bergmesterbreen-20230222-DAT_0033_A1_3"
-    # testkey = "amenfonna-20240510-DAT_0044_A1_1"
-    # testkey = "dronbreen-20250327-DAT_0065_A1_1"
-
+    
     all_data_list = []
     for radar_key in radar_keys:
         all_data_list.append(read_interpretations(radar_key=radar_key, step_m=step_m))
+
     data = pd.concat(all_data_list).drop(columns=["line_i", "y"])
 
     bed_data_list = []
@@ -335,7 +332,6 @@ def merge_all_interpretations(step_m: float = 5., overwrite_cache: bool = False)
 
     bed_data = pd.concat(bed_data_list)
 
-    # bed_data = data.loc[(slice(None), slice(None), ["bed_cold", "bed_unspecified"])]
     bed_grouped = bed_data.select_dtypes(np.number).groupby(level=["radar_key", "distance"])
 
     # Identify areas where the majority of people say the bed is missing
@@ -349,10 +345,6 @@ def merge_all_interpretations(step_m: float = 5., overwrite_cache: bool = False)
 
     out = pd.merge(out, bed_data.select_dtypes(object).groupby(level=["radar_key", "distance"]).first(), right_index=True, left_index=True)
     out["date_str"] = out.index.get_level_values("radar_key").str.extract(r"(202\d{5})").iloc[:, 0].astype(str).values
-    # out["distance"] = bed_grouped["distance"].first()
-    out["thickness_std"] = bed_grouped["depth"].std()
-    out["thickness_lower"] = bed_grouped["depth"].quantile(0.25)
-    out["thickness_upper"] = bed_grouped["depth"].quantile(0.75)
 
     out["part_idx"] = out["part_idx"].round().astype(int)
 
@@ -362,24 +354,52 @@ def merge_all_interpretations(step_m: float = 5., overwrite_cache: bool = False)
             temperate_data_list.append(data.loc[(slice(None), slice(None), [key])])
         except KeyError:
             continue
-    # temperate_data = data.loc[(slice(None), slice(None), ["temperate", "bed_cold"])]
     temperate_data = pd.concat(temperate_data_list)
     temperate_grouped = temperate_data.select_dtypes(np.number).groupby(level=["radar_key", "distance"])
 
-    out["temperate"] = np.clip(out["thickness"] - temperate_grouped["depth"].median(), min=0, max=out["thickness"])
+    out["temperate"] = temperate_grouped["depth"].median()
 
-    out.loc[out["temperate"].isna() & (~out["thickness"].isna()), "temperate"] = 0
-    out["temperate_std"] = temperate_grouped["depth"].std()
-    out["temperate_lower"] = np.clip(out["thickness"] - temperate_grouped["depth"].quantile(0.25), min=0, max=out["thickness"])
-    out["temperate_upper"] = np.clip(out["thickness"] - temperate_grouped["depth"].quantile(0.75), min=0, max=out["thickness"])
+    out.loc[out["temperate"].isna() & (~out["thickness"].isna()), "temperate"] = out["thickness"]
+    for prefix, grouped in [("thickness", bed_grouped), ("temperate", temperate_grouped)]:
 
+        out[f"{prefix}_user_lower"] = grouped["depth"].quantile(0.25)
+        out[f"{prefix}_user_upper"] = grouped["depth"].quantile(0.75)
+
+        out[f"{prefix}_user_std"] = grouped["depth"].std()
+        out[f"{prefix}_user_nmad"] = grouped["depth"].apply(lambda v: statistics.nmad(v))
+        out[f"{prefix}_user_count"] = grouped["depth"].count()
+            
+        out[f"{prefix}_gpr_uncertainty"] = gpr_uncertainty(thickness=out[prefix], frequency_mhz=out["antenna"].str.replace(" MHz", "").astype(float))
+        out[f"{prefix}_gnss_uncertainty"] = gnss_uncertainty(thickness=out[prefix], distance=out.index.get_level_values("distance"))
+
+        out[f"{prefix}_nmad"] = out[[f"{prefix}_gpr_uncertainty", f"{prefix}_gnss_uncertainty", f"{prefix}_user_nmad"]].pow(2).sum(axis="columns").pow(0.5)
+        out[f"{prefix}_std"] = out[[f"{prefix}_gpr_uncertainty", f"{prefix}_gnss_uncertainty", f"{prefix}_user_std"]].pow(2).sum(axis="columns").pow(0.5)
+
+
+        instrument_unc = out[[f"{prefix}_gpr_uncertainty", f"{prefix}_gnss_uncertainty"]].pow(2).sum(axis="columns").pow(0.5)
+
+        out[f"{prefix}_lower"] = out[f"{prefix}_user_lower"] - instrument_unc
+        out[f"{prefix}_upper"] = out[f"{prefix}_user_upper"] + instrument_unc
+
+    temperate_cols = ["temperate", "temperate_upper", "temperate_user_upper", "temperate_lower", "temperate_user_lower"]
+
+    for col in temperate_cols:
+        # Invert the temperate ice columns so that it starts at 0 at the base and increases going up
+        out[col] = (out["thickness"] - out[col]).clip(lower=0, upper=out["thickness"])
+        
     out["temperate_frac"] = out["temperate"] / out["thickness"]
-    out["temperate_frac_std"] = out["temperate_std"] / out["thickness"]
+    out["temperate_frac_std"] = out["temperate_user_std"] / out["thickness"]
 
-    to_clamp = (out["temperate_frac"] > 0.5) & ((out["thickness"] - out["temperate"]) <= 17)
+    to_clamp = (out["temperate_frac"] > 0.5) & (out["temperate"] <= 17)
     out.loc[to_clamp, "temperate_frac"] = 1.
-    for col in ["temperate", "temperate_upper"]:
+    for col in temperate_cols:
         out.loc[to_clamp, col] = out["thickness"]
+
+    out["bed_type"] = "unclear"
+    out.loc[(out["temperate_user_lower"] / out["thickness"]) < 0.01, "bed_type"] = "certain_cold"
+    out.loc[(out["temperate_user_upper"] / out["thickness"]) > 0.01, "bed_type"] = "certain_temperate"
+    out.loc[(out["bed_type"] == "unclear") & (out["temperate_frac"] < 0.01), "bed_type"] = "uncertain_cold"
+    out.loc[(out["bed_type"] == "unclear") & (out["temperate_frac"] > 0.01), "bed_type"] = "uncertain_temperate"
     
     out["bed_elevation"] = out["elevation"] - out["thickness"]
     out["temperate_elevation"] = out["bed_elevation"] + out["temperate"]
@@ -390,9 +410,6 @@ def merge_all_interpretations(step_m: float = 5., overwrite_cache: bool = False)
             out["easting"], out["northing"], crs=32633
         ),
     )
-    # plt.hist(out["part_idx"])
-    # plt.show()
-    # print(out.reset_index().iloc[0])
     out.reset_index().to_feather(out_path)
 
     return gpd.read_feather(out_path)

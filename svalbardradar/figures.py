@@ -825,24 +825,14 @@ def plot_model_temperate_cold_performance(show: bool = True):
 
             # axis = axes.ravel()[k]
 
-            # df = data
             diff = df[f"{model}_thickness"] - df["thickness"]
 
-            cold = (df["temperate_lower"] /  df["thickness"]) < 0.01
-            temperate = (df["temperate_upper"] / df["thickness"]) > 0.01
+            cold = df["bed_type"] == "certain_cold"
+            temperate = df["bed_type"] == "certain_temperate"
 
             for j, (case, arr) in enumerate([("cold", diff[cold]), ("temperate", diff[temperate]), ("all", diff)]):
                 arr = arr[np.abs(arr) < 300]
                 axis.boxplot([arr], positions=[j - 1 + box_distance * i],  showfliers=False, manage_ticks=False, widths=0.8, patch_artist=True, boxprops={"facecolor": colors[case], "alpha": 0.5}, medianprops={"color": "black"}, label=case_names[case] if i == 0 else None)
-            # violins = plt.violinplot([arr], positions=[j - 1 + box_distance * i], widths=1)
-            # for violin in violins["bodies"]:
-            #     violin.set_facecolor(colors[case])
-            #     violin.set_edgecolor("black")
-            # for key in violins:
-            #     if key == "bodies":
-            #         continue
-            #     violins[key].set_edgecolor(colors[case] if colors[case] != "white" else "grey")
-            #     violins[key].set_alpha(0.5)
 
             xtick_vals = np.arange(len(models)) * box_distance
             axis.set_xticks(xtick_vals, [ref_names[model] if glacier =="all" else short_names[model] for model in models])
@@ -1439,7 +1429,7 @@ def plot_cross_track_difference(show: bool = False):
         second["other_thickness"] = first["thickness"].values[indices[distance_mask]]
         second["other_temperate"] = first["temperate"].values[indices[distance_mask]]
 
-        out_list.append(second[["thickness", "other_thickness", "temperate_frac", "temperate", "other_temperate", "temperate_lower", "temperate_upper"]])
+        out_list.append(second[["thickness", "other_thickness", "temperate_frac", "temperate", "other_temperate", "bed_type"]])
 
     cmps = pd.concat(out_list)
     cmps["temperate_frac"] *= 100
@@ -1460,8 +1450,8 @@ def plot_cross_track_difference(show: bool = False):
     for i, (name, color, data) in enumerate(
             [
                 ("All bed data","gray",  cmps),
-                ("Temperate bed", "purple", cmps[(cmps["temperate_lower"] / cmps["thickness"]) >= 0.01]),
-                ("Cold bed", "blue", cmps[(cmps["temperate_upper"] / cmps["thickness"]) < 0.01]),
+                ("Temperate bed", "purple", cmps[cmps["bed_type"] == "certain_temperate"]),
+                ("Cold bed", "blue", cmps[cmps["bed_type"] == "certain_cold"]),
                 ("CTS", "red", cmps.drop(columns=["diff"]).rename(columns={"temperate_diff": "diff"}))
             ]
         ):
@@ -1517,7 +1507,7 @@ def generate_all_figures(show: bool = True):
     plot_model_comparison(show=show, correct_topo=False)
     print("Generating glathida comparison figure.")
     plot_glathida_comparison(show=show, correct_topo=False)
-    plot_glathida_comparison(show=show, correct_topo=False)
+    plot_glathida_comparison(show=show, correct_topo=True)
     print("Generating interpretation merging figure.")
     plot_interpretation_merging(show=show)
     print("Generating cross-track difference figure.")

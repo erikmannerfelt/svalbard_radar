@@ -314,7 +314,7 @@ def sample_models(overwrite_cache: bool = False):
         "furst": get_furst(),
         "millan": get_millan(),
         "vanpelt": get_vanpelt(),
-        "frank": get_frank(),
+        # "frank": get_frank(),
     }
 
     with rio.open(get_hugonnet()) as raster:
