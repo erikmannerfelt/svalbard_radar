@@ -226,6 +226,88 @@ def read_interpretations(radar_key: str, step_m: float):
     return data
     
 
+def gpr_uncertainty(thickness: np.ndarray, frequency_mhz: np.ndarray | float, medium_velocity: float = 0.168, medium_velocity_uncertainty_frac: float = 0.02):
+    """Calculate the GPR-component of uncertainty after Lapazaran et al., (2016)
+
+    Parameters
+    ----------
+    thickness
+        The thickness (or depth) of a reflector
+    frequency_mhz
+        The antenna center frequency in MHz
+    medium_velocity
+        The velocity of the radar wave in the medium
+    medium_velocity_uncertainty_frac
+        The uncertainty in the medium velocity as a fraction of the velocity itself
+    
+
+    Examples
+    --------
+    >>> thickness = np.array([100, 200])
+    >>> err = gpr_uncertainty(thickness, frequency_mhz=25.)
+    >>> err[0] < err[1]
+    np.True_
+    >>> 2. < err[0] < 2.1
+    np.True_
+    >>> 4. < err[1] < 4.1
+    np.True_
+
+    Returns
+    -------
+    An array of uncertainties.
+    """
+    twtt_ns = thickness * 2. / medium_velocity
+    time_uncertainty_ns = 1000. / frequency_mhz
+
+    part_a = twtt_ns ** 2 * (medium_velocity * medium_velocity_uncertainty_frac) ** 2
+    part_b = medium_velocity ** 2 * time_uncertainty_ns
+
+    return np.sqrt(part_a + part_b) / 2
+
+
+def gnss_uncertainty(thickness: np.ndarray, distance: np.ndarray, speed_kmh: float = 15., gnss_timing_uncertainty_s: float = 1., gnss_fix_uncertainty_m: float = 10.):
+    """Calculate the GNSS(positioning)-component of uncertainty after Lapazaran et al., (2016).
+
+    Parameters
+    ----------
+    thickness
+        The thickness (or depth) of a reflector in meters.
+    distance
+        Cumulative distance array to derive dx from in meters.
+    speed_kmh
+        The average survey speed in km/h.
+    gnss_timing_uncertainty_s
+        The timing uncertainty between GNSS and GPR measurements in seconds.
+    gnss_fix_uncertainty_m
+        The horizontal positioning uncertainty of the GNSS fix in meters.
+
+    Examples
+    --------
+    >>> thickness = np.array([100, 200])
+    >>> distance = np.array([0, 1000])
+    >>> err = gnss_uncertainty(thickness, distance)
+    >>> err[0] == err[1]
+    np.True_
+    >>> 1. < err[0] < 1.1
+    np.True_
+    >>> err2 = gnss_uncertainty(thickness, distance / 2)
+    >>> (err[0] * 2) == err2[0]
+    np.True_
+
+    Returns
+    -------
+    An array of uncertainties.
+    """
+    # gradient = np.zeros_like(thickness)
+    diffs = np.diff(thickness) / np.diff(distance)
+    gradient = np.r_[diffs[[0]], (diffs[1:] + diffs[:-1]) / 2., diffs[[-1]]]
+
+    horizontal_timing_uncertainty_m = (speed_kmh / 3.6) * gnss_timing_uncertainty_s
+
+    horizontal_pos_uncertainty_m = np.sqrt(horizontal_timing_uncertainty_m ** 2 + gnss_fix_uncertainty_m ** 2)
+
+    return horizontal_pos_uncertainty_m * np.abs(gradient)
+
 
 def merge_all_interpretations(step_m: float = 5., overwrite_cache: bool = False):
     out_path = CACHE_PATH / "interp_all.feather"
