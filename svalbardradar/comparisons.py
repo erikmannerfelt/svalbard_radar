@@ -218,6 +218,17 @@ def get_hugonnet() -> Path:
 
     return out_path
 
+def get_geyman() -> Path:
+    out_path = CACHE_PATH / "geyman/geyman_dh_1936-2010.tif"
+    if out_path.is_file():
+        return out_path
+    url = "https://next.api.npolar.no/dataset/f6afca5c-6c95-4345-9e52-cfe2f24c7078/attachment/678a2b36-0c6f-4eef-a207-7f56d6632c66/_blob"
+
+    misc.download_large_file(out_path, url)
+    return out_path
+    
+
+
 def get_glathida():
     out_path = CACHE_PATH / "glathida/glathida_pts.feather"
 
