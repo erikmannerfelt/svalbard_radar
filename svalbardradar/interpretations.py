@@ -1,17 +1,12 @@
 import warnings
 from pathlib import Path
-import io
 
 import geopandas as gpd
 import json
-import matplotlib.patheffects
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy.interpolate
-import scipy.spatial
 import shapely.geometry
-import tqdm
 import xarray as xr
 
 from svalbardradar.tools import paths, rasters, statistics
@@ -19,7 +14,7 @@ from svalbardradar.tools import paths, rasters, statistics
 CACHE_PATH = paths.BASE_CACHE_PATH / "interpretations"
 
 
-def read_interpretation_xy(filepath: Path, x_vals: np.ndarray | None = None) -> pd.Series:
+def read_interpretation_xy(filepath: Path, x_vals: np.ndarray | None = None) -> pd.DataFrame:
     """
     Read digitized interpretation from a JSON feature collection and return y-values per pixel x.
 
@@ -70,12 +65,12 @@ def read_interpretation_xy(filepath: Path, x_vals: np.ndarray | None = None) -> 
         counts = run_ends - run_starts
         y_u = sums / counts
         return x_u, y_u
+
     # Normalize/prepare query x once (if provided)
     if x_vals is not None:
         # ensure array, clamp to uint16 domain, and work in int64 for math
         x_query_sorted_unique = np.unique(
-            np.clip(np.asarray(x_vals, dtype=np.uint16),
-                    0, np.iinfo(np.uint16).max).astype(np.int64, copy=False)
+            np.clip(np.asarray(x_vals, dtype=np.uint16), 0, np.iinfo(np.uint16).max).astype(np.int64, copy=False)
         )
 
     for feature in features:
@@ -141,10 +136,8 @@ def read_interpretation_xy(filepath: Path, x_vals: np.ndarray | None = None) -> 
         kind_chunks.append(np.repeat(kind, x_eval_u16.size))
 
     if not y_chunks:
-        empty_index = pd.MultiIndex.from_arrays(
-            [[], [], [], []], names=["radar_key", "user", "kind", "x"]
-        )
-        return pd.Series([], index=empty_index, name="y", dtype=np.uint16)
+        empty_index = pd.MultiIndex.from_arrays([[], [], [], []], names=["radar_key", "user", "kind", "x"])
+        return pd.DataFrame({"y": [], "i": []}, index=empty_index, dtype="uint16")
 
     # ---- concatenate once ----
     y_all = np.concatenate(y_chunks)  # uint16
@@ -166,12 +159,10 @@ def read_interpretation_xy(filepath: Path, x_vals: np.ndarray | None = None) -> 
     return pd.DataFrame({"y": y_all, "i": i_all}, index=mi)
 
 
-def read_interpretations(radar_key: str, step_m: float):
+def read_interpretations(radar_key: str, step_m: float) -> pd.DataFrame:
     interp_paths = paths.get_latest_submissions(radar_key)
 
     with xr.open_dataset(paths.processed_radar_path(radar_key)) as dataset, warnings.catch_warnings():
-
-
         depth_model = scipy.interpolate.interp1d(
             np.arange(dataset["data"].shape[0])[::-1],
             dataset["depth"].values,
@@ -212,21 +203,29 @@ def read_interpretations(radar_key: str, step_m: float):
     for key in models:
         data[key] = models[key](data.index.get_level_values("x").astype(float))
 
-    data = data.sort_values("distance").reset_index(level='x', drop=False).set_index('distance', append=True).dropna(subset=["depth", "easting"])
-    data = data[~data.index.duplicated(keep='first')]
+    data = (
+        data.sort_values("distance")
+        .reset_index(level="x", drop=False)
+        .set_index("distance", append=True)
+        .dropna(subset=["depth", "easting"])
+    )
+    data = data[~data.index.duplicated(keep="first")]
 
     if crs != "EPSG:32633":
-        points = gpd.points_from_xy(data["easting"], data["northing"], crs=crs).to_crs(
-            32633
-        )
+        points = gpd.points_from_xy(data["easting"], data["northing"], crs=crs).to_crs(32633)
         data["easting"] = points.x
         data["northing"] = points.y
 
     data["antenna"] = antenna
     return data
-    
 
-def gpr_uncertainty(thickness: np.ndarray, frequency_mhz: np.ndarray | float, medium_velocity: float = 0.168, medium_velocity_uncertainty_frac: float = 0.02):
+
+def gpr_uncertainty(
+    thickness: np.ndarray,
+    frequency_mhz: np.ndarray | float,
+    medium_velocity: float = 0.168,
+    medium_velocity_uncertainty_frac: float = 0.02,
+):
     """Calculate the GPR-component of uncertainty after Lapazaran et al., (2016)
 
     Parameters
@@ -239,7 +238,7 @@ def gpr_uncertainty(thickness: np.ndarray, frequency_mhz: np.ndarray | float, me
         The velocity of the radar wave in the medium
     medium_velocity_uncertainty_frac
         The uncertainty in the medium velocity as a fraction of the velocity itself
-    
+
 
     Examples
     --------
@@ -256,16 +255,22 @@ def gpr_uncertainty(thickness: np.ndarray, frequency_mhz: np.ndarray | float, me
     -------
     An array of uncertainties.
     """
-    twtt_ns = thickness * 2. / medium_velocity
-    time_uncertainty_ns = 1000. / frequency_mhz
+    twtt_ns = thickness * 2.0 / medium_velocity
+    time_uncertainty_ns = 1000.0 / frequency_mhz
 
-    part_a = twtt_ns ** 2 * (medium_velocity * medium_velocity_uncertainty_frac) ** 2
-    part_b = medium_velocity ** 2 * time_uncertainty_ns
+    part_a = twtt_ns**2 * (medium_velocity * medium_velocity_uncertainty_frac) ** 2
+    part_b = medium_velocity**2 * time_uncertainty_ns
 
     return np.sqrt(part_a + part_b) / 2
 
 
-def gnss_uncertainty(thickness: np.ndarray, distance: np.ndarray, speed_kmh: float = 15., gnss_timing_uncertainty_s: float = 1., gnss_fix_uncertainty_m: float = 10.):
+def gnss_uncertainty(
+    thickness: np.ndarray,
+    distance: np.ndarray,
+    speed_kmh: float = 15.0,
+    gnss_timing_uncertainty_s: float = 1.0,
+    gnss_fix_uncertainty_m: float = 10.0,
+):
     """Calculate the GNSS(positioning)-component of uncertainty after Lapazaran et al., (2016).
 
     Parameters
@@ -298,25 +303,24 @@ def gnss_uncertainty(thickness: np.ndarray, distance: np.ndarray, speed_kmh: flo
     -------
     An array of uncertainties.
     """
-    # gradient = np.zeros_like(thickness)
     diffs = np.diff(thickness) / np.diff(distance)
-    gradient = np.r_[diffs[[0]], (diffs[1:] + diffs[:-1]) / 2., diffs[[-1]]]
+    gradient = np.r_[diffs[[0]], (diffs[1:] + diffs[:-1]) / 2.0, diffs[[-1]]]
 
     horizontal_timing_uncertainty_m = (speed_kmh / 3.6) * gnss_timing_uncertainty_s
 
-    horizontal_pos_uncertainty_m = np.sqrt(horizontal_timing_uncertainty_m ** 2 + gnss_fix_uncertainty_m ** 2)
+    horizontal_pos_uncertainty_m = np.sqrt(horizontal_timing_uncertainty_m**2 + gnss_fix_uncertainty_m**2)
 
     return horizontal_pos_uncertainty_m * np.abs(gradient)
 
 
-def merge_all_interpretations(step_m: float = 5., overwrite_cache: bool = False):
+def merge_all_interpretations(step_m: float = 5.0, overwrite_cache: bool = False) -> gpd.GeoDataFrame:
     out_path = CACHE_PATH / "interp_all.feather"
 
     if out_path.is_file() and not overwrite_cache:
         return gpd.read_feather(out_path)
 
     radar_keys = paths.get_all_interpreted_radargrams()
-    
+
     all_data_list = []
     for radar_key in radar_keys:
         all_data_list.append(read_interpretations(radar_key=radar_key, step_m=step_m))
@@ -343,7 +347,12 @@ def merge_all_interpretations(step_m: float = 5., overwrite_cache: bool = False)
 
     out = bed_grouped.median().rename(columns={"depth": "thickness"}).drop(idx_missing)
 
-    out = pd.merge(out, bed_data.select_dtypes(object).groupby(level=["radar_key", "distance"]).first(), right_index=True, left_index=True)
+    out = pd.merge(
+        out,
+        bed_data.select_dtypes(object).groupby(level=["radar_key", "distance"]).first(),
+        right_index=True,
+        left_index=True,
+    )
     out["date_str"] = out.index.get_level_values("radar_key").str.extract(r"(202\d{5})").iloc[:, 0].astype(str).values
 
     out["part_idx"] = out["part_idx"].round().astype(int)
@@ -361,22 +370,36 @@ def merge_all_interpretations(step_m: float = 5., overwrite_cache: bool = False)
 
     out.loc[out["temperate"].isna() & (~out["thickness"].isna()), "temperate"] = out["thickness"]
     for prefix, grouped in [("thickness", bed_grouped), ("temperate", temperate_grouped)]:
-
         out[f"{prefix}_user_lower"] = grouped["depth"].quantile(0.25)
         out[f"{prefix}_user_upper"] = grouped["depth"].quantile(0.75)
 
         out[f"{prefix}_user_std"] = grouped["depth"].std()
         out[f"{prefix}_user_nmad"] = grouped["depth"].apply(lambda v: statistics.nmad(v))
         out[f"{prefix}_user_count"] = grouped["depth"].count()
-            
-        out[f"{prefix}_gpr_uncertainty"] = gpr_uncertainty(thickness=out[prefix], frequency_mhz=out["antenna"].str.replace(" MHz", "").astype(float))
-        out[f"{prefix}_gnss_uncertainty"] = gnss_uncertainty(thickness=out[prefix], distance=out.index.get_level_values("distance"))
 
-        out[f"{prefix}_nmad"] = out[[f"{prefix}_gpr_uncertainty", f"{prefix}_gnss_uncertainty", f"{prefix}_user_nmad"]].pow(2).sum(axis="columns").pow(0.5)
-        out[f"{prefix}_std"] = out[[f"{prefix}_gpr_uncertainty", f"{prefix}_gnss_uncertainty", f"{prefix}_user_std"]].pow(2).sum(axis="columns").pow(0.5)
+        out[f"{prefix}_gpr_uncertainty"] = gpr_uncertainty(
+            thickness=out[prefix], frequency_mhz=out["antenna"].str.replace(" MHz", "").astype(float)
+        )
+        out[f"{prefix}_gnss_uncertainty"] = gnss_uncertainty(
+            thickness=out[prefix], distance=out.index.get_level_values("distance")
+        )
 
+        out[f"{prefix}_nmad"] = (
+            out[[f"{prefix}_gpr_uncertainty", f"{prefix}_gnss_uncertainty", f"{prefix}_user_nmad"]]
+            .pow(2)
+            .sum(axis="columns")
+            .pow(0.5)
+        )
+        out[f"{prefix}_std"] = (
+            out[[f"{prefix}_gpr_uncertainty", f"{prefix}_gnss_uncertainty", f"{prefix}_user_std"]]
+            .pow(2)
+            .sum(axis="columns")
+            .pow(0.5)
+        )
 
-        instrument_unc = out[[f"{prefix}_gpr_uncertainty", f"{prefix}_gnss_uncertainty"]].pow(2).sum(axis="columns").pow(0.5)
+        instrument_unc = (
+            out[[f"{prefix}_gpr_uncertainty", f"{prefix}_gnss_uncertainty"]].pow(2).sum(axis="columns").pow(0.5)
+        )
 
         out[f"{prefix}_lower"] = out[f"{prefix}_user_lower"] - instrument_unc
         out[f"{prefix}_upper"] = out[f"{prefix}_user_upper"] + instrument_unc
@@ -386,12 +409,12 @@ def merge_all_interpretations(step_m: float = 5., overwrite_cache: bool = False)
     for col in temperate_cols:
         # Invert the temperate ice columns so that it starts at 0 at the base and increases going up
         out[col] = (out["thickness"] - out[col]).clip(lower=0, upper=out["thickness"])
-        
+
     out["temperate_frac"] = out["temperate"] / out["thickness"]
     out["temperate_frac_std"] = out["temperate_user_std"] / out["thickness"]
 
     to_clamp = (out["temperate_frac"] > 0.5) & (out["temperate"] <= 17)
-    out.loc[to_clamp, "temperate_frac"] = 1.
+    out.loc[to_clamp, "temperate_frac"] = 1.0
     for col in temperate_cols:
         out.loc[to_clamp, col] = out["thickness"]
 
@@ -400,15 +423,13 @@ def merge_all_interpretations(step_m: float = 5., overwrite_cache: bool = False)
     out.loc[(out["temperate_user_upper"] / out["thickness"]) > 0.01, "bed_type"] = "certain_temperate"
     out.loc[(out["bed_type"] == "unclear") & (out["temperate_frac"] < 0.01), "bed_type"] = "uncertain_cold"
     out.loc[(out["bed_type"] == "unclear") & (out["temperate_frac"] > 0.01), "bed_type"] = "uncertain_temperate"
-    
+
     out["bed_elevation"] = out["elevation"] - out["thickness"]
     out["temperate_elevation"] = out["bed_elevation"] + out["temperate"]
-    
+
     out = gpd.GeoDataFrame(
         out,
-        geometry=gpd.points_from_xy(
-            out["easting"], out["northing"], crs=32633
-        ),
+        geometry=gpd.points_from_xy(out["easting"], out["northing"], crs=32633),
     )
     out.reset_index().to_feather(out_path)
 
@@ -426,9 +447,7 @@ def grid_interpretations(
     if all(fp.is_file() for fp in cache_paths.values()):
         for col in cache_paths:
             # This looks wrong but will just fetch the cache path and return its contents immediately
-            raster, bounds = rasters.interpolate_raster(
-                cache_paths[col], gpd.GeoDataFrame, col
-            )
+            raster, bounds = rasters.interpolate_raster(cache_paths[col], gpd.GeoDataFrame(), col)
             out[col] = raster
             out["bounds"] = bounds
         return out
@@ -466,4 +485,3 @@ def grid_interpretations(
         out["bounds"] = bounds
 
     return out
-

@@ -25,5 +25,6 @@ def download_large_file(output_filepath: Path, url: str):
 
         shutil.move(temp_path, output_filepath)
 
+
 def checksum(objects: list[object]) -> str:
     return hashlib.sha256("".join(map(str, objects)).encode()).hexdigest()

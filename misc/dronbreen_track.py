@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import geopandas as gpd
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import shapely
@@ -15,9 +14,7 @@ def main():
             continue
 
         with xr.open_dataset(filepath) as data:
-            parts = np.cumsum(
-                np.r_[[0], (data["distance"].diff("x") > 100).astype(int).values]
-            )
+            parts = np.cumsum(np.r_[[0], (data["distance"].diff("x") > 100).astype(int).values])
 
             for i in np.unique(parts):
                 mask = parts == i
@@ -42,9 +39,7 @@ def main():
 
     lines = pd.DataFrame.from_records(lines)
 
-    lines = gpd.GeoDataFrame(
-        lines.drop(columns="geometry"), geometry=lines["geometry"], crs=32633
-    )
+    lines = gpd.GeoDataFrame(lines.drop(columns="geometry"), geometry=lines["geometry"], crs=32633)
 
     lines.to_file("temp/dronbreen_tracks.geojson")
 

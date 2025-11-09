@@ -1,15 +1,11 @@
-import os
-import shutil
 import zipfile
 import tarfile
 from pathlib import Path
 
 import geopandas as gpd
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import rasterio as rio
-import requests
 import scipy.spatial
 
 from svalbardradar.tools import paths, misc
@@ -18,7 +14,6 @@ CACHE_PATH = paths.BASE_CACHE_PATH / "comparisons"
 
 
 STANDARD_YEAR = 2015
-
 
 
 def get_vanpelt() -> Path:
@@ -53,7 +48,9 @@ def get_furst() -> Path:
 
 def get_millan() -> Path:
     out_path = CACHE_PATH / "millan/millan_thickness.tif"
-    url = "https://cluster.klima.uni-bremen.de/~oggm/velocities/millan22/thickness/RGI-7/THICKNESS_RGI-7.1_2021July09.tif"
+    url = (
+        "https://cluster.klima.uni-bremen.de/~oggm/velocities/millan22/thickness/RGI-7/THICKNESS_RGI-7.1_2021July09.tif"
+    )
 
     misc.download_large_file(out_path, url)
 
@@ -93,9 +90,7 @@ def get_farinotti() -> Path:
                 filepaths.append(vsi_path)
                 continue
 
-            warp_path = warped_vrt_dir / entry.filename.split("/")[-1].replace(
-                ".tif", ".vrt"
-            )
+            warp_path = warped_vrt_dir / entry.filename.split("/")[-1].replace(".tif", ".vrt")
             gdal.Warp(
                 str(warp_path.absolute()),
                 vsi_path,
@@ -104,8 +99,6 @@ def get_farinotti() -> Path:
             )
 
             filepaths.append(warp_path)
-
-            # filepaths_per_crs.append(vsi_path)
 
     gdal.BuildVRT(
         out_path.absolute(),
@@ -145,9 +138,7 @@ def get_frank() -> Path:
                 filepaths.append(vsi_path)
                 continue
 
-            warp_path = warped_vrt_dir / entry.filename.split("/")[-1].replace(
-                ".tif", ".vrt"
-            )
+            warp_path = warped_vrt_dir / entry.filename.split("/")[-1].replace(".tif", ".vrt")
             gdal.Warp(
                 str(warp_path.absolute()),
                 vsi_path,
@@ -158,8 +149,6 @@ def get_frank() -> Path:
 
             filepaths.append(warp_path)
 
-            # filepaths_per_crs.append(vsi_path)
-
     gdal.BuildVRT(
         out_path.absolute(),
         filepaths,
@@ -167,13 +156,14 @@ def get_frank() -> Path:
     )
     return out_path
 
+
 def get_hugonnet() -> Path:
     out_path = CACHE_PATH / "hugonnet/hugonnet_dhdt_2000-2020.vrt"
     if out_path.is_file():
         return out_path
     from osgeo import gdal
+
     gdal.UseExceptions()
-    # url = "https://cluster.klima.uni-bremen.de/~oggm/velocities/millan22/thickness/RGI-7/THICKNESS_RGI-7.1_2021July09.tif"
     # url = "https://api.sedoo.fr/sedoo-glaciers-rest/data/v1_0/download/277e8d22-01c2-4617-89fc-53e4803573bc"
     url = "https://cluster.klima.uni-bremen.de/~oggm/geodetic_ref_mb_maps/07_rgi60_2000-01-01_2020-01-01.tar"
 
@@ -185,7 +175,6 @@ def get_hugonnet() -> Path:
     warped_vrt_dir.mkdir(exist_ok=True, parents=True)
     filepaths = []
     with tarfile.open(tar_path) as tar_file:
-
         for filename in tar_file.getnames():
             if "dhdt.tif" not in filename:
                 continue
@@ -198,9 +187,7 @@ def get_hugonnet() -> Path:
                 filepaths.append(vsi_path)
                 continue
 
-            warp_path = warped_vrt_dir / filename.split("/")[-1].replace(
-                ".tif", ".vrt"
-            )
+            warp_path = warped_vrt_dir / filename.split("/")[-1].replace(".tif", ".vrt")
             gdal.Warp(
                 str(warp_path.absolute()),
                 vsi_path,
@@ -210,13 +197,13 @@ def get_hugonnet() -> Path:
 
             filepaths.append(warp_path)
 
-    
     gdal.BuildVRT(
         out_path.absolute(),
         filepaths,
     )
 
     return out_path
+
 
 def get_geyman() -> Path:
     out_path = CACHE_PATH / "geyman/geyman_dh_1936-2010.tif"
@@ -226,7 +213,6 @@ def get_geyman() -> Path:
 
     misc.download_large_file(out_path, url)
     return out_path
-    
 
 
 def get_glathida():
@@ -273,9 +259,7 @@ def sample_glathida() -> pd.DataFrame:
     data = svalbardradar.interpretations.merge_all_interpretations()
     glathida = get_glathida()
 
-    tree = scipy.spatial.KDTree(
-        np.transpose([glathida.geometry.x, glathida.geometry.y])
-    )
+    tree = scipy.spatial.KDTree(np.transpose([glathida.geometry.x, glathida.geometry.y]))
 
     distances, indices = tree.query(data[["easting", "northing"]])
 
@@ -298,9 +282,7 @@ def sample_glathida() -> pd.DataFrame:
     data.rename(columns={"thickness": "thickness_uncorr"}, inplace=True)
     data["thickness"] = data["thickness_uncorr"] - (data["dt"] * data["hugonnet_dhdt"])
 
-    data["glathida_year"] = (
-        data["glathida_date"].astype(str).str.slice(0, 4).astype(int)
-    )
+    data["glathida_year"] = data["glathida_date"].astype(str).str.slice(0, 4).astype(int)
     data["glathida_dt"] = data["glathida_year"] - STANDARD_YEAR
     data["glathida_thickness"] = data["glathida_thickness_uncorr"] - (data["glathida_dt"] * data["hugonnet_dhdt"])
     data["glathida_diff"] = data["glathida_thickness"] - data["thickness"]
@@ -316,9 +298,7 @@ def sample_models(overwrite_cache: bool = False):
     if out_path.is_file() and not overwrite_cache:
         return gpd.read_feather(out_path)
 
-    # data = gpd.read_file(Path("cache/interpretations/quick_interp_all.gpkg"))
     data = svalbardradar.interpretations.merge_all_interpretations()
-    # data = data[data["kind"].str.contains("bed_") & (data["kind"] != "bed_missing")]
 
     model_paths = {
         "farinotti": get_farinotti(),
@@ -329,12 +309,11 @@ def sample_models(overwrite_cache: bool = False):
     }
 
     with rio.open(get_hugonnet()) as raster:
-        data["hugonnet_dhdt"] =  np.fromiter(
+        data["hugonnet_dhdt"] = np.fromiter(
             raster.sample(data[["easting", "northing"]].values),
             dtype=raster.dtypes[0],
             count=data.shape[0],
         )
-        
 
     for key in model_paths:
         with rio.open(model_paths[key]) as raster:
@@ -363,7 +342,6 @@ def sample_models(overwrite_cache: bool = False):
 
 
 def sample_for_karlijn(overwrite_cache: bool = False):
-
     model_cmps = sample_models()
     glathida_cmps = sample_glathida()
 
@@ -373,4 +351,3 @@ def sample_for_karlijn(overwrite_cache: bool = False):
     Path("temp/").mkdir(exist_ok=True)
     model_cmps.to_csv("temp/karlijn_model_cmps.csv")
     glathida_cmps.to_csv("temp/karlijn_glathida_cmps.csv")
-

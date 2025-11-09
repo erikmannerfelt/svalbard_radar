@@ -9,6 +9,8 @@ import dotenv
 
 dotenv.load_dotenv()
 
+RSGPR_PATH = "rsgpr"
+
 
 def get_paths(offline: bool = False):
     gpr_dir = Path(os.environ["GPR_DIR"])
@@ -24,9 +26,7 @@ def get_paths(offline: bool = False):
         "antoniabreen": {
             "20250406": [gpr_dir / "2025/GPR_20250406_B-Antoniabreen-25MHz"],
         },
-        "finsterwalderbreen": {
-            "20250407": [gpr_dir / "2025/GPR_20250407_A-Finsterwalderbreen-25MHz"]
-        },
+        "finsterwalderbreen": {"20250407": [gpr_dir / "2025/GPR_20250407_A-Finsterwalderbreen-25MHz"]},
         "scott_turnerbreen": {
             "20240207": [gpr_dir / "2024/GPR_20240207_A-ScottTurnerbreen-100MHz/"],
         },
@@ -50,15 +50,11 @@ def get_paths(offline: bool = False):
         "moysalbreen": {
             "20220222": [gpr_dir / "2022/Svalbard/GPR_220222_B-Moysalbreen-100MHz"],
         },
-        "fimbulisen": {
-            "20220430": [gpr_dir / "2022/Svalbard/GPR_220430_B-Fimbulisen-100MHz"]
-        },
+        "fimbulisen": {"20220430": [gpr_dir / "2022/Svalbard/GPR_220430_B-Fimbulisen-100MHz"]},
         "vallakrabreen": {
             "20210513": [gpr_dir / "2021/Svalbard/GPR_210513_A-Vallakrabreen-100MHz"],
             "20220419": [gpr_dir / "2022/Svalbard/GPR_220419_C-Vallakrabreen-100MHz"],
-            "20220505": [
-                gpr_dir / "2022/Svalbard/GPR_220505_A-VallakrabreenSurgeFront-100MHz"
-            ],
+            "20220505": [gpr_dir / "2022/Svalbard/GPR_220505_A-VallakrabreenSurgeFront-100MHz"],
         },
         "mettebreen": {
             "20230305": [gpr_dir / "2023/GPR_230305_A-Mettebreen-100MHz"],
@@ -82,12 +78,8 @@ def get_paths(offline: bool = False):
             "20220329": [
                 gpr_dir / "2022/Svalbard/GPR_220329_A-Dronbreen-100MHz",
             ],
-            "20230220": [
-                gpr_dir / "2023/GPR_230220_B-Dronbreen-100MHz"
-            ],  
-            "20230221": [
-                gpr_dir / "2023/GPR_230221_B-Dronbreen-100MHz"
-            ],  
+            "20230220": [gpr_dir / "2023/GPR_230220_B-Dronbreen-100MHz"],
+            "20230221": [gpr_dir / "2023/GPR_230221_B-Dronbreen-100MHz"],
             "20240209": [gpr_dir / "2024/GPR_20240209_A-Dronbreen-100MHz"],
             "20250325": [gpr_dir / "2025/GPR_20250325_A-Dronbreen-100MHz"],
             "20250326": [
@@ -143,9 +135,7 @@ def get_paths(offline: bool = False):
             ],
         },
         "austfonna": {
-            "20240507": [
-                gpr_dir / "2024/GPR_20240507_A-AustfonnaWestMargin-25MHz"
-            ],
+            "20240507": [gpr_dir / "2024/GPR_20240507_A-AustfonnaWestMargin-25MHz"],
         },
         "amenfonna": {
             "20240510": [gpr_dir / "2024/GPR_20240510_A-Amenfonna-25MHz"],
@@ -154,9 +144,7 @@ def get_paths(offline: bool = False):
             "20250326": [
                 gpr_dir / "2025/GPR_20250326_D-Elfenbeinbreen-100MHz/DAT_0435_B1",
                 gpr_dir / "2025/GPR_20250326_D-Elfenbeinbreen-100MHz/DAT_0436_B1",
-
             ],
-
         },
         "rabotbreen": {
             "20250402": [
@@ -167,7 +155,7 @@ def get_paths(offline: bool = False):
             "20250402": [
                 gpr_dir / "2025/GPR_20250402_B-vonPostbreen-25MHz",
             ]
-        }
+        },
     }
 
     n_total = 0
@@ -199,7 +187,6 @@ def get_paths(offline: bool = False):
 
 
 def get_dem_path(radar_key: str) -> Path:
-
     dem_dir = Path("./dems/").absolute()
 
     year = int(radar_key.split("-")[1][:4])
@@ -248,6 +235,7 @@ def get_dem_path(radar_key: str) -> Path:
 
     raise ValueError(f"No DEM match for radar key {radar_key}")
 
+
 def extract_glacier_raw_data(glacier: str = "dronbreen"):
     import shutil
 
@@ -287,25 +275,25 @@ def run_rsgpr(
         "remove_empty_traces",
         "zero_corr",
         "correct_antenna_separation",
-        f"bandpass",
+        "bandpass",
         "dewow(15)",  # Some long-range undulations are not captured by bandpass. Unsure why.
         f"gain({gain_strength})",
         f"siglog({siglog_strength})",
     ]
 
-    # This radargram is very long and the bed is not visible. This cuts the invisible parts. 
+    # This radargram is very long and the bed is not visible. This cuts the invisible parts.
     if "GPR_20250326_D-Elfenbeinbreen-100MHz/DAT_0436_B1" in str(input_filepath):
         rsgpr_steps.insert(0, "subset(18500 -1)")
     # This radargram starts with a long standstill which messes with the rest of the data
     elif "GPR_20250402_A-Rabotbreen-25MHz/DAT_0068" in str(input_filepath):
         rsgpr_steps.insert(0, "subset(180 -1)")
-    # This radargram is very long and the bed is not visible. This cuts the invisible parts. 
+    # This radargram is very long and the bed is not visible. This cuts the invisible parts.
     elif "GPR_20250402_B-vonPostbreen-25MHz/DAT_0024_A1" in str(input_filepath):
         rsgpr_steps.insert(0, "subset(4500 -1)")
 
     cmds = (
         [
-            "rsgpr",
+            RSGPR_PATH,
             "-v",
             "0.168",
             "--steps",
@@ -316,12 +304,8 @@ def run_rsgpr(
             str(output_filepath),
             "-r",
         ]
-        + ((["--merge", merge])
-        if merge is not None
-        else [])
-        + ((["--dem", str(dem_path)])
-        if dem_path is not None
-        else [])
+        + ((["--merge", merge]) if merge is not None else [])
+        + ((["--dem", str(dem_path)]) if dem_path is not None else [])
     )
 
     result = subprocess.run(
@@ -334,9 +318,7 @@ def run_rsgpr(
 
     log_filepath = Path(output_filepath).with_suffix(".log")
 
-    log_filepath.write_text(
-        f"stdout:\n{result.stdout.decode()}\n\n\nstderr:\n{result.stderr.decode()}"
-    )
+    log_filepath.write_text(f"stdout:\n{result.stdout.decode()}\n\n\nstderr:\n{result.stderr.decode()}")
 
 
 class GprInfo:
@@ -363,10 +345,7 @@ class GprInfo:
             return self.start_time - other.stop_time
 
         if self.stop_time < other.start_time:
-            return datetime.timedelta(
-                seconds=-(self.start_time - other.stop_time).total_seconds()
-            )
-            # return self.stop_time - other.start_time
+            return datetime.timedelta(seconds=-(self.start_time - other.stop_time).total_seconds())
 
         if self.start_time == self.start_time:
             return datetime.timedelta(seconds=0)
@@ -407,9 +386,7 @@ class GprInfo:
                 new.samples = value
             elif (value := parse(line, "Traces (width):", int)) is not None:
                 new.traces = value
-            elif (
-                value := parse(line, "Sampling frequency:", float, "MHz")
-            ) is not None:
+            elif (value := parse(line, "Sampling frequency:", float, "MHz")) is not None:
                 new.frequency = value
             elif (value := parse(line, "Track length:", float, "m")) is not None:
                 new.track_length = value
@@ -429,20 +406,12 @@ class GprInfo:
                 )
             ) is not None:
                 new.filepath = value.replace('"', "")
-            elif (
-                value := parse(line, "Start time:", datetime.datetime.fromisoformat)
-            ) is not None:
+            elif (value := parse(line, "Start time:", datetime.datetime.fromisoformat)) is not None:
                 new.start_time = value
-            elif (
-                value := parse(line, "Stop time:", datetime.datetime.fromisoformat)
-            ) is not None:
+            elif (value := parse(line, "Stop time:", datetime.datetime.fromisoformat)) is not None:
                 new.stop_time = value
 
-        # print(result.stdout.decode())
         return new
-
-
-# def rsgpr_info(filepath: Path) -> GprInfo:
 
 
 def run_all(offline: bool = False, force_redo: bool = False):
@@ -479,7 +448,6 @@ def run_all(offline: bool = False, force_redo: bool = False):
                 if not file_dir.is_dir():
                     raise ValueError(f"Could not find {file_dir}")
 
-                # infos: list[GprInfo] = []
                 groups: list[list[GprInfo]] = [[]]
                 for filepath in sorted(file_dir.rglob("*.rad")):
                     try:
@@ -489,16 +457,13 @@ def run_all(offline: bool = False, force_redo: bool = False):
                             print(f"Skipped {filepath} (invalid location)")
                             continue
                         raise
-                    # infos.append(gpr_info)
 
                     if len(groups) == 1 and len(groups[-1]) == 0:
                         groups[-1].append(gpr_info)
                         continue
 
-                    # print(infos[-2].time_between(gpr_info))
                     if gpr_info.is_compatible(groups[-1][-1]) and (
-                        groups[-1][-1].time_between(gpr_info)
-                        < datetime.timedelta(minutes=30)
+                        groups[-1][-1].time_between(gpr_info) < datetime.timedelta(minutes=30)
                     ):
                         groups[-1].append(gpr_info)
 
@@ -518,16 +483,12 @@ def run_all(offline: bool = False, force_redo: bool = False):
                         raise ValueError(f"DEM cannot be found: {dem_path}")
 
                     if group_traces < 300:
-                        print(
-                            f"Skipped {glacier}/{date_str}/{group_name} (width={group_traces})"
-                        )
+                        print(f"Skipped {glacier}/{date_str}/{group_name} (width={group_traces})")
                         continue
 
                     group_length = sum(i.track_length for i in group)
                     if group_length < 100:
-                        print(
-                            f"Skipped {glacier}/{date_str}/{group_name} (length={group_length:.1f}m)"
-                        )
+                        print(f"Skipped {glacier}/{date_str}/{group_name} (length={group_length:.1f}m)")
                         continue
                     with tempfile.TemporaryDirectory() as temp_dir:
                         if len(group) > 1:
@@ -536,9 +497,7 @@ def run_all(offline: bool = False, force_redo: bool = False):
 
                             for item in group:
                                 filepath = Path(item.filepath)
-                                for subfile in list(
-                                    filepath.parent.glob(filepath.stem + ".*")
-                                ):
+                                for subfile in list(filepath.parent.glob(filepath.stem + ".*")):
                                     (input_dir / subfile.name).symlink_to(subfile)
 
                             filepath = "" + str(input_dir) + "/*.rad"
@@ -546,21 +505,15 @@ def run_all(offline: bool = False, force_redo: bool = False):
                         else:
                             filepath = group[-1].filepath
 
-                        out_path = Path(
-                            f"processed_radar/{glacier}/{date_str}/{group_name}.nc"
-                        )
+                        out_path = Path(f"processed_radar/{glacier}/{date_str}/{group_name}.nc")
                         out_path.parent.mkdir(exist_ok=True, parents=True)
 
                         if radar_key in bad_list:
                             if out_path.is_file():
-                                print(
-                                    f"{out_path} on bad list but it exists. Removing..."
-                                )
+                                print(f"{out_path} on bad list but it exists. Removing...")
                                 os.remove(out_path)
                             else:
-                                print(
-                                    f"Skipped radar key: {radar_key} as it was on the bad list"
-                                )
+                                print(f"Skipped radar key: {radar_key} as it was on the bad list")
                             continue
 
                         if out_path.is_file():
