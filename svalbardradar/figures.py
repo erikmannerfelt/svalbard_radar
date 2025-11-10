@@ -1541,6 +1541,65 @@ def plot_cross_track_difference(show: bool = False):
         plt.close()
 
 
+def plot_heerland_dhdt(show: bool = False):
+    import rasterio
+    import rasterio.coords
+    import rasterio.windows
+    import svalbardradar.comparisons
+
+    bounds = rasterio.coords.BoundingBox(546000, 8632000, 567000, 8657000)
+
+    glaciers = gpd.read_file("shapes/glacier_locations.geojson")
+    outlines = get_svalbard_glaciers()
+
+    glaciers = gpd.sjoin(glaciers, outlines[["geometry"]], how="left", predicate="intersects")
+    glaciers["geometry"] = outlines.loc[glaciers["index_right"].values, "geometry"].values
+
+    with rasterio.open(svalbardradar.comparisons.get_hugonnet()) as raster:
+        window = rasterio.windows.from_bounds(*bounds, transform=raster.transform)
+        hugonnet = raster.read(1, window=window)
+
+    with rasterio.open(svalbardradar.comparisons.get_geyman()) as raster:
+        window = rasterio.windows.from_bounds(*bounds, transform=raster.transform)
+        geyman = raster.read(1, window=window, masked=True).filled(0) / (2010 - 1936)
+
+    fig = plt.figure(figsize=(8.3, 5.0))
+    axes: list[plt.Axes] = fig.subplots(1, 2, sharex=True, sharey=True)
+    extent = (bounds.left, bounds.right, bounds.bottom, bounds.top)
+
+    for i, axis in enumerate(axes):
+        if i == 0:
+            params = {
+                "arr": geyman,
+                "title": "Geyman et al. (2022)",
+            }
+        else:
+            params = {
+                "arr": hugonnet,
+                "title": "Hugonnet et al. (2021)",
+            }
+        axis.text(0.5, 1.02, params["title"], transform=axis.transAxes, ha="center", fontsize=12)
+        img = axis.imshow(params["arr"], cmap="RdBu", vmin=-2, vmax=2, extent=extent)
+        glaciers.plot(ax=axis, color="none", edgecolor="black")
+
+        axis.set_xlabel("Easting (m)")
+        if i == 0:
+            axis.set_ylabel("Northing (m)")
+        else:
+            colorbar_ax = axis.inset_axes((0.05, 0.75, 0.15, 0.3))
+            colorbar_ax.set_axis_off()
+            cbar = plt.colorbar(img, ax=colorbar_ax, aspect=5, fraction=1.0)
+            cbar.set_label("dH dt$^{-1}$")
+    plt.xlim(extent[:2])
+    plt.ylim(extent[2:])
+    plt.subplots_adjust(left=0.09, bottom=0.09, right=0.99, top=0.95, wspace=0.05)
+    plt.savefig("figures/heerland_dhdt.jpg", dpi=400)
+    if show:
+        plt.show()
+    else:
+        plt.close()
+
+
 def generate_all_figures(show: bool = False):
     print("Generating Drønbreen example figure.")
     plot_dronbreen_examples(show=show)
@@ -1558,6 +1617,8 @@ def generate_all_figures(show: bool = False):
     plot_cross_track_difference(show=show)
     print("Generating cold/temperate performance difference figure.")
     plot_model_temperate_cold_performance(show=show)
+    print("Generating Heer Land elevation change rate figure")
+    plot_heerland_dhdt(show=show)
 
 
 if __name__ == "__main__":
