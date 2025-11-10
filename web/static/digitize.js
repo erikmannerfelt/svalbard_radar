@@ -766,12 +766,6 @@ async function setup_map() {
     show_tiles("classic");
   };
 
-  // console.log(meta["tiles"]);
-  // meta["tiles"].forEach(function (tile) {
-  //   L.imageOverlay(tile["filepaths"]["abslog"], [[tile["miny"], tile["minx"]],[tile["maxy"], tile["maxx"]]]).addTo(map);
-  // });
-  // L.imageOverlay(meta["img_path"], bounds).addTo(map);
-
   map.fitBounds(bounds);
 
   let drawn_items = setup_draw_features(map);
@@ -885,24 +879,6 @@ async function setup_map() {
       await load_digitized(event, meta, drawn_items);
       data_saved = false;
     });
-
-  /*
-  let username_box = document.getElementById("user-name");
-  username_box.addEventListener("change", function (event) {
-    console.log("Noted change");
-
-    let home_button = document.getElementById("home-button");
-    home_button.href = `/?user=${event.target.value}`;
-
-    search_params.set("user", event.target.value);
-    meta["user"] = event.target.value;
-  });
-
-  if (username_box.nodeValue == null & search_params.has("user")) {
-    username_box.value = search_params.get("user");
-    meta["user"] = username_box.value;
-  }
-  */
 
   let submit_button = document.getElementById("submit-button");
   submit_button.onclick = function (event) {
