@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy.interpolate
+import scipy.optimize
 import tqdm
 import xarray as xr
 import textalloc
@@ -581,7 +582,6 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
         for col in ["thickness", *[f"{model}_thickness" for model in models]]:
             data[col] = data[f"{col}_uncorr"]
 
-
     ref_names = {
         "furst": "Fürst et al., (2018)",
         "farinotti": "Farinotti et al., (2019)",
@@ -710,6 +710,23 @@ def plot_glathida_comparison(show: bool = True, histogram: bool = False, correct
             va="top",
             path_effects=[matplotlib.patheffects.withStroke(linewidth=4, foreground="white")],
         )
+
+        def residuals(coefs, x, y):
+            return coefs[0] * x + coefs[1] - y
+
+        # Calculate a slope (should be =1 in the best case) and print the fit. Also calculate a <150 m slope separately.
+        x = []
+        y = []
+        for _, vals in group.groupby(np.digitize(group["thickness"], bins=thickness_bins)):
+            x.append(vals["thickness"].median())
+            y.append(vals["glathida_thickness"].median())
+        x, y = np.array(x), np.array(y)
+        res_full = scipy.optimize.least_squares(residuals, x0=[0.0, 0.0], args=(x, y)).x
+        res_150 = scipy.optimize.least_squares(residuals, x0=[0.0, 0.0], args=(x[x < 150], y[x < 150])).x
+        print(
+            f"{label.replace('\n', ': ')}, Linear fit: old = {res_full[0]:.2f}*new + {res_full[1]:.2f}. Linear fit (<150 m): old = {res_150[0]:.2f}*new + {res_150[1]:.2f}"
+        )
+
         if histogram:
             hist2 = np.histogram2d(group["glathida_thickness"], group["thickness"], bins=thickness_bins)[0][::-1, :]
             hist2 = np.ma.masked_array(hist2, mask=hist2 == 0)
