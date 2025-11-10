@@ -573,12 +573,14 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
     import svalbardradar.comparisons
 
     data = svalbardradar.comparisons.sample_models()
+
+    # models = [str(col).replace("_thickness", "") for col in data if "_thickness" in col]
+    models = ["furst", "millan", "vanpelt"]
+
     if not correct_topo:
-        for col in ["thickness"]:
+        for col in ["thickness", *[f"{model}_thickness" for model in models]]:
             data[col] = data[f"{col}_uncorr"]
 
-    models = [str(col).replace("_thickness", "") for col in data if "_thickness" in col]
-    models = ["furst", "millan", "vanpelt"]
 
     ref_names = {
         "furst": "Fürst et al., (2018)",

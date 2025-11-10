@@ -308,6 +308,14 @@ def sample_models(overwrite_cache: bool = False):
         # "frank": get_frank(),
     }
 
+    model_year = {
+        "farinotti": 2010,
+        "furst": 2010,
+        "millan": (2017 + 2018) / 2,
+        "vanpelt": (2010 + 2015) / 2,
+    }
+    
+
     with rio.open(get_hugonnet()) as raster:
         data["hugonnet_dhdt"] = np.fromiter(
             raster.sample(data[["easting", "northing"]].values),
@@ -325,7 +333,8 @@ def sample_models(overwrite_cache: bool = False):
             # There seem to be extreme outliers now and then.
             arr[(arr < 0) | (arr > 1000)] = np.nan
 
-            data[f"{key}_thickness"] = arr
+            data[f"{key}_thickness_uncorr"] = arr
+            data[f"{key}_thickness"] = arr - (model_year[key] - STANDARD_YEAR) * data["hugonnet_dhdt"]
 
     data = data.dropna(subset=[f"{key}_thickness" for key in model_paths], how="all")
 
