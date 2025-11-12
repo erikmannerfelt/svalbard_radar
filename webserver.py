@@ -405,12 +405,12 @@ def _recommended() -> list[list[str]]:
     recommendations = [
         "ragna_mariebreen-20240412-DAT_0404_A1_1",
         "dronbreen-20220329-DAT_0236_A1_2",
-        "ragna_mariebreen-20240412-DAT_0405_A1_1",
+        "ragna_mariebreen-20240405-DAT_0359_A1_1",
         "dronbreen-20250326-DAT_0004_A1_1",
         "dronbreen-20250325-DAT_0015_A1_7",
-        "slakbreen-20230320-DAT_0298_A1_1",
-         "elfenbeinbreen-20250326-DAT_0436_B1_1",
-        "ragna_mariebreen-20230305-DAT_0068_A1_3",
+        "antoniabreen-20250406-DAT_0168_A1_1",
+        "vallakrabreen-20220419-DAT_0069_A1_3",
+        "edvardbreen-20230305-DAT_0230_A1_1",
     ]
     # Extract the glacier name such that it's glacier/radar_key
     recommendations = [[s.split("-")[0], s] for s in recommendations]
