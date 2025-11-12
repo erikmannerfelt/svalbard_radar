@@ -4,8 +4,8 @@ import json
 import matplotlib.pyplot as plt
 import numpy as np
 
-def main():
 
+def main():
     with zipfile.ZipFile("traffic.zip") as zip_file:
         t_str = zip_file.read("traffic.log").decode()
 
@@ -33,15 +33,6 @@ def main():
     plt.grid(alpha=0.3)
     plt.xticks(xvals, labels=hourly_freq.index)
     plt.show()
-    return
-
-
-    freq = data.resample("W")["ip_address"].count()
-    plt.bar(freq.index, freq, width=freq.index.diff().mean())
-    plt.yscale("log")
-    plt.ylabel("N requests / week")
-    plt.show()
-
 
 
 if __name__ == "__main__":

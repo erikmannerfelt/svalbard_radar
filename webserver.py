@@ -19,9 +19,7 @@ from gevent.pywsgi import WSGIServer
 
 from svalbardradar import format_radargrams
 
-APP = flask.Flask(
-    __name__, static_folder="web/static/", template_folder="web/templates/"
-)
+APP = flask.Flask(__name__, static_folder="web/static/", template_folder="web/templates/")
 
 dotenv.load_dotenv()
 
@@ -93,9 +91,7 @@ def login():
         username = flask.request.form["username"]
         password = flask.request.form["password"]
 
-        if username in USER_DATA and werkzeug.security.check_password_hash(
-            USER_DATA[username], password
-        ):
+        if username in USER_DATA and werkzeug.security.check_password_hash(USER_DATA[username], password):
             user_obj = User(username=username)
             flask_login.login_user(user_obj)
             return flask.redirect(flask.url_for("index"))
@@ -158,21 +154,7 @@ def nice_name(glacier_key: str) -> str:
     elif glacier_key == "moysalbreen":
         return "Møysalbreen"
 
-    return " ".join(
-        map(lambda part: part.capitalize(), glacier_key.replace("_", " ").split(" "))
-    )
-
-
-# def get_user_dirs() -> list[Path]:
-#     return list(filter(lambda p: p.is_dir(), get_submitted_path().glob("*")))
-
-# def get_user_submissions(user_dir: Path, key: str) -> list[Path]:
-#     return list(user_dir.glob(f"{key}/*.json"))
-
-# def get_all_submissions(key: str):
-#     with concurrent.futures.ThreadPoolExecutor() as executor:
-#         res = list(itertools.chain(*executor.map(functools.partial(get_user_submissions, key=key), get_user_dirs())))
-#     return res
+    return " ".join(map(lambda part: part.capitalize(), glacier_key.replace("_", " ").split(" ")))
 
 
 class Submissions:
@@ -200,9 +182,7 @@ class Submissions:
         self.user_submission_funcs = {}
         for user in self.all_users:
             user_dir = self.get_user_dir(username=user)
-            func = functools.partial(
-                self._get_all_user_submissions_inner, user_dir=user_dir
-            )
+            func = functools.partial(self._get_all_user_submissions_inner, user_dir=user_dir)
             func = functools.cache(func)
             func.cache_clear()
             self.user_submission_funcs[user] = func
@@ -218,14 +198,14 @@ class Submissions:
         """Get directories of a specific user."""
         return get_submitted_path() / username
 
-    def get_all_user_submissions(self, username: str) -> dict[str, Path]:
+    def get_all_user_submissions(self, username: str) -> dict[str, list[Path]]:
         if username not in self.user_submission_funcs:
             return {}
         return self.user_submission_funcs[username]()
 
     def clear_user_cache(self, username: str) -> None:
         """Clear the cache of the submissions for a user."""
-        self.user_submission_funcs[username].cache_clear()
+        self.user_submission_funcs[username].cache_clear() # pyright: ignore[reportFunctionMemberAccess]
 
     def get_user_submissions(self, username: str, key: str) -> list[Path]:
         """Get all submissions made by a user for the given key."""
@@ -242,12 +222,8 @@ class Submissions:
 
         return sorted(submissions, key=lambda fp: fp.stem.split("-")[-1])[-1]
 
-    def read_latest_user_submission(
-        self, username: str, key: str
-    ) -> dict[str, object] | None:
-        latest_submission = self.get_latest_user_submission_path(
-            username=username, key=key
-        )
+    def read_latest_user_submission(self, username: str, key: str) -> dict[str, object] | None:
+        latest_submission = self.get_latest_user_submission_path(username=username, key=key)
 
         if latest_submission is None:
             return None
@@ -303,6 +279,7 @@ def get_n_user_submissions():
 
 parse_all_radargrams = functools.cache(format_radargrams.parse_all_radargrams)
 
+
 def get_n_required_submissions(radar_key: str) -> int:
     """Placeholder function in case we want to complicate the logic of how many submissions are required."""
     # match radar_key:
@@ -310,7 +287,7 @@ def get_n_required_submissions(radar_key: str) -> int:
     #         return 100
 
     return 8
-    
+
 
 @functools.lru_cache(maxsize=10)
 def get_all_radargrams(username: str):
@@ -318,9 +295,7 @@ def get_all_radargrams(username: str):
     for glacier_key in radargrams:
         radargrams[glacier_key]["_meta"] = {"n_done_by_user": 0}
         for key in radargrams[glacier_key]:
-            n_user_submissions = len(
-                SUBMISSIONS.get_user_submissions(username=username, key=key)
-            )
+            n_user_submissions = len(SUBMISSIONS.get_user_submissions(username=username, key=key))
             n_total_submissions = SUBMISSIONS.get_n_users_submitted(key=key)
             n_required_submissions = get_n_required_submissions(key)
             radargrams[glacier_key][key].update(
@@ -343,9 +318,7 @@ def get_all_radargrams(username: str):
         }
         radargrams[glacier_key]["_meta"].update(
             {
-                "n_total_submissions": sum(
-                    r["n_total_submissions"] for r in radargrams[glacier_key].values()
-                ),
+                "n_total_submissions": sum(r["n_total_submissions"] for r in radargrams[glacier_key].values()),
                 "nice_name": nice_name(glacier_key),
             }
         )
@@ -355,7 +328,9 @@ def get_all_radargrams(username: str):
         for k, v in sorted(
             radargrams.items(),
             # I'm setting Drønbreen to be the last one because it's so big.
-            key=lambda item: 9999 if item[0] == "dronbreen" else (item[1]["_meta"]["n_total_submissions"] / (len(item[1]) - 1)),
+            key=lambda item: 9999
+            if item[0] == "dronbreen"
+            else (item[1]["_meta"]["n_total_submissions"] / (len(item[1]) - 1)),
         )
     }
 
@@ -381,9 +356,7 @@ def all_radargrams():
 @APP.route("/radargram_meta/<radar_key>.json")
 def radargram_meta(radar_key: str):
     try:
-        return flask.jsonify(
-            get_all_radargrams(get_username() or "")[radar_key.split("-")[0]][radar_key]
-        )
+        return flask.jsonify(get_all_radargrams(get_username() or "")[radar_key.split("-")[0]][radar_key])
     except KeyError:
         return flask.jsonify({"error": "Key not valid"}), 400
 
@@ -442,9 +415,7 @@ def radargram(radar_key: str):
     meta = all_radargrams[radar_key.split("-")[0]][radar_key]
     user = get_username()
 
-    return flask.render_template(
-        "digitize.html.jinja2", meta=meta, radar_key=radar_key, user=user
-    )
+    return flask.render_template("digitize.html.jinja2", meta=meta, radar_key=radar_key, user=user)
 
 
 @APP.route("/force-reload")
@@ -488,14 +459,10 @@ def submit_digitized():
         # Then, the full index has to be recalculated (but all values except the one above are probably cached so it's fast)
         get_all_radargrams.cache_clear()
 
-        return flask.jsonify(
-            {"message": "Data submitted successfully", "data": data}
-        ), 200
+        return flask.jsonify({"message": "Data submitted successfully", "data": data}), 200
 
     except jsonschema.ValidationError as exception:
-        return flask.jsonify(
-            {"error": f"JSON validation error: {exception.message}"}, 400
-        )
+        return flask.jsonify({"error": f"JSON validation error: {exception.message}"}, 400)
 
     except Exception as exception:
         print(f"Exception when user submitted json: {str(exception)}")
@@ -517,9 +484,7 @@ def log_traffic(response: flask.Response):
         "hostname": request.host,
         "ip_address": real_ip,
         "path": request.path,
-        "user_agent": request.headers.get(
-            "user-agent", request.headers.get("User-Agent", None)
-        ),
+        "user_agent": request.headers.get("user-agent", request.headers.get("User-Agent", None)),
         "method": request.method,
         "status": response.status_code,
         "user_id": get_username(),

@@ -1,12 +1,11 @@
 import pandas as pd
-import matplotlib.pyplot as plt
 import numpy as np
 
 import svalbardradar.interpretations
 
-def main():
 
-    all_data =svalbardradar.interpretations.merge_all_interpretations()
+def main():
+    all_data = svalbardradar.interpretations.merge_all_interpretations()
 
     lines = {
         "filantropbreen": ["filantropbreen-20240406-DAT_0372_A1_1"],
@@ -24,8 +23,10 @@ def main():
         data = all_data[all_data["radar-key"].isin(radar_keys)].copy()
 
         if "vallakrabreen-20210513-DAT_0014_A1_31" in radar_keys:
-
-            data.drop(data.index[(data["radar-key"] == "vallakrabreen-20210513-DAT_0014_A1_31") & (data["distance"] < 1500)], inplace=True)
+            data.drop(
+                data.index[(data["radar-key"] == "vallakrabreen-20210513-DAT_0014_A1_31") & (data["distance"] < 1500)],
+                inplace=True,
+            )
 
         if data.shape[0] == 0:
             print(f"Data for {glacier} is empty")
@@ -41,7 +42,6 @@ def main():
                 "radar_keys": "/".join(radar_keys),
                 "temperate_ice_fraction": temperate_ice_fraction,
                 "temperate_bed_fraction": temperate_bed_fraction,
-
             }
         )
 
@@ -52,9 +52,5 @@ def main():
     print(out.drop(columns=["radar_keys"]))
 
 
-        
-
-
 if __name__ == "__main__":
     main()
-    

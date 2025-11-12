@@ -1,7 +1,6 @@
 import re
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import pandas as pd
 import xarray as xr
 
@@ -17,9 +16,7 @@ def main():
                     gains.append(
                         {
                             "antenna_mhz": int(data.attrs["antenna"].split(" MHz")[0]),
-                            "gain": float(
-                                re.findall(r"gain of\s([-+]?\d*\.\d+|\d+)", line)[0]
-                            ),
+                            "gain": float(re.findall(r"gain of\s([-+]?\d*\.\d+|\d+)", line)[0]),
                         }
                     )
 

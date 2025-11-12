@@ -1,18 +1,15 @@
-import functools
 import hashlib
 import json
 import warnings
 from pathlib import Path
 
 import geopandas as gpd
-import matplotlib.pyplot as plt
 import numpy as np
 import scipy
 import scipy.interpolate
 import shapely
 import tqdm
 import xarray as xr
-from numpy._core.multiarray import set_datetimeparse_function
 from PIL import Image
 
 from svalbardradar.tools import paths
@@ -119,7 +116,7 @@ def parse_radargram(
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 x_ind_model = scipy.interpolate.interp1d(
-                    dist_subset, x_indexes[interval_slice], fill_value="extrapolate"
+                    dist_subset, x_indexes[interval_slice], fill_value="extrapolate" # pyright: ignore[reportArgumentType]
                 )
 
                 x_x = np.r_[
