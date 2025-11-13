@@ -953,6 +953,7 @@ def get_npi_data(layer: str):
     # Converting did not work as one value seems invalid
     outlines.crs = rasterio.CRS.from_epsg(32633)
 
+    cache_filepath.parent.mkdir(exist_ok=True, parents=True)
     outlines.to_file(cache_filepath, driver="GPKG", layer="outlines")
     return outlines
 
