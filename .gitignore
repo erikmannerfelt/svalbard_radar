@@ -6,7 +6,7 @@ __pycache__/
 temp/
 cache/
 .privatekey
-traffic.log
+/traffic.*
 interp.gpkg
 interp.sqlite
 plan_2025/
@@ -18,3 +18,8 @@ web/static/radargrams/
 web/static/images/examples/filantropbreen_double_bed.jpg
 .env
 dems/
+.envrc
+.direnv/
+.vscode/
+/result
+.ruff_cache

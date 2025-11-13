@@ -1,6 +1,3 @@
-import io
-import json
-import warnings
 from pathlib import Path
 import datetime
 import functools
@@ -11,33 +8,35 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy.interpolate
+import scipy.optimize
 import tqdm
 import xarray as xr
 import textalloc
 
 from svalbardradar import interpretations
-import svalbardradar.tools.statistics as statistics
 from svalbardradar.tools import paths, statistics, misc
 
 CACHE_PATH = paths.BASE_CACHE_PATH / "figures"
 DIGITIZE_CLASS_PROPS = {
     "bed_cold": {
-      "name": "Glacier bed (no temperate ice)",
-      "color": "#002EBD",
+        "name": "Glacier bed (no temperate ice)",
+        "color": "#002EBD",
     },
     "temperate": {
-      "name": "Temperate ice",
-      "color": "red",
+        "name": "Temperate ice",
+        "color": "red",
     },
     "bed_unspecified": {
-      "name": "Glacier bed",
-      "color": "#CE00FF",
+        "name": "Glacier bed",
+        "color": "#CE00FF",
     },
     "bed_missing": {
-      "name": "Glacier bed not visible",
-      "color": "#62F700",
+        "name": "Glacier bed not visible",
+        "color": "#62F700",
     },
-  }
+}
+
+
 def plot_dronbreen_examples(show: bool = True):
     import svalbardradar.interpretations
     import svalbardradar.tools.rasters
@@ -54,9 +53,7 @@ def plot_dronbreen_examples(show: bool = True):
         "outline": dronbreen_outline.geometry,
     }
 
-    gridded = svalbardradar.interpretations.grid_interpretations(
-        "dronbreen", outline=dronbreen_outline.geometry[0]
-    )
+    gridded = svalbardradar.interpretations.grid_interpretations("dronbreen", outline=dronbreen_outline.geometry[0])
 
     fig = plt.figure(figsize=(9, 7))
     axes = fig.subplots(2, 2, height_ratios=[0.6, 0.4], sharey="row", sharex="row")
@@ -80,9 +77,7 @@ def plot_dronbreen_examples(show: bool = True):
             gridded["bounds"]["top"],
         )
         if i == 0:
-            img = axis.imshow(
-                gridded["thickness"], cmap="Blues", zorder=2, extent=extent, vmin=0
-            )
+            img = axis.imshow(gridded["thickness"], cmap="Blues", zorder=2, extent=extent, vmin=0)
         else:
             img = axis.imshow(
                 gridded["temperate_frac"] * 100,
@@ -125,24 +120,18 @@ def plot_dronbreen_examples(show: bool = True):
 
         with xr.open_dataset(paths.processed_radar_path(info["radar_key"])) as dataset:
             dataset.coords["trace_n"] = "x", np.arange(dataset.x.shape[0])
-            dataset = dataset.swap_dims(x="trace_n", y="depth").sel(
-                trace_n=slice(info["start_trace"], None)
-            )
+            dataset = dataset.swap_dims(x="trace_n", y="depth").sel(trace_n=slice(info["start_trace"], None))
 
             diffs = dataset[["easting", "northing"]].diff("trace_n").fillna(0)
 
-            dataset["distance"] = (
-                (diffs["easting"] ** 2 + diffs["northing"] ** 2) ** 0.5
-            ).cumsum("trace_n")
+            dataset["distance"] = ((diffs["easting"] ** 2 + diffs["northing"] ** 2) ** 0.5).cumsum("trace_n")
             dataset["distance"] += np.linspace(0, 1e-3, dataset.data.shape[1])
 
             for standstill in info["standstills"]:
                 dataset = dataset.drop_sel(trace_n=np.arange(*standstill))
 
             dataset = dataset.swap_dims(trace_n="distance").sel(
-                distance=dataset["distance"]
-                .where(dataset["distance"] < 2050, drop=True)
-                .values
+                distance=dataset["distance"].where(dataset["distance"] < 2050, drop=True).values
             )
 
             if "max_depth" in info:
@@ -184,11 +173,7 @@ def plot_dronbreen_examples(show: bool = True):
                         ),
                         ha="center",
                         va="center",
-                        path_effects=[
-                            matplotlib.patheffects.withStroke(
-                                linewidth=2, foreground="white"
-                            )
-                        ],
+                        path_effects=[matplotlib.patheffects.withStroke(linewidth=2, foreground="white")],
                     )
                 axis2.plot(dataset["easting"], dataset["northing"], color="black")
 
@@ -199,9 +184,7 @@ def plot_dronbreen_examples(show: bool = True):
     inset.add_patch(outline_polygon())
     for _, line in data.groupby("radar_key"):
         line = line.sort_values("distance")
-        inset.plot(
-            line.geometry.x, line.geometry.y, linewidth=0.5, color="black", zorder=2
-        )
+        inset.plot(line.geometry.x, line.geometry.y, linewidth=0.5, color="black", zorder=2)
 
     for i, axis in enumerate([inset, *axes.ravel()]):
         axis.text(
@@ -211,9 +194,7 @@ def plot_dronbreen_examples(show: bool = True):
             transform=axis.transAxes,
             fontsize=10,
             va="top",
-            path_effects=[
-                matplotlib.patheffects.withStroke(linewidth=2, foreground="white")
-            ],
+            path_effects=[matplotlib.patheffects.withStroke(linewidth=2, foreground="white")],
         )
 
     Path("figures").mkdir(exist_ok=True)
@@ -225,8 +206,9 @@ def plot_dronbreen_examples(show: bool = True):
 
 def plot_user_spread(show: bool = True):
     import svalbardradar.interpretations
-    from svalbardradar.tools import paths, rasters
+    from svalbardradar.tools import paths
     from matplotlib.backends.backend_pdf import PdfPages
+
     radar_keys = [
         "moysalbreen-20220222-DAT_0750_A1_6",
         "vallakrabreen-20210513-DAT_0014_A1_31",
@@ -234,15 +216,13 @@ def plot_user_spread(show: bool = True):
         "filantropbreen-20240406-DAT_0372_A1_1",
     ]
 
-    all_data =svalbardradar.interpretations.merge_all_interpretations()
+    all_data = svalbardradar.interpretations.merge_all_interpretations()
 
     all_data["glacier"] = all_data["radar_key"].str.split("-", expand=True).iloc[:, 0]
     all_data["part_idx"] = all_data["part_idx"].astype(int)
     all_data["bed_elevation"] = all_data["elevation"] - all_data["thickness"]
 
-    all_data["temp_elevation"] = (
-        all_data["bed_elevation"] + all_data["thickness"] * all_data["temperate_frac"]
-    )
+    all_data["temp_elevation"] = all_data["bed_elevation"] + all_data["thickness"] * all_data["temperate_frac"]
 
     out_path = Path("figures/all_interpretations.pdf")
     out_path.parent.mkdir(exist_ok=True)
@@ -250,7 +230,6 @@ def plot_user_spread(show: bool = True):
     with PdfPages(out_path) as pdf, tqdm.tqdm(total=all_data["radar_key"].unique().shape[0]) as progress_bar:
         for glacier, all_glacier_data in all_data.groupby("glacier"):
             for radar_key, data in all_glacier_data.groupby("radar_key"):
-
                 # if "dronbreen-20200224-DAT_0003_A1_2" not in radar_key:
                 #     continue
                 # if len(radar_keys) > 9:
@@ -259,10 +238,7 @@ def plot_user_spread(show: bool = True):
 
                 data = data.copy()
                 data["distance"] = (
-                    (data[["easting", "northing"]].diff(axis="rows").fillna(0) ** 2).sum(
-                        axis="columns"
-                    )
-                    ** 0.5
+                    (data[["easting", "northing"]].diff(axis="rows").fillna(0) ** 2).sum(axis="columns") ** 0.5
                 ).cumsum() / 1e3
 
                 fig = plt.figure(figsize=(8.3, 11.7))
@@ -274,7 +250,7 @@ def plot_user_spread(show: bool = True):
                         dataset["depth"].values,
                         bounds_error=False,
                     )
-            
+
                 interp_paths = paths.get_latest_submissions(radar_key)
 
                 map: plt.Axes = axes[0].inset_axes([0.5, 0.05, 0.5, 0.95])
@@ -286,11 +262,9 @@ def plot_user_spread(show: bool = True):
                             style = {"color": "grey", "zorder": 1}
                         map.plot(part.geometry.x, part.geometry.y, **style)
 
-
-                topo_ax: plt.Axes = axes[0].inset_axes([-0.02, 0.35, 0.4, 0.4]) 
-                max_d = 0.
+                topo_ax: plt.Axes = axes[0].inset_axes([-0.02, 0.35, 0.4, 0.4])
+                max_d = 0.0
                 for _, part in data.groupby("part_idx"):
-
                     distances = part["distance"] - part["distance"].min() + max_d
 
                     topo_ax.fill_between(
@@ -324,25 +298,31 @@ def plot_user_spread(show: bool = True):
                     -0.1,
                     0.03,
                     "\n".join(
-                         [
-                             f"Date: {date_str}",
-                             f"Glacier: {glacier}", 
-                             f"n contributors: {len(interp_paths)}", 
-                             f"Length: {max_d:.2f} km",
-                             f"Mean thickness: {data['thickness'].mean():.2f} m",
-                             f"Mean thickness uncertainty: {data['thickness_std'].mean():.2f} m",
-                             f"Mean temperate ice fraction: {100 *data['temperate_frac'].mean():.2f}%",
-                             f"Mean temperate ice fraction uncertainty: {100 * data['temperate_frac_std'].mean():.2f}%",
-                         ]
+                        [
+                            f"Date: {date_str}",
+                            f"Glacier: {glacier}",
+                            f"n contributors: {len(interp_paths)}",
+                            f"Length: {max_d:.2f} km",
+                            f"Mean thickness: {data['thickness'].mean():.2f} m",
+                            f"Mean thickness uncertainty: {data['thickness_std'].mean():.2f} m",
+                            f"Mean temperate ice fraction: {100 * data['temperate_frac'].mean():.2f}%",
+                            f"Mean temperate ice fraction uncertainty: {100 * data['temperate_frac_std'].mean():.2f}%",
+                        ]
                     ),
-                    transform=axes[0].transAxes
+                    transform=axes[0].transAxes,
                 )
 
                 labeled = set()
-                all_points = interpretations.read_interpretations(radar_key=radar_key, step_m=5.).reset_index()
+                all_points = interpretations.read_interpretations(radar_key=radar_key, step_m=5.0).reset_index()
                 for _, points in all_points.groupby(["user", "line_i"]):
                     kind = points["kind"].iloc[0].replace("temperate_ice", "temperate")
-                    axes[1].plot(points["x"], points["depth"], color=DIGITIZE_CLASS_PROPS[kind]["color"], alpha=0.3, label=DIGITIZE_CLASS_PROPS[kind]["name"] if kind not in labeled else None)
+                    axes[1].plot(
+                        points["x"],
+                        points["depth"],
+                        color=DIGITIZE_CLASS_PROPS[kind]["color"],
+                        alpha=0.3,
+                        label=DIGITIZE_CLASS_PROPS[kind]["name"] if kind not in labeled else None,
+                    )
                     labeled.add(kind)
 
                 diffs = (data["x"].diff().fillna(0) > 100).cumsum()
@@ -353,13 +333,17 @@ def plot_user_spread(show: bool = True):
                         data_split["thickness_upper"],
                         color="#555",
                         alpha=0.5,
-                        label="Thickness (+- 25%)", zorder=2
+                        label="Thickness (+- 25%)",
+                        zorder=2,
                     )
-                    axes[2].plot(data_split["x"], data_split["thickness"], color="#555", path_effects=[
-                            matplotlib.patheffects.withStroke(
-                                linewidth=3, foreground="black"
-                            )
-                    ], zorder=4, label="Thickness (median)")
+                    axes[2].plot(
+                        data_split["x"],
+                        data_split["thickness"],
+                        color="#555",
+                        path_effects=[matplotlib.patheffects.withStroke(linewidth=3, foreground="black")],
+                        zorder=4,
+                        label="Thickness (median)",
+                    )
                     axes[2].fill_between(
                         data_split["x"],
                         data_split["thickness"] - data_split["temperate_lower"],
@@ -371,7 +355,13 @@ def plot_user_spread(show: bool = True):
                     )
                     # plt.fill_between(out0.index, out["bed_elevation"] + out0["temperate_lower"], out["bed_elevation"] + out0["temperate_upper"], color="red", alpha=0.3)
                     # plt.fill_between(out0.index, out["elevation"] - out0["thickness_lower"], out["elevation"] - out0["thickness_upper"], color="blue", alpha=0.3)
-                    axes[2].plot(data_split["x"], data_split["thickness"] - data_split["thickness"] * data_split["temperate_frac"], color="red", zorder=3, label="Temperate ice (median)")
+                    axes[2].plot(
+                        data_split["x"],
+                        data_split["thickness"] - data_split["thickness"] * data_split["temperate_frac"],
+                        color="red",
+                        zorder=3,
+                        label="Temperate ice (median)",
+                    )
 
                 for spine in axes[0].spines.values():
                     spine.set_visible(False)
@@ -386,23 +376,27 @@ def plot_user_spread(show: bool = True):
                 map.set_ylabel("Northing (m)")
                 xticks = map.get_xticks()
                 map.set_xticks(xticks)
-                map.set_xticklabels([str(int(xtick)) if i in [2, len(xticks) - 2] else "" for i, xtick in enumerate(xticks)])
-                
+                map.set_xticklabels(
+                    [str(int(xtick)) if i in [2, len(xticks) - 2] else "" for i, xtick in enumerate(xticks)]
+                )
+
                 map.set_xlabel("Easting (m)")
 
-                axes[1].text(0.5, 1., "Individual interpretations", ha="center", va="bottom", transform=axes[-2].transAxes)
+                axes[1].text(
+                    0.5, 1.0, "Individual interpretations", ha="center", va="bottom", transform=axes[-2].transAxes
+                )
                 axes[1].legend()
 
-                axes[2].text(0.5, 1., "Merged interpretations", ha="center", va="bottom", transform=axes[-1].transAxes)
+                axes[2].text(0.5, 1.0, "Merged interpretations", ha="center", va="bottom", transform=axes[-1].transAxes)
                 axes[2].set_ylabel("Depth (m)")
                 axes[2].set_xlabel("Traces")
 
                 # Because of split lines, legend entries may be repeated
                 hand, labl = axes[2].get_legend_handles_labels()
-                handout=[]
-                lablout=[]
-                for h,l in zip(hand,labl):
-                   if l not in lablout:
+                handout = []
+                lablout = []
+                for h, l in zip(hand, labl):
+                    if l not in lablout:
                         lablout.append(l)
                         handout.append(h)
                 axes[2].legend(handout, lablout)
@@ -418,7 +412,14 @@ def plot_user_spread(show: bool = True):
 
                 plt.subplots_adjust(left=0.1, bottom=0.05, right=0.95, top=0.99, hspace=0.05)
 
-                fig.text(0.99, 0.01, f"Created {datetime.datetime.now().date().isoformat()}", ha="right", va="bottom", fontsize=8)
+                fig.text(
+                    0.99,
+                    0.01,
+                    f"Created {datetime.datetime.now().date().isoformat()}",
+                    ha="right",
+                    va="bottom",
+                    fontsize=8,
+                )
                 fig.text(0.03, 0.01, str(len(radar_keys) + 1), ha="right", va="bottom", fontsize=8)
 
                 pdf.savefig(fig)
@@ -428,6 +429,7 @@ def plot_user_spread(show: bool = True):
                 radar_keys.append(radar_key)
                 # raise NotImplementedError()
 
+
 def plot_centerline_profiles(show: bool = True):
     import svalbardradar.interpretations
 
@@ -436,16 +438,16 @@ def plot_centerline_profiles(show: bool = True):
         # "filantropbreen-20240406-DAT_0372_A1_1",
         "moysalbreen-20220222-DAT_0749_A1_1",
         # "rugaasfonna-20220218-DAT_0723_A1_1",
-        "lofthusbreen-20250326-DAT_0057_A1_1",
-        "ragna_mariebreen-20240412-DAT_0404_A1_1",
-        "jinnbreen-20240206-DAT_0448_A1_1",
+        # "lofthusbreen-20250326-DAT_0057_A1_1",
         "finsterwalderbreen-20250407-DAT_0171_A1_1",
+        "ragna_mariebreen-20240412-DAT_0404_A1_1",
+        "winsnesbreen-20240503-DAT_0014_A1_1",
+        "jinnbreen-20240206-DAT_0448_A1_1",
         "dronbreen-20230220-DAT_0009_A1_1",
         # "dronbreen-20250327-DAT_0065_A1_1",
         "kroppbreen-20230228-DAT_0042_A1_1",
         "slakbreen-20240310-DAT_0286_A1_1",
         "edvardbreen-20240411-DAT_0396_A1_1",
-        # "winsnesbreen-20240503-DAT_0014_A1_1",
     ]
 
     n_cols = 2
@@ -460,7 +462,7 @@ def plot_centerline_profiles(show: bool = True):
     nice_names = {
         "dronbreen": "Drønbreen",
         "moysalbreen": "Møysalbreen",
-        "ragna_mariebreen": "Ragna Mariebreen",
+        "ragna_mariebreen": "Ragna-Mariebreen",
     }
 
     fig = plt.figure(figsize=(6, 8))
@@ -488,10 +490,7 @@ def plot_centerline_profiles(show: bool = True):
             data = data.sort_values("distance")
 
         data["distance"] = (
-            (data[["easting", "northing"]].diff(axis="rows").fillna(0) ** 2).sum(
-                axis="columns"
-            )
-            ** 0.5
+            (data[["easting", "northing"]].diff(axis="rows").fillna(0) ** 2).sum(axis="columns") ** 0.5
         ).cumsum() / 1e3
 
         if "start_distance" in radar_meta:
@@ -499,12 +498,9 @@ def plot_centerline_profiles(show: bool = True):
         if "stop_distance" in radar_meta:
             data = data[data["distance"] < radar_meta["stop_distance"]]
 
-
         data["bed_elevation"] = data["elevation"] - data["thickness"]
 
-        data["temp_elevation"] = (
-            data["bed_elevation"] + data["thickness"] * data["temperate_frac"]
-        )
+        data["temp_elevation"] = data["bed_elevation"] + data["thickness"] * data["temperate_frac"]
 
         axis.fill_between(
             data["distance"],
@@ -548,9 +544,7 @@ def plot_centerline_profiles(show: bool = True):
 
         axis.set_xlim(data["distance"].min(), data["distance"].max())
         # axis.set_ylim(data["bed_elevation"].min() - 20, data["elevation"].max() + 20)
-        axis.set_ylim(
-            data["bed_elevation"].min() - 20, data["bed_elevation"].min() - 20 + yrange
-        )
+        axis.set_ylim(data["bed_elevation"].min() - 20, data["bed_elevation"].min() - 20 + yrange)
 
         axis.text(
             0.5,
@@ -580,12 +574,13 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
     import svalbardradar.comparisons
 
     data = svalbardradar.comparisons.sample_models()
-    if not correct_topo:
-        for col in ["thickness"]:
-            data[col] = data[f"{col}_uncorr"]
 
-    models = [str(col).replace("_thickness", "") for col in data if "_thickness" in col]
+    # models = [str(col).replace("_thickness", "") for col in data if "_thickness" in col]
     models = ["furst", "millan", "vanpelt"]
+
+    if not correct_topo:
+        for col in ["thickness", *[f"{model}_thickness" for model in models]]:
+            data[col] = data[f"{col}_uncorr"]
 
     ref_names = {
         "furst": "Fürst et al., (2018)",
@@ -604,33 +599,28 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
     if len(axes.shape) == 1:
         axes = axes[None, :]
 
-    max_thickness = (
-        data[["thickness", *[f"{model}_thickness" for model in models]]].max().max()
-    )
+    max_thickness = data[["thickness", *[f"{model}_thickness" for model in models]]].max().max()
 
     step_size = 7.5
-    thickness_bins = np.arange(
-        0, max_thickness - (max_thickness % step_size) + step_size * 2, step_size
-    )
+    thickness_bins = np.arange(0, max_thickness - (max_thickness % step_size) + step_size * 2, step_size)
 
     for i, model in enumerate(models):
         col = i % n_cols
         row = int((i - col) / n_cols)
         axis: plt.Axes = axes[row, col]
 
-
         axis.set_title(ref_names[model])
 
         subset = data.dropna(subset=["thickness", f"{model}_thickness"], how="any")
 
         if histogram:
-            hist2 = np.histogram2d(
-                subset[f"{model}_thickness"], subset["thickness"], bins=thickness_bins
-            )[0][::-1, :]
+            hist2 = np.histogram2d(subset[f"{model}_thickness"], subset["thickness"], bins=thickness_bins)[0][::-1, :]
             hist2 = np.ma.masked_array(hist2, mask=hist2 == 0)
             axis.imshow(hist2, extent=(0.0, thickness_bins[-1], 0.0, thickness_bins[-1]))
         else:
-            kde = scipy.stats.gaussian_kde(subset[["thickness", f"{model}_thickness"]].sample(n=5000, random_state=0).astype("float32").T)
+            kde = scipy.stats.gaussian_kde(
+                subset[["thickness", f"{model}_thickness"]].sample(n=5000, random_state=0).astype("float32").T
+            )
             axis.scatter(
                 subset["thickness"],
                 subset[f"{model}_thickness"],
@@ -644,7 +634,7 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
         xlim = axis.get_ylim()
         axis.plot([xlim[0], xlim[1]], [xlim[0], xlim[1]], color="black")
 
-        diff = (subset[f"{model}_thickness"] - subset["thickness"])
+        diff = subset[f"{model}_thickness"] - subset["thickness"]
 
         axis.text(
             x=0.05,
@@ -658,11 +648,7 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
             ),
             transform=axis.transAxes,
             va="top",
-            path_effects=[
-                matplotlib.patheffects.withStroke(
-                    linewidth=4, foreground="white"
-                )
-            ],
+            path_effects=[matplotlib.patheffects.withStroke(linewidth=4, foreground="white")],
         )
 
         if row == 1:
@@ -700,16 +686,13 @@ def plot_glathida_comparison(show: bool = True, histogram: bool = False, correct
     max_thickness = data[["glathida_thickness", "thickness"]].max().max()
 
     step_size = 5
-    thickness_bins = np.arange(
-        0, max_thickness - (max_thickness % step_size) + step_size * 2, step_size
-    )
+    thickness_bins = np.arange(0, max_thickness - (max_thickness % step_size) + step_size * 2, step_size)
 
     fig = plt.figure(figsize=(9, 3.5))
     axes = fig.subplots(ncols=3, sharex=True, sharey=True)
     for i, group in data.groupby("glathida_group"):
         axis: plt.Axes = axes[i]
         stats = f"n={group.shape[0]}, ΔH: {group['glathida_diff'].median():.1f}±{statistics.nmad(group['glathida_diff']):.1f} m"
-
 
         if i == 0:
             label = f"before {year_intervals[0]}\n{stats}"
@@ -719,21 +702,33 @@ def plot_glathida_comparison(show: bool = True, histogram: bool = False, correct
             label = f"{year_intervals[i - 1]}–{year_intervals[i]}\n{stats}"
 
         axis.text(
-            0.5, 0.98,
+            0.5,
+            0.98,
             label,
             transform=axis.transAxes,
             ha="center",
             va="top",
-            path_effects=[
-                matplotlib.patheffects.withStroke(
-                    linewidth=4, foreground="white"
-                )
-            ],
-        ) 
+            path_effects=[matplotlib.patheffects.withStroke(linewidth=4, foreground="white")],
+        )
+
+        def residuals(coefs, x, y):
+            return coefs[0] * x + coefs[1] - y
+
+        # Calculate a slope (should be =1 in the best case) and print the fit. Also calculate a <150 m slope separately.
+        x = []
+        y = []
+        for _, vals in group.groupby(np.digitize(group["thickness"], bins=thickness_bins)):
+            x.append(vals["thickness"].median())
+            y.append(vals["glathida_thickness"].median())
+        x, y = np.array(x), np.array(y)
+        res_full = scipy.optimize.least_squares(residuals, x0=[0.0, 0.0], args=(x, y)).x
+        res_150 = scipy.optimize.least_squares(residuals, x0=[0.0, 0.0], args=(x[x < 150], y[x < 150])).x
+        print(
+            f"{label.replace('\n', ': ')}, Linear fit: old = {res_full[0]:.2f}*new + {res_full[1]:.2f}. Linear fit (<150 m): old = {res_150[0]:.2f}*new + {res_150[1]:.2f}"
+        )
+
         if histogram:
-            hist2 = np.histogram2d(
-                group[f"glathida_thickness"], group["thickness"], bins=thickness_bins
-            )[0][::-1, :]
+            hist2 = np.histogram2d(group["glathida_thickness"], group["thickness"], bins=thickness_bins)[0][::-1, :]
             hist2 = np.ma.masked_array(hist2, mask=hist2 == 0)
             axis.imshow(hist2, extent=(0.0, thickness_bins[-1], 0.0, thickness_bins[-1]))
         else:
@@ -745,7 +740,6 @@ def plot_glathida_comparison(show: bool = True, histogram: bool = False, correct
                 alpha=1,
                 c=kde.evaluate(group[["thickness", "glathida_thickness"]].astype("float32").T),
                 edgecolor="none",
-
             )
             plt.xlim(0, thickness_bins.max())
             plt.ylim(0, thickness_bins.max())
@@ -756,8 +750,6 @@ def plot_glathida_comparison(show: bool = True, histogram: bool = False, correct
             axis.set_ylabel("GlaThiDa thickness (m)")
 
         axis.set_xlabel("Our thickness (m)")
-
-
 
     # plt.legend()
     plt.tight_layout()
@@ -794,7 +786,7 @@ def plot_model_temperate_cold_performance(show: bool = True):
         "millan": "Millan et al.\n(2022)",
         "vanpelt": "van Pelt & Frank\n(2025)",
         "frank": "Frank et al., (in review)",
-        "glathida": "GlaThiDa 2000-"
+        "glathida": "GlaThiDa 2000-",
     }
     short_names = {
         "furst": "Fü",
@@ -809,7 +801,7 @@ def plot_model_temperate_cold_performance(show: bool = True):
         "all": "All data",
     }
     box_distance = 5
-    fig=  plt.figure(figsize=(8, 5))
+    fig = plt.figure(figsize=(8, 5))
     # axes = fig.subplots(2, 2)
     axes = []
     for k, glacier in enumerate([*glaciers, "all"]):
@@ -822,30 +814,31 @@ def plot_model_temperate_cold_performance(show: bool = True):
 
         axes.append(axis)
         for i, model in enumerate(models):
-
             # axis = axes.ravel()[k]
 
-            # df = data
             diff = df[f"{model}_thickness"] - df["thickness"]
 
-            cold = (df["temperate_lower"] /  df["thickness"]) < 0.01
-            temperate = (df["temperate_upper"] / df["thickness"]) > 0.01
+            cold = df["bed_type"] == "certain_cold"
+            temperate = df["bed_type"] == "certain_temperate"
 
             for j, (case, arr) in enumerate([("cold", diff[cold]), ("temperate", diff[temperate]), ("all", diff)]):
                 arr = arr[np.abs(arr) < 300]
-                axis.boxplot([arr], positions=[j - 1 + box_distance * i],  showfliers=False, manage_ticks=False, widths=0.8, patch_artist=True, boxprops={"facecolor": colors[case], "alpha": 0.5}, medianprops={"color": "black"}, label=case_names[case] if i == 0 else None)
-            # violins = plt.violinplot([arr], positions=[j - 1 + box_distance * i], widths=1)
-            # for violin in violins["bodies"]:
-            #     violin.set_facecolor(colors[case])
-            #     violin.set_edgecolor("black")
-            # for key in violins:
-            #     if key == "bodies":
-            #         continue
-            #     violins[key].set_edgecolor(colors[case] if colors[case] != "white" else "grey")
-            #     violins[key].set_alpha(0.5)
+                axis.boxplot(
+                    [arr],
+                    positions=[j - 1 + box_distance * i],
+                    showfliers=False,
+                    manage_ticks=False,
+                    widths=0.8,
+                    patch_artist=True,
+                    boxprops={"facecolor": colors[case], "alpha": 0.5},
+                    medianprops={"color": "black"},
+                    label=case_names[case] if i == 0 else None,
+                )
 
             xtick_vals = np.arange(len(models)) * box_distance
-            axis.set_xticks(xtick_vals, [ref_names[model] if glacier =="all" else short_names[model] for model in models])
+            axis.set_xticks(
+                xtick_vals, [ref_names[model] if glacier == "all" else short_names[model] for model in models]
+            )
 
             axis.set_ylim(-200, 200)
             yticks = axis.get_yticks()
@@ -867,13 +860,24 @@ def plot_model_temperate_cold_performance(show: bool = True):
     plt.tight_layout()
 
     for i, axis in enumerate(axes):
-        axis.text(0.03 if i < 3 else 0.01, 0.97, "abcdef"[i], transform=axis.transAxes, va="top", path_effects=[
-                            matplotlib.patheffects.withStroke(
-                                linewidth=2, foreground="white"
-                            )
-                        ])
+        axis.text(
+            0.03 if i < 3 else 0.01,
+            0.97,
+            "abcdef"[i],
+            transform=axis.transAxes,
+            va="top",
+            path_effects=[matplotlib.patheffects.withStroke(linewidth=2, foreground="white")],
+        )
         if i < (len(axes) - 1):
-            axis.text(0.5, 0.97, glaciers[i].capitalize().replace("akra", "åkra"), transform=axis.transAxes, va="top", ha="center", fontsize=8)
+            axis.text(
+                0.5,
+                0.97,
+                glaciers[i].capitalize().replace("akra", "åkra"),
+                transform=axis.transAxes,
+                va="top",
+                ha="center",
+                fontsize=8,
+            )
 
     Path("figures/").mkdir(exist_ok=True)
     plt.savefig("figures/thickness_vs_cold_temperate.jpg", dpi=400)
@@ -881,13 +885,12 @@ def plot_model_temperate_cold_performance(show: bool = True):
     if show:
         plt.show()
 
-        
-
-
 
 def s20_hillshade() -> Path:
     dtm20_path = CACHE_PATH / "NP_S0_DTM20.zip"
-    misc.download_large_file(dtm20_path, "https://public.data.npolar.no/kartdata/S0_Terrengmodell/Mosaikk/NP_S0_DTM20.zip")
+    misc.download_large_file(
+        dtm20_path, "https://public.data.npolar.no/kartdata/S0_Terrengmodell/Mosaikk/NP_S0_DTM20.zip"
+    )
     hillshade_path = dtm20_path.with_name("NP_S0_DTM20_hillshade.tif")
 
     if not hillshade_path.is_file():
@@ -910,7 +913,9 @@ def s20_hillshade() -> Path:
                 "predictor=2",
                 "-co",
                 "GDAL_NUM_THREADS=ALL_CPUS",
-            ], check=True)
+            ],
+            check=True,
+        )
 
         subprocess.run(
             [
@@ -925,13 +930,14 @@ def s20_hillshade() -> Path:
                 str(hillshade_path),
             ],
             check=True,
-
         )
 
     return hillshade_path
 
+
 def get_npi_data(layer: str):
     import rasterio
+
     if "CryoClim" in layer:
         url = "https://next.api.npolar.no/dataset/89f430f8-862f-11e2-8036-005056ad0004/attachment/4494bb0d-8b90-480b-aed1-47f7955ce81b/_blob"
         uri = "/vsizip/{" + f"/vsicurl/{url}" + "}" + f"/{layer}.shp"
@@ -957,11 +963,14 @@ def get_npi_data(layer: str):
     outlines.to_file(cache_filepath, driver="GPKG", layer="outlines")
     return outlines
 
+
 def get_svalbard_outlines() -> gpd.GeoDataFrame:
     return get_npi_data("S100_Land_f")
 
+
 def get_svalbard_glaciers() -> gpd.GeoDataFrame:
     return get_npi_data("CryoClim_GAO_SJ_2001-2010")
+
 
 def overview_map(show: bool = True):
     import rasterio
@@ -969,7 +978,6 @@ def overview_map(show: bool = True):
     import shapely.geometry
 
     glaciers = gpd.read_file("shapes/glacier_locations.geojson")
-
 
     hillshade_path = s20_hillshade()
 
@@ -1003,41 +1011,44 @@ def overview_map(show: bool = True):
             "va": "top",
         },
         "panel_label": {
-            "x": 0.01, "y": 0.99, "va": "top", "ha": "left", "path_effects": [matplotlib.patheffects.withStroke(linewidth=2, foreground="white")], "fontsize":10
+            "x": 0.01,
+            "y": 0.99,
+            "va": "top",
+            "ha": "left",
+            "path_effects": [matplotlib.patheffects.withStroke(linewidth=2, foreground="white")],
+            "fontsize": 10,
         },
         "scalebar_line": {
             "linewidth": 1,
             "color": "#333",
-            "path_effects": [matplotlib.patheffects.withStroke(linewidth=1.5, foreground="white")]
+            "path_effects": [matplotlib.patheffects.withStroke(linewidth=1.5, foreground="white")],
         },
         "scalebar_label": {
             "fontsize": 8,
             "color": "#333",
-            "path_effects": [matplotlib.patheffects.withStroke(linewidth=0.7, foreground="white")]
+            "path_effects": [matplotlib.patheffects.withStroke(linewidth=0.7, foreground="white")],
         },
         "glacier_label": {
             "textsize": 10,  # Fontsize
             "color": "black",
-            "path_effects": [matplotlib.patheffects.withStroke(linewidth=1, foreground="white")]
+            "path_effects": [matplotlib.patheffects.withStroke(linewidth=1, foreground="white")],
         },
         "glacier_label_line": {
             "color": "white",
             "linewidth": 1,
-            "path_effects": [matplotlib.patheffects.withStroke(linewidth=2, foreground="black")]
+            "path_effects": [matplotlib.patheffects.withStroke(linewidth=2, foreground="black")],
         },
         "radar_lines": {
             "color": "red",
             "linewidth": 1,
-            "path_effects": [matplotlib.patheffects.withStroke(linewidth=1, foreground="black")]
+            "path_effects": [matplotlib.patheffects.withStroke(linewidth=1, foreground="black")],
         },
     }
 
     outlines = get_svalbard_outlines()
     glacier_outlines = get_svalbard_glaciers()
     glacier_outlines["used"] = glacier_outlines.geometry.intersects(
-        shapely.geometry.MultiPoint(
-            np.transpose([glaciers.geometry.x, glaciers.geometry.y])
-        )
+        shapely.geometry.MultiPoint(np.transpose([glaciers.geometry.x, glaciers.geometry.y]))
     )
     outlines_dissolved = glacier_outlines.dissolve()
 
@@ -1047,21 +1058,23 @@ def overview_map(show: bool = True):
         if pts.shape[0] < 2:
             continue
 
-        radar_lines_list.append({
-            "radar_key": radar_key,
-            "part_idx": part_idx,
-            "geometry": shapely.geometry.LineString(pts.sort_values("distance").geometry.values),
-        })
+        radar_lines_list.append(
+            {
+                "radar_key": radar_key,
+                "part_idx": part_idx,
+                "geometry": shapely.geometry.LineString(pts.sort_values("distance").geometry.values),
+            }
+        )
     radar_lines = gpd.GeoDataFrame(pd.DataFrame.from_records(radar_lines_list), crs=radar_track_pts.crs)
 
     def plot_background(axis: plt.Axes, xlim, ylim, overview_level):
         with rasterio.open(hillshade_path, overview_level=overview_level) as raster:
             window = rasterio.windows.from_bounds(xlim[0], ylim[0], xlim[1], ylim[1], transform=raster.transform)
             arr = np.clip(raster.read(1, masked=True, window=window, boundless=True).filled(181) / 181, min=0, max=1)
-            transform = rasterio.windows.transform(window=window,transform=raster.transform)
+            transform = rasterio.windows.transform(window=window, transform=raster.transform)
 
             lighten_scale = 0.5
-            arr = (arr * lighten_scale) + (1 - lighten_scale) 
+            arr = (arr * lighten_scale) + (1 - lighten_scale)
 
             land_mask = rasterio.features.rasterize(outlines.geometry, out_shape=arr.shape, transform=transform) == 1
 
@@ -1070,19 +1083,30 @@ def overview_map(show: bool = True):
 
             arr = np.repeat(arr[:, :, None], 3, axis=2)
 
-            glacier_mask = rasterio.features.rasterize(glacier_outlines.query("~used").geometry, out_shape=arr.shape[:2], transform=transform) == 1
+            glacier_mask = (
+                rasterio.features.rasterize(
+                    glacier_outlines.query("~used").geometry, out_shape=arr.shape[:2], transform=transform
+                )
+                == 1
+            )
 
             arr[glacier_mask, 0] *= 166 / 255
             arr[glacier_mask, 1] *= 225 / 255
             arr[glacier_mask, 2] *= 243 / 255
 
-            chosen_glacier_mask = rasterio.features.rasterize(glacier_outlines.query("used").geometry, out_shape=arr.shape[:2], transform=transform) == 1
+            chosen_glacier_mask = (
+                rasterio.features.rasterize(
+                    glacier_outlines.query("used").geometry, out_shape=arr.shape[:2], transform=transform
+                )
+                == 1
+            )
             arr[chosen_glacier_mask, 1] *= 204 / 255
             arr[chosen_glacier_mask, 2] *= 153 / 255
 
             axis.imshow(arr, extent=[*xlim, *ylim])
-            outlines_dissolved.plot(color="none", edgecolor="black", linewidth=0.05 if overview_level == 2 else 0.2, ax=axis)
-        
+            outlines_dissolved.plot(
+                color="none", edgecolor="black", linewidth=0.05 if overview_level == 2 else 0.2, ax=axis
+            )
 
     xlim = 3.83e5, 7.5e5
     ymid = 8.71e6
@@ -1097,16 +1121,24 @@ def overview_map(show: bool = True):
     for lat in np.arange(77, 81):
         lines = gpd.GeoSeries(shapely.LineString([(lon, lat) for lon in np.linspace(5, 50)]), crs=4326).to_crs(32633)
         lines.plot(ax=overview_ax, **style["degree_line"])
-        point = lines.intersection(shapely.geometry.box(xlim[0], ylim[0], xlim[1], ylim[1])).apply(lambda line: line.interpolate(0)).values[0]
-        overview_ax.annotate(f"{lat}°N", (point.x, point.y), **style["degree_label"]) 
+        point = (
+            lines.intersection(shapely.geometry.box(xlim[0], ylim[0], xlim[1], ylim[1]))
+            .apply(lambda line: line.interpolate(0))
+            .values[0]
+        )
+        overview_ax.annotate(f"{lat}°N", (point.x, point.y), **style["degree_label"])
 
     for lon in np.arange(5, 30, step=5):
         lines = gpd.GeoSeries(shapely.LineString([(lon, lat) for lat in np.linspace(50, 90)]), crs=4326).to_crs(32633)
         lines.plot(ax=overview_ax, **style["degree_line"])
 
         if lon in [15, 20]:
-            point = lines.intersection(shapely.geometry.box(xlim[0], ylim[0], xlim[1], ylim[1])).apply(lambda line: line.interpolate(0)).values[0]
-            overview_ax.annotate(f"{lon}°E", (point.x, point.y + (ylim[1] - ylim[0]) * 1e-2), **style["degree_label"]) 
+            point = (
+                lines.intersection(shapely.geometry.box(xlim[0], ylim[0], xlim[1], ylim[1]))
+                .apply(lambda line: line.interpolate(0))
+                .values[0]
+            )
+            overview_ax.annotate(f"{lon}°E", (point.x, point.y + (ylim[1] - ylim[0]) * 1e-2), **style["degree_label"])
 
     overview_ax.set_xlim(xlim)
     overview_ax.set_ylim(ylim)
@@ -1115,7 +1147,7 @@ def overview_map(show: bool = True):
     overview_ax.text(s="a", transform=overview_ax.transAxes, **style["panel_label"])
 
     zooms = [
-        { # Southern Spitsbergen
+        {  # Southern Spitsbergen
             "letter": "b",
             "loc": (6, 0),
             "xlim": (491000, 547000),
@@ -1123,7 +1155,7 @@ def overview_map(show: bool = True):
             "colspan": 4,
             "rowspan": 3,
         },
-        { # Nordaustlandet
+        {  # Nordaustlandet
             "letter": "c",
             "loc": (9, 0),
             "xlim": (617000, 662000),
@@ -1131,14 +1163,14 @@ def overview_map(show: bool = True):
             "colspan": 4,
             "rowspan": 3,
         },
-        { # Central Spitsbergen
+        {  # Central Spitsbergen
             "letter": "d",
             "loc": (0, 4),
             "xlim": (519000, 578000),
             "ymid": 8.671e6,
             "rowspan": 12,
             "colspan": 8,
-        }
+        },
     ]
 
     for zoom in zooms:
@@ -1157,8 +1189,10 @@ def overview_map(show: bool = True):
         plot_background(axis=axis, xlim=xlim, ylim=ylim, overview_level=None)
 
         radar_lines.plot(ax=axis, **style["radar_lines"])
-    
-        glaciers_sub = glaciers.loc[~glaciers.intersection(shapely.geometry.box(xlim[0], ylim[0], xlim[1], ylim[1])).is_empty]
+
+        glaciers_sub = glaciers.loc[
+            ~glaciers.intersection(shapely.geometry.box(xlim[0], ylim[0], xlim[1], ylim[1])).is_empty
+        ]
 
         # Annotate the locations of the glaciers with their labels. This is nontrivial as the labels would
         # overlap without this package that makes sure they don't. The lines are stupid though so I'm making them myself.
@@ -1186,9 +1220,7 @@ def overview_map(show: bool = True):
             )
 
             # We don't want the line within the bounding box of the label itself.
-            bbox = (
-                texts[i].get_window_extent().transformed(axis.transData.inverted())
-            )
+            bbox = texts[i].get_window_extent().transformed(axis.transData.inverted())
             # Extract and then plot the part of the line that's outside the bounding box.
             line_diff = line.difference(shapely.geometry.box(*bbox.extents))
             axis.plot(*line_diff.xy, zorder=1, **style["glacier_label_line"])
@@ -1198,15 +1230,15 @@ def overview_map(show: bool = True):
             axis.set_yticks([])
 
         overview_ax.add_patch(
-            plt.Rectangle((axis.get_xlim()[0], axis.get_ylim()[0]), width=np.diff(axis.get_xlim()).item(), height=np.diff(axis.get_ylim()).item(), **style["overview_box"])
+            plt.Rectangle(
+                (axis.get_xlim()[0], axis.get_ylim()[0]),
+                width=np.diff(axis.get_xlim()).item(),
+                height=np.diff(axis.get_ylim()).item(),
+                **style["overview_box"],
+            )
         )
-        overview_ax.annotate(
-            zoom["letter"],
-            (xlim[0], ylim[1]),
-            **style["overview_label"]
-        )
+        overview_ax.annotate(zoom["letter"], (xlim[0], ylim[1]), **style["overview_label"])
         axis.text(s=zoom["letter"], transform=axis.transAxes, **style["panel_label"])
-
 
         # Make a scalebar
         upper_left_in = fig.dpi_scale_trans.inverted().transform(axis.transAxes.transform([0, 1]))
@@ -1219,15 +1251,30 @@ def overview_map(show: bool = True):
         y_locs = np.repeat(upper_left_data[1], km + 1)
         bar_height = 1e3
 
-        axis.plot([x_locs[0], x_locs[0], x_locs[1], x_locs[1]], [y_locs[0] - bar_height, y_locs[0], y_locs[1], y_locs[1] - bar_height], **style["scalebar_line"])
+        axis.plot(
+            [x_locs[0], x_locs[0], x_locs[1], x_locs[1]],
+            [y_locs[0] - bar_height, y_locs[0], y_locs[1], y_locs[1] - bar_height],
+            **style["scalebar_line"],
+        )
         # axis.errorbar(x=x_locs, y=y_locs, yerr=np.repeat(np.array((bar_height, 0))[:, None], km + 1, axis=1), **style["scalebar_line"])
         for i in range(km + 1):
-            axis.annotate(f"{i * 10} km", (x_locs[i], y_locs[i] - bar_height * 1.1), va="top", ha="center", **style["scalebar_label"])
-        
-
+            axis.annotate(
+                f"{i * 10} km",
+                (x_locs[i], y_locs[i] - bar_height * 1.1),
+                va="top",
+                ha="center",
+                **style["scalebar_label"],
+            )
 
     panel_spacing = 0
-    plt.subplots_adjust(left=0.01, right=0.99, bottom=0.01, top=0.99, wspace=panel_spacing, hspace=panel_spacing * (figsize[1] / figsize[0]))
+    plt.subplots_adjust(
+        left=0.01,
+        right=0.99,
+        bottom=0.01,
+        top=0.99,
+        wspace=panel_spacing,
+        hspace=panel_spacing * (figsize[1] / figsize[0]),
+    )
     plt.savefig("figures/location_overview.jpg", dpi=600)
 
     if show:
@@ -1237,7 +1284,6 @@ def overview_map(show: bool = True):
 
 
 def plot_interpretation_merging(show: bool = False):
-
     all_merged = interpretations.merge_all_interpretations()
 
     colors = {
@@ -1250,13 +1296,13 @@ def plot_interpretation_merging(show: bool = False):
             "radar_key": "ragna_mariebreen-20240412-DAT_0404_A1_1",
             "xlim": [2000, 6500],
             "ylim": [230, -10],
-            "vlim": [0.1, 4.], 
+            "vlim": [0.1, 4.0],
         },
         {
             "radar_key": "amenfonna-20240510-DAT_0044_A1_1",
             "xlim": [250, 750],
             "ylim": [120, 25],
-            "vlim": [0., 3.],
+            "vlim": [0.0, 3.0],
         },
         {
             "radar_key": "dronbreen-20200224-DAT_0003_A1_2",
@@ -1269,35 +1315,34 @@ def plot_interpretation_merging(show: bool = False):
             "xlim": [1300, 2800],
             "ylim": [140, 30],
             "vlim": [0.00, 2.8],
-        }
+        },
     ]
 
     fig = plt.figure(figsize=(8.3, 6.4))
     outer_grid = fig.add_gridspec(
-        nrows=2, ncols=2,
-        left=0.08, right=0.97, bottom=0.07, top=0.99,
-        wspace=0.12, hspace=0.09
+        nrows=2, ncols=2, left=0.08, right=0.97, bottom=0.07, top=0.99, wspace=0.12, hspace=0.09
     )
-
 
     for i, case in enumerate(cases):
         inner_grid = outer_grid[i % 2, i // 2].subgridspec(3, 1, hspace=0.01)
-        
+
         ax_bot = fig.add_subplot(inner_grid[2])
         ax_mid = fig.add_subplot(inner_grid[1], sharex=ax_bot)
         ax_top = fig.add_subplot(inner_grid[0], sharex=ax_bot)
 
         merged = all_merged.query(f"radar_key == '{case['radar_key']}'").sort_values("distance")
 
-        all_points = interpretations.read_interpretations(radar_key=case["radar_key"], step_m=5.).reset_index()
+        all_points = interpretations.read_interpretations(radar_key=case["radar_key"], step_m=5.0).reset_index()
 
         with xr.open_dataset(paths.processed_radar_path(case["radar_key"])) as dataset:
             dataset.coords["trace_n"] = "x", np.arange(dataset.x.shape[0])
-            dataset = dataset.swap_dims(x="trace_n", y="depth")#.sel(
+            dataset = dataset.swap_dims(x="trace_n", y="depth")  # .sel(
 
             # I'm avoiding a strange bug here where if I clip the data exactly to xlim, it cuts too much!
             # By trial and error, I found that adding an extra 300/1000 traces "solves" it.
-            dataset = dataset.sel(trace_n=slice(max(case["xlim"][0] - 300, 0), case["xlim"][1] + 1000), depth=slice(*case["ylim"][::-1]))
+            dataset = dataset.sel(
+                trace_n=slice(max(case["xlim"][0] - 300, 0), case["xlim"][1] + 1000), depth=slice(*case["ylim"][::-1])
+            )
             dataset["data"] = np.abs(dataset.data)
 
             ax_top.imshow(
@@ -1316,7 +1361,12 @@ def plot_interpretation_merging(show: bool = False):
                 interpolation="lanczos",
             )
         for _, points in all_points.groupby(["user", "line_i"]):
-            ax_mid.plot(points["x"], points["depth"], color=DIGITIZE_CLASS_PROPS[points.iloc[0]["kind"].replace("temperate_ice", "temperate")]["color"], alpha=0.3)
+            ax_mid.plot(
+                points["x"],
+                points["depth"],
+                color=DIGITIZE_CLASS_PROPS[points.iloc[0]["kind"].replace("temperate_ice", "temperate")]["color"],
+                alpha=0.3,
+            )
 
         ax_mid.text(
             0.01,
@@ -1363,11 +1413,15 @@ def plot_interpretation_merging(show: bool = False):
             if j < 2:
                 axis.tick_params(labelbottom=False)
 
-            plt.text(0.01, 0.98, "abcdefghijklm"[i * 3 + j], ha="left", va="top", transform=axis.transAxes, path_effects=[
-                            matplotlib.patheffects.withStroke(
-                                linewidth=1, foreground="white"
-                            )
-                        ])
+            plt.text(
+                0.01,
+                0.98,
+                "abcdefghijklm"[i * 3 + j],
+                ha="left",
+                va="top",
+                transform=axis.transAxes,
+                path_effects=[matplotlib.patheffects.withStroke(linewidth=1, foreground="white")],
+            )
 
         if i in [0, 1]:
             ax_mid.set_ylabel("Depth (m)")
@@ -1376,9 +1430,17 @@ def plot_interpretation_merging(show: bool = False):
 
         # Add legends for the middle and bottom panels
         if i == 3:
-            legend_kwargs = {"fontsize": 8, "loc": "upper left", "bbox_to_anchor":(0.02, 0., 0.98, 1), "framealpha": 0, "labelspacing": 0.25} 
+            legend_kwargs = {
+                "fontsize": 8,
+                "loc": "upper left",
+                "bbox_to_anchor": (0.02, 0.0, 0.98, 1),
+                "framealpha": 0,
+                "labelspacing": 0.25,
+            }
             lines = []
-            for key in sorted(DIGITIZE_CLASS_PROPS.keys(), key=lambda s: len(DIGITIZE_CLASS_PROPS[s]["name"]), reverse=True):
+            for key in sorted(
+                DIGITIZE_CLASS_PROPS.keys(), key=lambda s: len(DIGITIZE_CLASS_PROPS[s]["name"]), reverse=True
+            ):
                 props = DIGITIZE_CLASS_PROPS[key]
                 lines.append(plt.Line2D([], [], color=props["color"], label=props["name"]))
             legend = ax_mid.legend(handles=lines, **legend_kwargs)
@@ -1386,22 +1448,18 @@ def plot_interpretation_merging(show: bool = False):
 
             ax_bot.legend(**legend_kwargs)
 
-            
     plt.savefig("figures/interpretation_merging_examples.jpg", dpi=600)
     if show:
         plt.show()
     else:
         plt.close()
 
-    
 
 def plot_cross_track_difference(show: bool = False):
     import itertools
 
     all_data = interpretations.merge_all_interpretations()
-    tree = scipy.spatial.KDTree(
-        np.transpose([all_data.geometry.x, all_data.geometry.y])
-    )
+    tree = scipy.spatial.KDTree(np.transpose([all_data.geometry.x, all_data.geometry.y]))
 
     distances, indices = tree.query(all_data[["easting", "northing"]])
 
@@ -1411,11 +1469,8 @@ def plot_cross_track_difference(show: bool = False):
 
     pairs = []
     for glacier, glacier_keys in radar_keys.groupby("glacier"):
-
         for year, in_year in glacier_keys.groupby("year"):
-            
             pairs += list(itertools.combinations_with_replacement(in_year["radar_key"].values, 2))
-
 
     out_list = []
     for first_key, second_key in pairs:
@@ -1425,9 +1480,7 @@ def plot_cross_track_difference(show: bool = False):
         first = all_data[all_data["radar_key"] == first_key]
         second = all_data[all_data["radar_key"] == second_key]
 
-        tree = scipy.spatial.KDTree(
-            np.transpose([first.geometry.x, first.geometry.y])
-        )
+        tree = scipy.spatial.KDTree(np.transpose([first.geometry.x, first.geometry.y]))
 
         distances, indices = tree.query(np.transpose([second.geometry.x, second.geometry.y]))
 
@@ -1440,7 +1493,9 @@ def plot_cross_track_difference(show: bool = False):
         second["other_thickness"] = first["thickness"].values[indices[distance_mask]]
         second["other_temperate"] = first["temperate"].values[indices[distance_mask]]
 
-        out_list.append(second[["thickness", "other_thickness", "temperate_frac", "temperate", "other_temperate", "temperate_lower", "temperate_upper"]])
+        out_list.append(
+            second[["thickness", "other_thickness", "temperate_frac", "temperate", "other_temperate", "bed_type"]]
+        )
 
     cmps = pd.concat(out_list)
     cmps["temperate_frac"] *= 100
@@ -1450,26 +1505,28 @@ def plot_cross_track_difference(show: bool = False):
 
     # Filter the temperate differences to only look at transition zones
     # 0% could be a "cold bed" measurement, and 100% could be a clamped value. Only those in between are truly
-    # representative of the uncertainty. 
+    # representative of the uncertainty.
     cmps.loc[(cmps["temperate_frac"] < 10) | (cmps["temperate_frac"] > 90), "temperate_diff"] = np.nan
 
     temperate_bins = np.linspace(-0.01, 101, 11)
-    bin_centers = (temperate_bins[1:] - np.diff(temperate_bins) / 2)
+    bin_centers = temperate_bins[1:] - np.diff(temperate_bins) / 2
     cmps["temperate_bin"] = bin_centers[np.digitize(cmps["temperate_frac"], bins=temperate_bins) - 1]
 
     plt.figure(figsize=(8, 5))
     for i, (name, color, data) in enumerate(
-            [
-                ("All bed data","gray",  cmps),
-                ("Temperate bed", "purple", cmps[(cmps["temperate_lower"] / cmps["thickness"]) >= 0.01]),
-                ("Cold bed", "blue", cmps[(cmps["temperate_upper"] / cmps["thickness"]) < 0.01]),
-                ("CTS", "red", cmps.drop(columns=["diff"]).rename(columns={"temperate_diff": "diff"}))
-            ]
-        ):
+        [
+            ("All bed data", "gray", cmps),
+            ("Temperate bed", "purple", cmps[cmps["bed_type"] == "certain_temperate"]),
+            ("Cold bed", "blue", cmps[cmps["bed_type"] == "certain_cold"]),
+            ("CTS", "red", cmps.drop(columns=["diff"]).rename(columns={"temperate_diff": "diff"})),
+        ]
+    ):
         axis = plt.subplot2grid((2, 2), (i % 2, i // 2))
 
         bin_edge = 10
-        axis.hist(data["diff"], bins=np.linspace(-bin_edge, bin_edge, 100 if name != "CTS" else 50), color=color, alpha=0.5)
+        axis.hist(
+            data["diff"], bins=np.linspace(-bin_edge, bin_edge, 100 if name != "CTS" else 50), color=color, alpha=0.5
+        )
         if i % 2 == 0:
             axis.tick_params(labelbottom=False)
         else:
@@ -1484,19 +1541,15 @@ def plot_cross_track_difference(show: bool = False):
             y=0.7,
             s="\n".join(
                 [
-                    f"Median: {data["diff"].median():.1f} m",
-                    f"NMAD: {1.426 * np.nanmedian(np.abs(data["diff"] - np.nanmedian(data["diff"]))): .1f} m",
+                    f"Median: {data['diff'].median():.1f} m",
+                    f"NMAD: {1.426 * np.nanmedian(np.abs(data['diff'] - np.nanmedian(data['diff']))): .1f} m",
                 ]
             ),
             transform=axis.transAxes,
             va="center",
-            path_effects=[
-                matplotlib.patheffects.withStroke(
-                    linewidth=4, foreground="white"
-                )
-            ],
+            path_effects=[matplotlib.patheffects.withStroke(linewidth=4, foreground="white")],
         )
-        
+
     plt.subplots_adjust(left=0.07, bottom=0.1, right=0.986, top=0.99, wspace=0.136, hspace=0.207)
     plt.savefig("figures/cross_track_difference.jpg", dpi=600)
 
@@ -1506,9 +1559,66 @@ def plot_cross_track_difference(show: bool = False):
         plt.close()
 
 
-    
+def plot_heerland_dhdt(show: bool = False):
+    import rasterio
+    import rasterio.coords
+    import rasterio.windows
+    import svalbardradar.comparisons
 
-def generate_all_figures(show: bool = True):
+    bounds = rasterio.coords.BoundingBox(546000, 8632000, 567000, 8657000)
+
+    glaciers = gpd.read_file("shapes/glacier_locations.geojson")
+    outlines = get_svalbard_glaciers()
+
+    glaciers = gpd.sjoin(glaciers, outlines[["geometry"]], how="left", predicate="intersects")
+    glaciers["geometry"] = outlines.loc[glaciers["index_right"].values, "geometry"].values
+
+    with rasterio.open(svalbardradar.comparisons.get_hugonnet()) as raster:
+        window = rasterio.windows.from_bounds(*bounds, transform=raster.transform)
+        hugonnet = raster.read(1, window=window)
+
+    with rasterio.open(svalbardradar.comparisons.get_geyman()) as raster:
+        window = rasterio.windows.from_bounds(*bounds, transform=raster.transform)
+        geyman = raster.read(1, window=window, masked=True).filled(0) / (2010 - 1936)
+
+    fig = plt.figure(figsize=(8.3, 5.0))
+    axes: list[plt.Axes] = fig.subplots(1, 2, sharex=True, sharey=True)
+    extent = (bounds.left, bounds.right, bounds.bottom, bounds.top)
+
+    for i, axis in enumerate(axes):
+        if i == 0:
+            params = {
+                "arr": geyman,
+                "title": "Geyman et al. (2022)",
+            }
+        else:
+            params = {
+                "arr": hugonnet,
+                "title": "Hugonnet et al. (2021)",
+            }
+        axis.text(0.5, 1.02, params["title"], transform=axis.transAxes, ha="center", fontsize=12)
+        img = axis.imshow(params["arr"], cmap="RdBu", vmin=-2, vmax=2, extent=extent)
+        glaciers.plot(ax=axis, color="none", edgecolor="black")
+
+        axis.set_xlabel("Easting (m)")
+        if i == 0:
+            axis.set_ylabel("Northing (m)")
+        else:
+            colorbar_ax = axis.inset_axes((0.05, 0.75, 0.15, 0.3))
+            colorbar_ax.set_axis_off()
+            cbar = plt.colorbar(img, ax=colorbar_ax, aspect=5, fraction=1.0)
+            cbar.set_label("dH dt$^{-1}$")
+    plt.xlim(extent[:2])
+    plt.ylim(extent[2:])
+    plt.subplots_adjust(left=0.09, bottom=0.09, right=0.99, top=0.95, wspace=0.05)
+    plt.savefig("figures/heerland_dhdt.jpg", dpi=400)
+    if show:
+        plt.show()
+    else:
+        plt.close()
+
+
+def generate_all_figures(show: bool = False):
     print("Generating Drønbreen example figure.")
     plot_dronbreen_examples(show=show)
     print("Generating centerline profiles figure.")
@@ -1518,13 +1628,15 @@ def generate_all_figures(show: bool = True):
     plot_model_comparison(show=show, correct_topo=False)
     print("Generating glathida comparison figure.")
     plot_glathida_comparison(show=show, correct_topo=False)
-    plot_glathida_comparison(show=show, correct_topo=False)
+    plot_glathida_comparison(show=show, correct_topo=True)
     print("Generating interpretation merging figure.")
     plot_interpretation_merging(show=show)
     print("Generating cross-track difference figure.")
     plot_cross_track_difference(show=show)
     print("Generating cold/temperate performance difference figure.")
     plot_model_temperate_cold_performance(show=show)
+    print("Generating Heer Land elevation change rate figure")
+    plot_heerland_dhdt(show=show)
 
 
 if __name__ == "__main__":

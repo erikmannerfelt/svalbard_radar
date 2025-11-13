@@ -7,7 +7,7 @@ from pathlib import Path
 def main():
     dates = set()
 
-    glaciers = {}
+    # glaciers = {}
 
     data_list = []
     for glacier_dir in (Path(__file__).parent / "../processed_radar/").glob("*"):
@@ -30,8 +30,6 @@ def main():
     data = pd.DataFrame.from_records(data_list)
 
     print(list(zip(map(list, np.unique(data["antenna"], return_counts=True)))))
-    # antenna_counts = {k: v for k, v in np.unique(data["antenna"], return_counts=True)}
-    # print((list(map(list, ))))
 
 if __name__ == "__main__":
     main()

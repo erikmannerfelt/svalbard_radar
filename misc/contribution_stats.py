@@ -2,10 +2,9 @@ import numpy as np
 
 from pathlib import Path
 
+
 def main(target_avg_per_radargram: int = 8):
-
     active_user_dirs = list((Path(__file__).parent.parent / "submitted").iterdir())
-
 
     n_submissions_per_radargram = {}
     n_submissions_per_user = {}
@@ -31,13 +30,14 @@ def main(target_avg_per_radargram: int = 8):
 
     avg_submissions_per_radar = np.mean(list(n_submissions_per_radargram.values()))
 
-    trunc_avg_submissions_per_radar = np.mean(np.clip(list(n_submissions_per_radargram.values()), a_min=0, a_max=target_avg_per_radargram))
+    trunc_avg_submissions_per_radar = np.mean(
+        np.clip(list(n_submissions_per_radargram.values()), a_min=0, a_max=target_avg_per_radargram)
+    )
     truncated_progress = trunc_avg_submissions_per_radar / target_avg_per_radargram
 
-
-    n_below_threshold = np.count_nonzero(np.array(list(n_submissions_per_radargram.values())) < target_avg_per_radargram)
-    n_above_threshold = len(n_submissions_per_radargram) - n_below_threshold
-
+    n_below_threshold = np.count_nonzero(
+        np.array(list(n_submissions_per_radargram.values())) < target_avg_per_radargram
+    )
 
     print(f"N active users: {n_active_users}")
     print(f"Avg submissions per user: {np.mean(list(n_submissions_per_user.values())):.0f}")
@@ -49,6 +49,7 @@ def main(target_avg_per_radargram: int = 8):
     print("\nNumber of contributions per person: ")
     for user, vals in sorted(n_submissions_per_user.items(), key=lambda item: item[1], reverse=True):
         print(f"\t{user}:  {vals}")
+
 
 if __name__ == "__main__":
     main()

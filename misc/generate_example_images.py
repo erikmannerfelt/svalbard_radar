@@ -14,7 +14,7 @@ def load_tile(radar_key, yoff, xoff):
     )
 
     if tile_name.is_file():
-        return Image.open(tile_name)
+        return PIL.Image.open(tile_name)
 
     raise FileNotFoundError(f"Tile file not found: {tile_name}")
 
@@ -27,7 +27,7 @@ def sample_image(radar_key, width, height, x_left, y_top):
 
     print(tiles_x, tiles_y)
 
-    total_image = Image.new("L", (tiles_x * tile_size, tiles_y * tile_size))
+    total_image = PIL.Image.new("L", (tiles_x * tile_size, tiles_y * tile_size))
 
     for y in range(tiles_y):
         for x in range(tiles_x):
@@ -104,9 +104,7 @@ def main():
                     f"static/radargrams/{glacier}/{date_str}/{filename}/tiles/abslog/tile_{str(row).zfill(5)}_{str(col).zfill(5)}.jpg"
                 )
                 if not tile_name.is_file():
-                    raise ValueError(
-                        f"{image_name} requires {tile_name} but it does not exist."
-                    )
+                    raise ValueError(f"{image_name} requires {tile_name} but it does not exist.")
 
                 tile = plt.imread(tile_name)
                 img[row : row + tile.shape[0], col : col + tile.shape[1]] = tile
