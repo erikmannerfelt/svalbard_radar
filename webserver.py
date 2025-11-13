@@ -376,8 +376,8 @@ def radargram_latest_submission(radar_key: str):
 
 def _recommended() -> list[list[str]]:
     recommendations = [
-        "ragna_mariebreen-20240412-DAT_0404_A1_1",
-        "dronbreen-20220329-DAT_0236_A1_2",
+        "ragna_mariebreen-20240405-DAT_0358_A1_1",
+        "dronbreen-20250326-DAT_0013_A1_1",
         "ragna_mariebreen-20240405-DAT_0359_A1_1",
         "dronbreen-20250326-DAT_0004_A1_1",
         "dronbreen-20250325-DAT_0015_A1_7",
