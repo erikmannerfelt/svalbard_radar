@@ -434,20 +434,20 @@ def plot_centerline_profiles(show: bool = True):
     import svalbardradar.interpretations
 
     radar_keys = [
-        "mettebreen-20230305-DAT_0235_A1_8",
+        ["mettebreen-20230305-DAT_0235_A1_8"],
         # "filantropbreen-20240406-DAT_0372_A1_1",
-        "moysalbreen-20220222-DAT_0749_A1_1",
+        ["moysalbreen-20220222-DAT_0749_A1_1"],
         # "rugaasfonna-20220218-DAT_0723_A1_1",
         # "lofthusbreen-20250326-DAT_0057_A1_1",
-        "finsterwalderbreen-20250407-DAT_0171_A1_1",
-        "ragna_mariebreen-20240412-DAT_0404_A1_1",
-        "winsnesbreen-20240503-DAT_0014_A1_1",
-        "jinnbreen-20240206-DAT_0448_A1_1",
-        "dronbreen-20230220-DAT_0009_A1_1",
+        ["finsterwalderbreen-20250407-DAT_0171_A1_1"],
+        ["ragna_mariebreen-20240412-DAT_0404_A1_1"],
+        ["winsnesbreen-20240503-DAT_0014_A1_1"],
+        ["jinnbreen-20240206-DAT_0447_A1_1", "jinnbreen-20240206-DAT_0448_A1_1"],
+        ["dronbreen-20230220-DAT_0009_A1_1"],
         # "dronbreen-20250327-DAT_0065_A1_1",
-        "kroppbreen-20230228-DAT_0042_A1_1",
-        "slakbreen-20240310-DAT_0286_A1_1",
-        "edvardbreen-20240411-DAT_0396_A1_1",
+        ["kroppbreen-20230228-DAT_0042_A1_1"],
+        ["slakbreen-20240310-DAT_0286_A1_1"],
+        ["edvardbreen-20240411-DAT_0396_A1_1"],
     ]
 
     n_cols = 2
@@ -477,17 +477,17 @@ def plot_centerline_profiles(show: bool = True):
 
         # data = gpd.read_feather(Path(f"cache/interpretations/per_radargram/{radar_key}.feather"))
         # data = svalbardradar.interpretations.merge_interpretations(radar_key)
-        data = all_data[all_data["radar_key"] == radar_key]
+        data = all_data[all_data["radar_key"].isin(radar_key)]
 
-        radar_meta = meta.get(radar_key, {})
+        radar_meta = meta.get(radar_key[0], {})
 
-        data = data.sort_values("distance")
+        data = data.sort_values(["radar_key", "distance"])
 
-        glacier = radar_key.split("-")[0]
+        glacier = radar_key[0].split("-")[0]
 
         if data.iloc[10]["elevation"] > data.iloc[-10]["elevation"]:
             data["distance"] = data["distance"].max() - data["distance"]
-            data = data.sort_values("distance")
+            data = data.iloc[::-1]
 
         data["distance"] = (
             (data[["easting", "northing"]].diff(axis="rows").fillna(0) ** 2).sum(axis="columns") ** 0.5
@@ -525,6 +525,7 @@ def plot_centerline_profiles(show: bool = True):
         axis.plot(data["distance"], data["bed_elevation"], color="black")
         axis.plot(data["distance"], data["elevation"], color="blue")
 
+        print(glacier, data["distance"].describe())
         xrange = data["distance"].max() - data["distance"].min()
 
         aspect = 8
