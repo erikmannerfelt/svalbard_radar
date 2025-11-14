@@ -529,7 +529,7 @@ def plot_centerline_profiles(show: bool = True):
 
         aspect = 8
 
-        if row > 1:
+        if row >= 1:
             aspect = 12
 
         yrange = 1000 * xrange / aspect

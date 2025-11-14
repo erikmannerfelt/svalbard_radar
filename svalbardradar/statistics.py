@@ -34,28 +34,28 @@ def glacier_table():
         "last_surge": "Last surge"
     }
 
+    no_date = "ND$^{[2]}$"
     surging = {
         "etonbreen": "2023$^{[1]}$",
-        "von_postbreen": "1920$^{[2]}$",
-        "elfenbeinbreen": "1896$^{[2]}$",
-        "jinnbreen": "ND",
-        "moysalbreen": "1936",
+        "von_postbreen": "1870$^{[2]}$",
+        "elfenbeinbreen": "1903$^{[2]}$",
+        "jinnbreen": no_date,
+        "moysalbreen": "1925$^{[2]}$",
         "lofthusbreen": "1896$^{[3]}$",
         "dronbreen": "1896$^{[3]}$",
         "scott_turnerbreen": "1914$^{[3]}$",
-        "bergmesterbreen": "ND",
-        "rugaasfonna": "ND",
-        "svellnosbreen": "ND",
-        "kroppbreen": "2007$^{[4]}$",
+        "bergmesterbreen": no_date,
+        "rugaasfonna": no_date,
+        "svellnosbreen": no_date,
+        "kroppbreen": no_date,
         "edvardbreen": "$\\sim$2025$^{[1]}$",
         "vallakrabreen": "2022$^{[1]}$",
-        "mettebreen": "ND",
-        "ragna_mariebreen": "ND",
-        "filantropbreen": "20XX",
-        "antoniabreen": "ND",
-        "finsterwalderbreen": "ND"
+        "mettebreen": no_date,
+        "ragna_mariebreen": no_date,
+        "filantropbreen": no_date,
+        "antoniabreen": no_date,
+        "finsterwalderbreen": "1914$^{[2]}$"
     }
-    print("TODO: Look up surge dates in Harcourt et al.")
     glaciers["last_surge"] = glaciers["key"].map(lambda k: surging.get(k, "-"))
 
     tex_table = r"\begin{tabular}{l" + "c" * (len(cols) - 1) + "}\n"
