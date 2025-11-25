@@ -19,6 +19,10 @@ web:
 web-debug: 
     python -c 'from webserver import *; main(debug=True)'
 
+rebuild-user-interpretations:
+    ipython -c 'from svalbardradar.interpretations import *; merge_all_interpretations(overwrite_cache=True)'
+    ipython -c 'from svalbardradar.comparisons import *; sample_models(overwrite_cache=True)'
+
 make-figures:
     ipython svalbardradar/figures.py
 
