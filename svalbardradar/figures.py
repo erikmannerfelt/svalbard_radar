@@ -15,6 +15,7 @@ import textalloc
 
 from svalbardradar import interpretations
 from svalbardradar.tools import paths, statistics, misc
+import svalbardradar.statistics
 
 CACHE_PATH = paths.BASE_CACHE_PATH / "figures"
 DIGITIZE_CLASS_PROPS = {
@@ -591,6 +592,8 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
     step_size = 7.5
     thickness_bins = np.arange(0, max_thickness - (max_thickness % step_size) + step_size * 2, step_size)
 
+    r_minmax = [1, 0]
+
     for i, model in enumerate(models):
         col = i % n_cols
         row = int((i - col) / n_cols)
@@ -623,14 +626,32 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
 
         diff = subset[f"{model}_thickness"] - subset["thickness"]
 
+        nmad = statistics.nmad(diff)
+        pearson = subset["thickness"].corr(subset[f"{model}_thickness"])
+
+        if correct_topo:
+            if pearson < r_minmax[0]:
+                r_minmax[0] = pearson
+            elif pearson > r_minmax[1]:
+                r_minmax[1] = pearson
+            svalbardradar.statistics.record_information(
+                {
+                    "inversion": {
+                        model: {
+                            "nmad": nmad,
+                            "r": svalbardradar.statistics.format_float(pearson, 2),
+                        }
+                    }
+                }
+            )
         axis.text(
             x=0.05,
             y=0.95,
             s="\n".join(
                 [
                     f"Median: {diff.median():.1f} m",
-                    f"NMAD: {1.426 * np.median(np.abs(diff - np.median(diff))): .1f} m",
-                    f"r = {subset['thickness'].corr(subset[f'{model}_thickness']):.2f}",
+                    f"NMAD: {nmad: .1f} m",
+                    f"r = {pearson:.2f}",
                 ]
             ),
             transform=axis.transAxes,
@@ -644,6 +665,15 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
         if col == 0:
             axis.set_ylabel("Modelled thickness (m)")
 
+    if correct_topo:
+        svalbardradar.statistics.record_information(
+            {
+                "inversion": {
+                    "min_r": svalbardradar.statistics.format_float(r_minmax[0], 2),
+                    "max_r": svalbardradar.statistics.format_float(r_minmax[1], 2),
+                }
+            }
+        )
     plt.tight_layout()
 
     Path("figures/").mkdir(exist_ok=True)
@@ -679,7 +709,8 @@ def plot_glathida_comparison(show: bool = True, histogram: bool = False, correct
     axes = fig.subplots(ncols=3, sharex=True, sharey=True)
     for i, group in data.groupby("glathida_group"):
         axis: plt.Axes = axes[i]
-        stats = f"n={group.shape[0]}, ΔH: {group['glathida_diff'].median():.1f}±{statistics.nmad(group['glathida_diff']):.1f} m"
+        bias = group["glathida_diff"].median()
+        stats = f"n={group.shape[0]}, ΔH: {bias:.1f}±{statistics.nmad(group['glathida_diff']):.1f} m"
 
         if i == 0:
             label = f"before {year_intervals[0]}\n{stats}"
@@ -710,6 +741,19 @@ def plot_glathida_comparison(show: bool = True, histogram: bool = False, correct
         x, y = np.array(x), np.array(y)
         res_full = scipy.optimize.least_squares(residuals, x0=[0.0, 0.0], args=(x, y)).x
         res_150 = scipy.optimize.least_squares(residuals, x0=[0.0, 0.0], args=(x[x < 150], y[x < 150])).x
+
+        if correct_topo:
+            key = ["before", "middle", "after"][i]
+            svalbardradar.statistics.record_information(
+                {
+                    "glathida": {
+                        f"{key}_slope_full": svalbardradar.statistics.format_float(res_full[0], 2),
+                        f"{key}_slope_thin": svalbardradar.statistics.format_float(res_150[0], 2),
+                        f"{key}_bias": bias,
+                    }
+                }
+            )
+
         print(
             f"{label.replace('\n', ': ')}, Linear fit: old = {res_full[0]:.2f}*new + {res_full[1]:.2f}. Linear fit (<150 m): old = {res_150[0]:.2f}*new + {res_150[1]:.2f}"
         )
@@ -790,6 +834,8 @@ def plot_model_temperate_cold_performance(show: bool = True):
     box_distance = 5
     fig = plt.figure(figsize=(8, 5))
     # axes = fig.subplots(2, 2)
+
+    cold_temp_diffs = {}
     axes = []
     for k, glacier in enumerate([*glaciers, "all"]):
         if glacier == "all":
@@ -807,6 +853,9 @@ def plot_model_temperate_cold_performance(show: bool = True):
 
             cold = df["bed_type"] == "certain_cold"
             temperate = df["bed_type"] == "certain_temperate"
+
+            if glacier == "all":
+                cold_temp_diffs[model] = diff[cold].median() - diff[temperate].median()
 
             for j, (case, arr) in enumerate([("cold", diff[cold]), ("temperate", diff[temperate]), ("all", diff)]):
                 arr = arr[np.abs(arr) < 300]
@@ -844,6 +893,21 @@ def plot_model_temperate_cold_performance(show: bool = True):
             elif k == 0:
                 axis.set_ylabel("Thickness diff. (m)")
 
+    cold_temp_diffs.update(
+        {
+            "mean": np.mean(list(cold_temp_diffs.values())),
+            "min": np.min(list(cold_temp_diffs.values())),
+            "max": np.max(list(cold_temp_diffs.values())),
+        }
+    )
+
+    svalbardradar.statistics.record_information(
+        {
+            "inversion": {
+                "coldvstemp": cold_temp_diffs,
+            }
+        }
+    )
     plt.tight_layout()
 
     for i, axis in enumerate(axes):
@@ -872,8 +936,10 @@ def plot_model_temperate_cold_performance(show: bool = True):
     if show:
         plt.show()
 
+
 def plot_perglacier_temperate_cold_performance(show: bool = False):
     import svalbardradar.comparisons
+
     data = svalbardradar.comparisons.sample_models()
     # glathida = svalbardradar.comparisons.sample_glathida()
     # glathida = glathida[glathida["glathida_year"] > 2000]
@@ -919,7 +985,7 @@ def plot_perglacier_temperate_cold_performance(show: bool = False):
     axes = fig.subplots(5, 5, sharex=True)
 
     for k, (glacier_key, df) in enumerate(data.groupby("glacier")):
-        axis: plt.Axes = axes.ravel()[k] 
+        axis: plt.Axes = axes.ravel()[k]
         row = k // axes.shape[1]
         col = k % axes.shape[0]
         for i, model in enumerate(models):
@@ -943,9 +1009,7 @@ def plot_perglacier_temperate_cold_performance(show: bool = False):
                 )
 
             xtick_vals = np.arange(len(models)) * box_distance
-            axis.set_xticks(
-                xtick_vals, [short_names[model] for model in models]
-            )
+            axis.set_xticks(xtick_vals, [short_names[model] for model in models])
 
             axis.set_ylim(-200, 200)
             yticks = axis.get_yticks()
@@ -969,7 +1033,16 @@ def plot_perglacier_temperate_cold_performance(show: bool = False):
 
             fraction = np.count_nonzero(temperate) / np.count_nonzero(cold | temperate)
             axis.text(0.01, 0.01, f"T: {fraction * 100:.0f}%", va="bottom", transform=axis.transAxes, fontsize=8)
-            axis.text(0.5, 0.97, glacier_names[glacier_key], ha="center", va="top", transform=axis.transAxes, fontsize=8, path_effects=[matplotlib.patheffects.withStroke(linewidth=2, foreground="white")])
+            axis.text(
+                0.5,
+                0.97,
+                glacier_names[glacier_key],
+                ha="center",
+                va="top",
+                transform=axis.transAxes,
+                fontsize=8,
+                path_effects=[matplotlib.patheffects.withStroke(linewidth=2, foreground="white")],
+            )
 
             if col == 0 and row == 2:
                 axis.set_ylabel("Thicknes difference (m)")
@@ -981,7 +1054,6 @@ def plot_perglacier_temperate_cold_performance(show: bool = False):
         plt.show()
     else:
         plt.close()
-
 
 
 def s20_hillshade() -> Path:
@@ -1634,13 +1706,23 @@ def plot_cross_track_difference(show: bool = False):
 
         plt.text(0.02, 0.97, "abcd"[i], transform=axis.transAxes, va="top", ha="left")
         plt.text(0.98, 0.97, name, transform=axis.transAxes, va="top", ha="right")
+        nmad = statistics.nmad(data["diff"])
+        if name in ["All bed data", "CTS"]:
+            key = {"All bed data": "all_bed", "CTS": "cts"}[name]
+            svalbardradar.statistics.record_information(
+                {
+                    "crosstrack": {
+                        f"{key}_nmad": nmad,
+                    }
+                }
+            )
         plt.text(
             x=0.02,
             y=0.7,
             s="\n".join(
                 [
                     f"Median: {data['diff'].median():.1f} m",
-                    f"NMAD: {1.426 * np.nanmedian(np.abs(data['diff'] - np.nanmedian(data['diff']))): .1f} m",
+                    f"NMAD: {nmad:.1f} m",
                 ]
             ),
             transform=axis.transAxes,
