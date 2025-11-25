@@ -231,10 +231,6 @@ def plot_user_spread(show: bool = True):
         for glacier, all_glacier_data in all_data.groupby("glacier"):
             for radar_key, data in all_glacier_data.groupby("radar_key"):
                 radar_key = str(radar_key)
-                # if "dronbreen-20200224-DAT_0003_A1_2" not in radar_key:
-                #     continue
-                # if len(radar_keys) > 9:
-                #     break
                 _, date_str, filename = radar_key.split("-")
 
                 data = data.copy()
@@ -242,17 +238,8 @@ def plot_user_spread(show: bool = True):
                     (data[["easting", "northing"]].diff().fillna(0) ** 2).sum(axis="columns") ** 0.5
                 ).cumsum() / 1e3
 
-                # data["part_idx"] = (data["distance"].diff().fillna(0) > 25).astype(int).cumsum()
-
                 fig = plt.figure(figsize=(8.3, 11.7))
                 axes = fig.subplots(3, 1, sharex=True, sharey=True, height_ratios=[0.5, 0.25, 0.25])
-
-                # with xr.open_dataset(f"processed_radar/{glacier}/{date_str}/{filename}.nc") as dataset:
-                #     depth_model = scipy.interpolate.interp1d(
-                #         np.arange(dataset["data"].shape[0])[::-1],
-                #         dataset["depth"].values,
-                #         bounds_error=False,
-                #     )
 
                 interp_paths = paths.get_latest_submissions(radar_key)
 
@@ -356,8 +343,6 @@ def plot_user_spread(show: bool = True):
                         label="Temperate ice (+- 25%)",
                         zorder=1,
                     )
-                    # plt.fill_between(out0.index, out["bed_elevation"] + out0["temperate_lower"], out["bed_elevation"] + out0["temperate_upper"], color="red", alpha=0.3)
-                    # plt.fill_between(out0.index, out["elevation"] - out0["thickness_lower"], out["elevation"] - out0["thickness_upper"], color="blue", alpha=0.3)
                     axes[2].plot(
                         data_split["x"],
                         data_split["thickness"] - data_split["thickness"] * data_split["temperate_frac"],
@@ -426,11 +411,9 @@ def plot_user_spread(show: bool = True):
                 fig.text(0.03, 0.01, str(len(radar_keys) + 1), ha="right", va="bottom", fontsize=8)
 
                 pdf.savefig(fig)
-                # plt.savefig("temp.jpg", dpi=300)
                 plt.close(fig)
                 progress_bar.update()
                 radar_keys.append(radar_key)
-                # raise NotImplementedError()
 
 
 def plot_centerline_profiles(show: bool = True):
