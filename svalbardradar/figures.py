@@ -230,6 +230,7 @@ def plot_user_spread(show: bool = True):
     with PdfPages(out_path) as pdf, tqdm.tqdm(total=all_data["radar_key"].unique().shape[0]) as progress_bar:
         for glacier, all_glacier_data in all_data.groupby("glacier"):
             for radar_key, data in all_glacier_data.groupby("radar_key"):
+                radar_key = str(radar_key)
                 # if "dronbreen-20200224-DAT_0003_A1_2" not in radar_key:
                 #     continue
                 # if len(radar_keys) > 9:
@@ -238,18 +239,20 @@ def plot_user_spread(show: bool = True):
 
                 data = data.copy()
                 data["distance"] = (
-                    (data[["easting", "northing"]].diff(axis="rows").fillna(0) ** 2).sum(axis="columns") ** 0.5
+                    (data[["easting", "northing"]].diff().fillna(0) ** 2).sum(axis="columns") ** 0.5
                 ).cumsum() / 1e3
+
+                # data["part_idx"] = (data["distance"].diff().fillna(0) > 25).astype(int).cumsum()
 
                 fig = plt.figure(figsize=(8.3, 11.7))
                 axes = fig.subplots(3, 1, sharex=True, sharey=True, height_ratios=[0.5, 0.25, 0.25])
 
-                with xr.open_dataset(f"processed_radar/{glacier}/{date_str}/{filename}.nc") as dataset:
-                    depth_model = scipy.interpolate.interp1d(
-                        np.arange(dataset["data"].shape[0])[::-1],
-                        dataset["depth"].values,
-                        bounds_error=False,
-                    )
+                # with xr.open_dataset(f"processed_radar/{glacier}/{date_str}/{filename}.nc") as dataset:
+                #     depth_model = scipy.interpolate.interp1d(
+                #         np.arange(dataset["data"].shape[0])[::-1],
+                #         dataset["depth"].values,
+                #         bounds_error=False,
+                #     )
 
                 interp_paths = paths.get_latest_submissions(radar_key)
 
@@ -325,7 +328,7 @@ def plot_user_spread(show: bool = True):
                     )
                     labeled.add(kind)
 
-                diffs = (data["x"].diff().fillna(0) > 100).cumsum()
+                diffs = (data["distance"].diff().fillna(0) > (25 / 1000)).cumsum()
                 for _, data_split in data.groupby(diffs):
                     axes[2].fill_between(
                         data_split["x"],
