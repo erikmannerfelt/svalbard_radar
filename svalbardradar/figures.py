@@ -14,7 +14,8 @@ import xarray as xr
 import textalloc
 
 from svalbardradar import interpretations
-from svalbardradar.tools import paths, statistics, misc
+from svalbardradar.tools import paths, misc, stats
+import svalbardradar.analysis
 
 CACHE_PATH = paths.BASE_CACHE_PATH / "figures"
 DIGITIZE_CLASS_PROPS = {
@@ -230,26 +231,16 @@ def plot_user_spread(show: bool = True):
     with PdfPages(out_path) as pdf, tqdm.tqdm(total=all_data["radar_key"].unique().shape[0]) as progress_bar:
         for glacier, all_glacier_data in all_data.groupby("glacier"):
             for radar_key, data in all_glacier_data.groupby("radar_key"):
-                # if "dronbreen-20200224-DAT_0003_A1_2" not in radar_key:
-                #     continue
-                # if len(radar_keys) > 9:
-                #     break
+                radar_key = str(radar_key)
                 _, date_str, filename = radar_key.split("-")
 
                 data = data.copy()
                 data["distance"] = (
-                    (data[["easting", "northing"]].diff(axis="rows").fillna(0) ** 2).sum(axis="columns") ** 0.5
+                    (data[["easting", "northing"]].diff().fillna(0) ** 2).sum(axis="columns") ** 0.5
                 ).cumsum() / 1e3
 
                 fig = plt.figure(figsize=(8.3, 11.7))
                 axes = fig.subplots(3, 1, sharex=True, sharey=True, height_ratios=[0.5, 0.25, 0.25])
-
-                with xr.open_dataset(f"processed_radar/{glacier}/{date_str}/{filename}.nc") as dataset:
-                    depth_model = scipy.interpolate.interp1d(
-                        np.arange(dataset["data"].shape[0])[::-1],
-                        dataset["depth"].values,
-                        bounds_error=False,
-                    )
 
                 interp_paths = paths.get_latest_submissions(radar_key)
 
@@ -325,7 +316,7 @@ def plot_user_spread(show: bool = True):
                     )
                     labeled.add(kind)
 
-                diffs = (data["x"].diff().fillna(0) > 100).cumsum()
+                diffs = (data["distance"].diff().fillna(0) > (25 / 1000)).cumsum()
                 for _, data_split in data.groupby(diffs):
                     axes[2].fill_between(
                         data_split["x"],
@@ -353,8 +344,6 @@ def plot_user_spread(show: bool = True):
                         label="Temperate ice (+- 25%)",
                         zorder=1,
                     )
-                    # plt.fill_between(out0.index, out["bed_elevation"] + out0["temperate_lower"], out["bed_elevation"] + out0["temperate_upper"], color="red", alpha=0.3)
-                    # plt.fill_between(out0.index, out["elevation"] - out0["thickness_lower"], out["elevation"] - out0["thickness_upper"], color="blue", alpha=0.3)
                     axes[2].plot(
                         data_split["x"],
                         data_split["thickness"] - data_split["thickness"] * data_split["temperate_frac"],
@@ -423,31 +412,29 @@ def plot_user_spread(show: bool = True):
                 fig.text(0.03, 0.01, str(len(radar_keys) + 1), ha="right", va="bottom", fontsize=8)
 
                 pdf.savefig(fig)
-                # plt.savefig("temp.jpg", dpi=300)
                 plt.close(fig)
                 progress_bar.update()
                 radar_keys.append(radar_key)
-                # raise NotImplementedError()
 
 
 def plot_centerline_profiles(show: bool = True):
     import svalbardradar.interpretations
 
     radar_keys = [
-        "mettebreen-20230305-DAT_0235_A1_8",
+        ["mettebreen-20230305-DAT_0235_A1_8"],
         # "filantropbreen-20240406-DAT_0372_A1_1",
-        "moysalbreen-20220222-DAT_0749_A1_1",
+        ["moysalbreen-20220222-DAT_0749_A1_1"],
         # "rugaasfonna-20220218-DAT_0723_A1_1",
         # "lofthusbreen-20250326-DAT_0057_A1_1",
-        "finsterwalderbreen-20250407-DAT_0171_A1_1",
-        "ragna_mariebreen-20240412-DAT_0404_A1_1",
-        "winsnesbreen-20240503-DAT_0014_A1_1",
-        "jinnbreen-20240206-DAT_0448_A1_1",
-        "dronbreen-20230220-DAT_0009_A1_1",
+        ["finsterwalderbreen-20250407-DAT_0171_A1_1"],
+        ["ragna_mariebreen-20240412-DAT_0404_A1_1"],
+        ["winsnesbreen-20240503-DAT_0014_A1_1"],
+        ["jinnbreen-20240206-DAT_0447_A1_1", "jinnbreen-20240206-DAT_0448_A1_1"],
+        ["dronbreen-20230220-DAT_0009_A1_1"],
         # "dronbreen-20250327-DAT_0065_A1_1",
-        "kroppbreen-20230228-DAT_0042_A1_1",
-        "slakbreen-20240310-DAT_0286_A1_1",
-        "edvardbreen-20240411-DAT_0396_A1_1",
+        ["kroppbreen-20230228-DAT_0042_A1_1"],
+        ["slakbreen-20240310-DAT_0286_A1_1"],
+        ["edvardbreen-20240411-DAT_0396_A1_1"],
     ]
 
     n_cols = 2
@@ -477,17 +464,17 @@ def plot_centerline_profiles(show: bool = True):
 
         # data = gpd.read_feather(Path(f"cache/interpretations/per_radargram/{radar_key}.feather"))
         # data = svalbardradar.interpretations.merge_interpretations(radar_key)
-        data = all_data[all_data["radar_key"] == radar_key]
+        data = all_data[all_data["radar_key"].isin(radar_key)]
 
-        radar_meta = meta.get(radar_key, {})
+        radar_meta = meta.get(radar_key[0], {})
 
-        data = data.sort_values("distance")
+        data = data.sort_values(["radar_key", "distance"])
 
-        glacier = radar_key.split("-")[0]
+        glacier = radar_key[0].split("-")[0]
 
         if data.iloc[10]["elevation"] > data.iloc[-10]["elevation"]:
             data["distance"] = data["distance"].max() - data["distance"]
-            data = data.sort_values("distance")
+            data = data.iloc[::-1]
 
         data["distance"] = (
             (data[["easting", "northing"]].diff(axis="rows").fillna(0) ** 2).sum(axis="columns") ** 0.5
@@ -529,7 +516,7 @@ def plot_centerline_profiles(show: bool = True):
 
         aspect = 8
 
-        if row > 1:
+        if row >= 1:
             aspect = 12
 
         yrange = 1000 * xrange / aspect
@@ -604,6 +591,8 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
     step_size = 7.5
     thickness_bins = np.arange(0, max_thickness - (max_thickness % step_size) + step_size * 2, step_size)
 
+    r_minmax = [1, 0]
+
     for i, model in enumerate(models):
         col = i % n_cols
         row = int((i - col) / n_cols)
@@ -636,14 +625,32 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
 
         diff = subset[f"{model}_thickness"] - subset["thickness"]
 
+        nmad = stats.nmad(diff)
+        pearson = subset["thickness"].corr(subset[f"{model}_thickness"])
+
+        if correct_topo:
+            if pearson < r_minmax[0]:
+                r_minmax[0] = pearson
+            elif pearson > r_minmax[1]:
+                r_minmax[1] = pearson
+            svalbardradar.analysis.record_information(
+                {
+                    "inversion": {
+                        model: {
+                            "nmad": nmad,
+                            "r": svalbardradar.analysis.format_float(pearson, 2),
+                        }
+                    }
+                }
+            )
         axis.text(
             x=0.05,
             y=0.95,
             s="\n".join(
                 [
                     f"Median: {diff.median():.1f} m",
-                    f"NMAD: {1.426 * np.median(np.abs(diff - np.median(diff))): .1f} m",
-                    f"r = {subset['thickness'].corr(subset[f'{model}_thickness']):.2f}",
+                    f"NMAD: {nmad: .1f} m",
+                    f"r = {pearson:.2f}",
                 ]
             ),
             transform=axis.transAxes,
@@ -657,6 +664,15 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
         if col == 0:
             axis.set_ylabel("Modelled thickness (m)")
 
+    if correct_topo:
+        svalbardradar.analysis.record_information(
+            {
+                "inversion": {
+                    "min_r": svalbardradar.analysis.format_float(r_minmax[0], 2),
+                    "max_r": svalbardradar.analysis.format_float(r_minmax[1], 2),
+                }
+            }
+        )
     plt.tight_layout()
 
     Path("figures/").mkdir(exist_ok=True)
@@ -692,14 +708,15 @@ def plot_glathida_comparison(show: bool = True, histogram: bool = False, correct
     axes = fig.subplots(ncols=3, sharex=True, sharey=True)
     for i, group in data.groupby("glathida_group"):
         axis: plt.Axes = axes[i]
-        stats = f"n={group.shape[0]}, ΔH: {group['glathida_diff'].median():.1f}±{statistics.nmad(group['glathida_diff']):.1f} m"
+        bias = group["glathida_diff"].median()
+        stats_str = f"n={group.shape[0]}, ΔH: {bias:.1f}±{stats.nmad(group['glathida_diff']):.1f} m"
 
         if i == 0:
-            label = f"before {year_intervals[0]}\n{stats}"
+            label = f"before {year_intervals[0]}\n{stats_str}"
         elif i == (len(year_intervals) - 1):
-            label = f"after {year_intervals[-2]}\n{stats}"
+            label = f"after {year_intervals[-2]}\n{stats_str}"
         else:
-            label = f"{year_intervals[i - 1]}–{year_intervals[i]}\n{stats}"
+            label = f"{year_intervals[i - 1]}–{year_intervals[i]}\n{stats_str}"
 
         axis.text(
             0.5,
@@ -723,6 +740,19 @@ def plot_glathida_comparison(show: bool = True, histogram: bool = False, correct
         x, y = np.array(x), np.array(y)
         res_full = scipy.optimize.least_squares(residuals, x0=[0.0, 0.0], args=(x, y)).x
         res_150 = scipy.optimize.least_squares(residuals, x0=[0.0, 0.0], args=(x[x < 150], y[x < 150])).x
+
+        if correct_topo:
+            key = ["before", "middle", "after"][i]
+            svalbardradar.analysis.record_information(
+                {
+                    "glathida": {
+                        f"{key}_slope_full": svalbardradar.analysis.format_float(res_full[0], 2),
+                        f"{key}_slope_thin": svalbardradar.analysis.format_float(res_150[0], 2),
+                        f"{key}_bias": bias,
+                    }
+                }
+            )
+
         print(
             f"{label.replace('\n', ': ')}, Linear fit: old = {res_full[0]:.2f}*new + {res_full[1]:.2f}. Linear fit (<150 m): old = {res_150[0]:.2f}*new + {res_150[1]:.2f}"
         )
@@ -771,7 +801,7 @@ def plot_model_temperate_cold_performance(show: bool = True):
     #
     data["glacier"] = data["radar_key"].str.split("-", expand=True).iloc[:, 0]
 
-    glaciers = ["kroppbreen", "filantropbreen", "vallakrabreen"]
+    glaciers = ["filantropbreen", "dronbreen", "bergmesterbreen"]
 
     models = [str(col).replace("_thickness", "") for col in data if "_thickness" in col if "farinotti" not in col]
 
@@ -803,6 +833,8 @@ def plot_model_temperate_cold_performance(show: bool = True):
     box_distance = 5
     fig = plt.figure(figsize=(8, 5))
     # axes = fig.subplots(2, 2)
+
+    cold_temp_diffs = {}
     axes = []
     for k, glacier in enumerate([*glaciers, "all"]):
         if glacier == "all":
@@ -820,6 +852,9 @@ def plot_model_temperate_cold_performance(show: bool = True):
 
             cold = df["bed_type"] == "certain_cold"
             temperate = df["bed_type"] == "certain_temperate"
+
+            if glacier == "all":
+                cold_temp_diffs[model] = diff[cold].median() - diff[temperate].median()
 
             for j, (case, arr) in enumerate([("cold", diff[cold]), ("temperate", diff[temperate]), ("all", diff)]):
                 arr = arr[np.abs(arr) < 300]
@@ -857,6 +892,21 @@ def plot_model_temperate_cold_performance(show: bool = True):
             elif k == 0:
                 axis.set_ylabel("Thickness diff. (m)")
 
+    cold_temp_diffs.update(
+        {
+            "mean": np.mean(list(cold_temp_diffs.values())),
+            "min": np.min(list(cold_temp_diffs.values())),
+            "max": np.max(list(cold_temp_diffs.values())),
+        }
+    )
+
+    svalbardradar.analysis.record_information(
+        {
+            "inversion": {
+                "coldvstemp": cold_temp_diffs,
+            }
+        }
+    )
     plt.tight_layout()
 
     for i, axis in enumerate(axes):
@@ -872,7 +922,7 @@ def plot_model_temperate_cold_performance(show: bool = True):
             axis.text(
                 0.5,
                 0.97,
-                glaciers[i].capitalize().replace("akra", "åkra"),
+                glaciers[i].capitalize().replace("akra", "åkra").replace("Dron", "Drøn"),
                 transform=axis.transAxes,
                 va="top",
                 ha="center",
@@ -884,6 +934,125 @@ def plot_model_temperate_cold_performance(show: bool = True):
 
     if show:
         plt.show()
+
+
+def plot_perglacier_temperate_cold_performance(show: bool = False):
+    import svalbardradar.comparisons
+
+    data = svalbardradar.comparisons.sample_models()
+    # glathida = svalbardradar.comparisons.sample_glathida()
+    # glathida = glathida[glathida["glathida_year"] > 2000]
+    # data = svalbardradar.comparisons.sample_glathida(data.copy())
+    #
+    #
+    data["glacier"] = data["radar_key"].str.split("-", expand=True).iloc[:, 0]
+
+    glacier_pts = gpd.read_file("shapes/glacier_locations.geojson")
+    glacier_names = glacier_pts.set_index("key")["name"].to_dict()
+    glaciers = ["kroppbreen", "filantropbreen", "vallakrabreen"]
+
+    models = [str(col).replace("_thickness", "") for col in data if "_thickness" in col if "farinotti" not in col]
+
+    colors = {
+        "cold": "lightblue",
+        "temperate": "red",
+        "all": "grey",
+    }
+    ref_names = {
+        "furst": "Fürst et al.\n(2018)",
+        "farinotti": "Farinotti et al.\n(2019)",
+        "millan": "Millan et al.\n(2022)",
+        "vanpelt": "van Pelt & Frank\n(2025)",
+        "frank": "Frank et al., (in review)",
+        "glathida": "GlaThiDa 2000-",
+    }
+    short_names = {
+        "furst": "Fü",
+        "millan": "Mi",
+        "vanpelt": "vP",
+        # "frank": "Fr",
+    }
+    models = list(short_names.keys())
+    case_names = {
+        "temperate": "Temperate bed",
+        "cold": "Cold bed",
+        "all": "All data",
+    }
+    box_distance = 5
+
+    fig = plt.figure(figsize=(8, 5))
+    axes = fig.subplots(5, 5, sharex=True)
+
+    for k, (glacier_key, df) in enumerate(data.groupby("glacier")):
+        axis: plt.Axes = axes.ravel()[k]
+        row = k // axes.shape[1]
+        col = k % axes.shape[0]
+        for i, model in enumerate(models):
+            diff = df[f"{model}_thickness"] - df["thickness"]
+
+            cold = df["bed_type"] == "certain_cold"
+            temperate = df["bed_type"] == "certain_temperate"
+
+            for j, (case, arr) in enumerate([("cold", diff[cold]), ("temperate", diff[temperate]), ("all", diff)]):
+                arr = arr[np.abs(arr) < 300]
+                axis.boxplot(
+                    [arr],
+                    positions=[j - 1 + box_distance * i],
+                    showfliers=False,
+                    manage_ticks=False,
+                    widths=0.8,
+                    patch_artist=True,
+                    boxprops={"facecolor": colors[case], "alpha": 0.5},
+                    medianprops={"color": "black"},
+                    label=case_names[case] if i == 0 else None,
+                )
+
+            xtick_vals = np.arange(len(models)) * box_distance
+            axis.set_xticks(xtick_vals, [short_names[model] for model in models])
+
+            axis.set_ylim(-200, 200)
+            yticks = axis.get_yticks()
+
+            if col == 0 and row in [0, 4]:
+                print(glacier_key, col, row)
+                # axis.set_yticks(yticks, rotation=45)
+                # axis.set_yticks(yticks)
+                # axis.set_yticklabels(yticks.astype(int), rotation=45)
+                # axis.get_yticklabels
+                axis.tick_params("y", pad=0.01, labelsize=8)
+            else:
+                axis.set_yticks(yticks, labels=[""] * len(yticks))
+
+            # if col == 0:
+            #     axis.set_yticks(yticks)
+            # else:
+            xlim = (-2, xtick_vals.max() + 2)
+            axis.hlines(0, *xlim, zorder=0, color="grey", linestyles="--")
+            axis.set_xlim(xlim)
+
+            fraction = np.count_nonzero(temperate) / np.count_nonzero(cold | temperate)
+            axis.text(0.01, 0.01, f"T: {fraction * 100:.0f}%", va="bottom", transform=axis.transAxes, fontsize=8)
+            axis.text(
+                0.5,
+                0.97,
+                glacier_names[glacier_key],
+                ha="center",
+                va="top",
+                transform=axis.transAxes,
+                fontsize=8,
+                path_effects=[matplotlib.patheffects.withStroke(linewidth=2, foreground="white")],
+            )
+
+            if col == 0 and row == 2:
+                axis.set_ylabel("Thicknes difference (m)")
+            # if col ==4 and row == 4:
+            #     axis.legend(fontsize=8)
+    plt.subplots_adjust(left=0.04, bottom=0.05, right=0.99, top=0.99, wspace=0.1, hspace=0.1)
+    plt.savefig("figures/perglacier_thickness_vs_cold_temperate.jpg", dpi=500)
+    if show:
+        plt.show()
+    else:
+        plt.close()
 
 
 def s20_hillshade() -> Path:
@@ -959,6 +1128,7 @@ def get_npi_data(layer: str):
     # Converting did not work as one value seems invalid
     outlines.crs = rasterio.CRS.from_epsg(32633)
 
+    cache_filepath.parent.mkdir(exist_ok=True, parents=True)
     outlines.to_file(cache_filepath, driver="GPKG", layer="outlines")
     return outlines
 
@@ -1535,13 +1705,23 @@ def plot_cross_track_difference(show: bool = False):
 
         plt.text(0.02, 0.97, "abcd"[i], transform=axis.transAxes, va="top", ha="left")
         plt.text(0.98, 0.97, name, transform=axis.transAxes, va="top", ha="right")
+        nmad = stats.nmad(data["diff"])
+        if name in ["All bed data", "CTS"]:
+            key = {"All bed data": "all_bed", "CTS": "cts"}[name]
+            svalbardradar.analysis.record_information(
+                {
+                    "crosstrack": {
+                        f"{key}_nmad": nmad,
+                    }
+                }
+            )
         plt.text(
             x=0.02,
             y=0.7,
             s="\n".join(
                 [
                     f"Median: {data['diff'].median():.1f} m",
-                    f"NMAD: {1.426 * np.nanmedian(np.abs(data['diff'] - np.nanmedian(data['diff']))): .1f} m",
+                    f"NMAD: {nmad:.1f} m",
                 ]
             ),
             transform=axis.transAxes,

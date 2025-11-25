@@ -9,7 +9,7 @@ import scipy.interpolate
 import shapely.geometry
 import xarray as xr
 
-from svalbardradar.tools import paths, rasters, statistics
+from svalbardradar.tools import paths, rasters, stats
 
 CACHE_PATH = paths.BASE_CACHE_PATH / "interpretations"
 
@@ -374,8 +374,8 @@ def merge_all_interpretations(step_m: float = 5.0, overwrite_cache: bool = False
         out[f"{prefix}_user_upper"] = grouped["depth"].quantile(0.75)
 
         out[f"{prefix}_user_std"] = grouped["depth"].std()
-        out[f"{prefix}_user_nmad"] = grouped["depth"].apply(lambda v: statistics.nmad(v))
-        out[f"{prefix}_user_count"] = grouped["depth"].count()
+        out[f"{prefix}_user_nmad"] = grouped["depth"].apply(lambda v: stats.nmad(v))
+        out[f"{prefix}_user_count"] = grouped["depth"].count().astype(int)
 
         out[f"{prefix}_gpr_uncertainty"] = gpr_uncertainty(
             thickness=out[prefix], frequency_mhz=out["antenna"].str.replace(" MHz", "").astype(float)

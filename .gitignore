@@ -22,4 +22,6 @@ dems/
 .direnv/
 .vscode/
 /result
-.ruff_cache
+.ruff_cache/
+tables/
+

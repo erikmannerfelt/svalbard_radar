@@ -54,7 +54,7 @@
       "type": "Feature",
       "properties": {
         "name": "Mettebreen",
-        "key": "mettebreeen"
+        "key": "mettebreen"
       },
       "geometry": {
         "type": "Point",
