@@ -14,8 +14,8 @@ import xarray as xr
 import textalloc
 
 from svalbardradar import interpretations
-from svalbardradar.tools import paths, statistics, misc
-import svalbardradar.statistics
+from svalbardradar.tools import paths, misc, stats
+import svalbardradar.analysis
 
 CACHE_PATH = paths.BASE_CACHE_PATH / "figures"
 DIGITIZE_CLASS_PROPS = {
@@ -512,7 +512,6 @@ def plot_centerline_profiles(show: bool = True):
         axis.plot(data["distance"], data["bed_elevation"], color="black")
         axis.plot(data["distance"], data["elevation"], color="blue")
 
-        print(glacier, data["distance"].describe())
         xrange = data["distance"].max() - data["distance"].min()
 
         aspect = 8
@@ -626,7 +625,7 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
 
         diff = subset[f"{model}_thickness"] - subset["thickness"]
 
-        nmad = statistics.nmad(diff)
+        nmad = stats.nmad(diff)
         pearson = subset["thickness"].corr(subset[f"{model}_thickness"])
 
         if correct_topo:
@@ -634,12 +633,12 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
                 r_minmax[0] = pearson
             elif pearson > r_minmax[1]:
                 r_minmax[1] = pearson
-            svalbardradar.statistics.record_information(
+            svalbardradar.analysis.record_information(
                 {
                     "inversion": {
                         model: {
                             "nmad": nmad,
-                            "r": svalbardradar.statistics.format_float(pearson, 2),
+                            "r": svalbardradar.analysis.format_float(pearson, 2),
                         }
                     }
                 }
@@ -666,11 +665,11 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
             axis.set_ylabel("Modelled thickness (m)")
 
     if correct_topo:
-        svalbardradar.statistics.record_information(
+        svalbardradar.analysis.record_information(
             {
                 "inversion": {
-                    "min_r": svalbardradar.statistics.format_float(r_minmax[0], 2),
-                    "max_r": svalbardradar.statistics.format_float(r_minmax[1], 2),
+                    "min_r": svalbardradar.analysis.format_float(r_minmax[0], 2),
+                    "max_r": svalbardradar.analysis.format_float(r_minmax[1], 2),
                 }
             }
         )
@@ -710,14 +709,14 @@ def plot_glathida_comparison(show: bool = True, histogram: bool = False, correct
     for i, group in data.groupby("glathida_group"):
         axis: plt.Axes = axes[i]
         bias = group["glathida_diff"].median()
-        stats = f"n={group.shape[0]}, ΔH: {bias:.1f}±{statistics.nmad(group['glathida_diff']):.1f} m"
+        stats_str = f"n={group.shape[0]}, ΔH: {bias:.1f}±{stats.nmad(group['glathida_diff']):.1f} m"
 
         if i == 0:
-            label = f"before {year_intervals[0]}\n{stats}"
+            label = f"before {year_intervals[0]}\n{stats_str}"
         elif i == (len(year_intervals) - 1):
-            label = f"after {year_intervals[-2]}\n{stats}"
+            label = f"after {year_intervals[-2]}\n{stats_str}"
         else:
-            label = f"{year_intervals[i - 1]}–{year_intervals[i]}\n{stats}"
+            label = f"{year_intervals[i - 1]}–{year_intervals[i]}\n{stats_str}"
 
         axis.text(
             0.5,
@@ -744,11 +743,11 @@ def plot_glathida_comparison(show: bool = True, histogram: bool = False, correct
 
         if correct_topo:
             key = ["before", "middle", "after"][i]
-            svalbardradar.statistics.record_information(
+            svalbardradar.analysis.record_information(
                 {
                     "glathida": {
-                        f"{key}_slope_full": svalbardradar.statistics.format_float(res_full[0], 2),
-                        f"{key}_slope_thin": svalbardradar.statistics.format_float(res_150[0], 2),
+                        f"{key}_slope_full": svalbardradar.analysis.format_float(res_full[0], 2),
+                        f"{key}_slope_thin": svalbardradar.analysis.format_float(res_150[0], 2),
                         f"{key}_bias": bias,
                     }
                 }
@@ -901,7 +900,7 @@ def plot_model_temperate_cold_performance(show: bool = True):
         }
     )
 
-    svalbardradar.statistics.record_information(
+    svalbardradar.analysis.record_information(
         {
             "inversion": {
                 "coldvstemp": cold_temp_diffs,
@@ -1706,10 +1705,10 @@ def plot_cross_track_difference(show: bool = False):
 
         plt.text(0.02, 0.97, "abcd"[i], transform=axis.transAxes, va="top", ha="left")
         plt.text(0.98, 0.97, name, transform=axis.transAxes, va="top", ha="right")
-        nmad = statistics.nmad(data["diff"])
+        nmad = stats.nmad(data["diff"])
         if name in ["All bed data", "CTS"]:
             key = {"All bed data": "all_bed", "CTS": "cts"}[name]
-            svalbardradar.statistics.record_information(
+            svalbardradar.analysis.record_information(
                 {
                     "crosstrack": {
                         f"{key}_nmad": nmad,

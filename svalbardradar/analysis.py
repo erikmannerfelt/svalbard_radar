@@ -6,7 +6,7 @@ import numpy as np
 
 from pathlib import Path
 
-import svalbardradar.tools.statistics as stats
+import svalbardradar.tools.stats as stats
 
 
 def format_float(number: float, decimals: int = 1) -> str:
