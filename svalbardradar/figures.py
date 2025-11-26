@@ -4,6 +4,7 @@ import functools
 
 import geopandas as gpd
 import matplotlib.patheffects
+import matplotlib.ticker
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -1625,6 +1626,132 @@ def plot_interpretation_merging(show: bool = False):
         plt.close()
 
 
+def plot_rgm_frequency_comparison(show: bool = False):
+
+    # radar_keys = {
+    #     "dronbreen-20230221-DAT_0014_A1_1": {"xlim": (9580, 10290), "ylim": (170, 50), "vlim": (0, 3)},
+    #     "dronbreen-20250327-DAT_0063_A1_1": {"xlim": (1520, 1970), "ylim": (170, 50), "vlim": (0, 3)},
+    # }
+    radar_keys = {
+        "ragna_mariebreen-20240317-DAT_0345_A1_2": {"xlim": [4426, 2110], "ylim": [170, 50], "vlim": [0.3, 2], "zoom_vlim": 2.},
+        "ragna_mariebreen-20240412-DAT_0404_A1_1": {"xlim": [700, 2674], "ylim": [170, 50], "vlim": [-0.3, 4], "zoom_vlim": 4.5},
+    }
+
+    fig = plt.figure(figsize=(8.3, 5), dpi=300)
+    width_steps = 9
+    track_width = int(width_steps / 4)
+    track_axis = plt.subplot2grid((2, width_steps), (0, width_steps - track_width),colspan=track_width, rowspan=2, fig=fig)
+
+    # axes = fig.subplots(2, 1)
+    for i, (radar_key, case) in enumerate(radar_keys.items()):
+        axis = plt.subplot2grid((2, width_steps), (i, 0), colspan=width_steps - track_width, fig=fig)
+        with xr.open_dataset(paths.processed_radar_path(radar_key)) as dataset:
+            dataset.coords["trace_n"] = "x", np.arange(dataset.x.shape[0])
+            dataset = dataset.swap_dims(x="trace_n", y="depth")  # .sel(
+
+            if flipped := case["xlim"][0] > case["xlim"][1]:
+                case["xlim"] = case["xlim"][::-1]
+
+            # I'm avoiding a strange bug here where if I clip the data exactly to xlim, it cuts too much!
+            # By trial and error, I found that adding an extra 300/1000 traces "solves" it.
+            dataset = dataset.sel(
+                trace_n=slice(max(case["xlim"][0], 0), case["xlim"][1]), depth=slice(*case["ylim"][::-1])
+            )
+            dataset["data_abs"] = np.abs(dataset.data)
+ 
+            # dataset["distance"] -= dataset["distance"].min()
+
+            if flipped:
+                # dataset["distance"] = dataset["distance"].max() - dataset["distance"]
+                dataset["trace_n"] = dataset["trace_n"].max() - dataset["trace_n"]
+                dataset = dataset.sortby("trace_n", ascending=True)
+                # dataset = dataset.isel(trace_n=slice(dataset["trace_n"].shape[0], 0))
+            dataset["trace_n"] = dataset["trace_n"] - dataset["trace_n"].min()
+
+            extent=(
+                0, 
+                dataset["trace_n"].max().item() - dataset["trace_n"].min().item(),
+                dataset["depth"].max().item(),
+                dataset["depth"].min().item(),
+            )
+            inset = axis.inset_axes([0.55, 0.65, 0.45, 0.35])
+            inset.set_xticks([])
+            inset.set_yticks([])
+
+            subset_mid_trace = extent[1] // 2
+            subset_width = int(subset_mid_trace / 3.5)
+            subset_mid_depth = (extent[2] + extent[3]) / 2 - 8
+            subset_height = (extent[2] - extent[3]) / 9
+            subset_extent = (subset_mid_trace - subset_width // 2, subset_mid_trace + subset_width // 2, subset_mid_depth + subset_height / 2, subset_mid_depth - subset_height / 2)
+            subset = dataset.sel(trace_n=slice(*subset_extent[:2]), depth=slice(*subset_extent[2:][::-1]))
+
+            inset.imshow(
+                subset["data"],
+                extent=extent,
+                aspect="auto",
+                vmin=-case["zoom_vlim"],
+                vmax=case["zoom_vlim"],
+                interpolation="lanczos",
+                cmap="Greys_r",
+            )
+
+            axis.imshow(
+                dataset["data_abs"],
+                extent=extent,
+                cmap="Greys_r",
+                aspect="auto",
+                vmin=case["vlim"][0],
+                vmax=case["vlim"][1],
+                interpolation="lanczos",
+            )
+
+            axis.add_patch(
+                plt.Rectangle(
+                    (subset_extent[0], subset_extent[3]),
+                    subset_extent[1] - subset_extent[0],
+                    subset_extent[2] - subset_extent[3],
+                    facecolor="none",
+                    edgecolor="red"
+                )
+            )
+
+            if i == 1:
+                axis.set_xlabel("Trace number")
+            axis.set_ylabel("Depth (m)")
+            axis.text(0.02, 0.97, "ac"[i], va="top", path_effects=[matplotlib.patheffects.withStroke(linewidth=2, foreground="white")], transform=axis.transAxes)
+            inset.text(0.02, 0.95, "bd"[i], va="top", path_effects=[matplotlib.patheffects.withStroke(linewidth=2, foreground="white")], transform=inset.transAxes)
+
+
+            track_axis.plot(dataset["easting"], dataset["northing"], label="ac"[i])
+
+    track_axis.legend(loc="lower right")
+    track_axis.text(0.03, 0.99, "e", va="top", path_effects=[matplotlib.patheffects.withStroke(linewidth=2, foreground="white")], transform=track_axis.transAxes)
+
+    # Reference point for offset
+    origin = [track_axis.get_xlim()[0], track_axis.get_ylim()[0]]
+
+    for i in range(len(origin)):
+        origin[i] -= origin[i] % 100
+
+    # Custom formatter to show relative values
+    track_axis.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda val, _: f"{val - origin[0]:.0f}"))
+    track_axis.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda val, _: f"{val - origin[1]:.0f}"))
+
+    track_axis.yaxis.tick_right()
+    track_axis.yaxis.set_label_position('right')
+
+    track_axis.set_xlabel(f"Easting (+{origin[0]:.0f} m)")
+    track_axis.set_ylabel(f"Northing (+{origin[1]:.0f} m)")
+
+    plt.subplots_adjust(left=0.08, bottom=0.09, right=0.92, top=0.98, wspace=0.06, hspace=0.15)
+    plt.savefig("figures/rgm_frequency_comparison.jpg", dpi=500)
+
+    if show:
+        plt.show()
+    else:
+        plt.close()
+
+
 def plot_cross_track_difference(show: bool = False):
     import itertools
 
@@ -1821,6 +1948,8 @@ def generate_all_figures(show: bool = False):
     plot_elevation_vs_temp_diff(show=show)
     print("Generating Heer Land elevation change rate figure")
     plot_heerland_dhdt(show=show)
+    print("Generating 25MHz vs 100MHz profile figure")
+    plot_rgm_frequency_comparison(show=show)
 
 
 if __name__ == "__main__":
