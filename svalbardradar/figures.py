@@ -1815,6 +1815,10 @@ def generate_all_figures(show: bool = False):
     plot_cross_track_difference(show=show)
     print("Generating cold/temperate performance difference figure.")
     plot_model_temperate_cold_performance(show=show)
+    print("Generating supplementary cold/temperate performance difference figure.")
+    plot_perglacier_temperate_cold_performance(show=show)
+    print("Generating supplementary cold/temperate elevation difference figure.")
+    plot_elevation_vs_temp_diff(show=show)
     print("Generating Heer Land elevation change rate figure")
     plot_heerland_dhdt(show=show)
 
