@@ -423,10 +423,16 @@ def merge_all_interpretations(step_m: float = 5.0, overwrite_cache: bool = False
         out.loc[to_clamp, col] = out["thickness"]
 
     out["bed_type"] = "unclear"
-    out.loc[(out["temperate_user_lower"] / out["thickness"]) < 0.01, "bed_type"] = "certain_cold"
+    certain_cold = (out["temperate_user_lower"] / out["thickness"]) < 0.01
+    out.loc[certain_cold, "bed_type"] = "certain_cold"
     out.loc[(out["temperate_user_upper"] / out["thickness"]) > 0.01, "bed_type"] = "certain_temperate"
     out.loc[(out["bed_type"] == "unclear") & (out["temperate_frac"] < 0.01), "bed_type"] = "uncertain_cold"
     out.loc[(out["bed_type"] == "unclear") & (out["temperate_frac"] > 0.01), "bed_type"] = "uncertain_temperate"
+
+    # If the bed is certainly cold, the temperate ice spread values default back to only user spread
+    # This is because there would otherwise look like there is ambiguity everywhere.
+    for key in ["nmad", "std", "lower", "upper"]:
+        out.loc[certain_cold, f"temperate_{key}"] = out.loc[certain_cold, f"temperate_user_{key}"]
 
     out["bed_elevation"] = out["elevation"] - out["thickness"]
     out["temperate_elevation"] = out["bed_elevation"] + out["temperate"]
