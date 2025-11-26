@@ -314,7 +314,7 @@ def sample_models(overwrite_cache: bool = False):
     data = svalbardradar.interpretations.merge_all_interpretations()
 
     model_paths = {
-        "farinotti": get_farinotti(),
+        # "farinotti": get_farinotti(),
         "furst": get_furst(),
         "millan": get_millan(),
         "vanpelt": get_vanpelt(),

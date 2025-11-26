@@ -794,37 +794,17 @@ def plot_model_temperate_cold_performance(show: bool = True):
     import svalbardradar.comparisons
 
     data = svalbardradar.comparisons.sample_models()
-    # glathida = svalbardradar.comparisons.sample_glathida()
-    # glathida = glathida[glathida["glathida_year"] > 2000]
-    # data = svalbardradar.comparisons.sample_glathida(data.copy())
-    #
-    #
     data["glacier"] = data["radar_key"].str.split("-", expand=True).iloc[:, 0]
 
     glaciers = ["filantropbreen", "dronbreen", "bergmesterbreen"]
 
-    models = [str(col).replace("_thickness", "") for col in data if "_thickness" in col if "farinotti" not in col]
+    models = [str(col).replace("_thickness", "") for col in data if "_thickness" in col and "uncorr" not in col]
 
     colors = {
         "cold": "lightblue",
         "temperate": "red",
         "all": "grey",
     }
-    ref_names = {
-        "furst": "Fürst et al.\n(2018)",
-        "farinotti": "Farinotti et al.\n(2019)",
-        "millan": "Millan et al.\n(2022)",
-        "vanpelt": "van Pelt & Frank\n(2025)",
-        "frank": "Frank et al., (in review)",
-        "glathida": "GlaThiDa 2000-",
-    }
-    short_names = {
-        "furst": "Fü",
-        "millan": "Mi",
-        "vanpelt": "vP",
-        # "frank": "Fr",
-    }
-    models = list(short_names.keys())
     case_names = {
         "temperate": "Temperate bed",
         "cold": "Cold bed",
@@ -832,7 +812,6 @@ def plot_model_temperate_cold_performance(show: bool = True):
     }
     box_distance = 5
     fig = plt.figure(figsize=(8, 5))
-    # axes = fig.subplots(2, 2)
 
     cold_temp_diffs = {}
     axes = []
@@ -846,8 +825,6 @@ def plot_model_temperate_cold_performance(show: bool = True):
 
         axes.append(axis)
         for i, model in enumerate(models):
-            # axis = axes.ravel()[k]
-
             diff = df[f"{model}_thickness"] - df["thickness"]
 
             cold = df["bed_type"] == "certain_cold"
@@ -872,7 +849,7 @@ def plot_model_temperate_cold_performance(show: bool = True):
 
             xtick_vals = np.arange(len(models)) * box_distance
             axis.set_xticks(
-                xtick_vals, [ref_names[model] if glacier == "all" else short_names[model] for model in models]
+                xtick_vals, [svalbardradar.comparisons.ref_names(model, short=glacier != "all") for model in models]
             )
 
             axis.set_ylim(-200, 200)
@@ -940,39 +917,18 @@ def plot_perglacier_temperate_cold_performance(show: bool = False):
     import svalbardradar.comparisons
 
     data = svalbardradar.comparisons.sample_models()
-    # glathida = svalbardradar.comparisons.sample_glathida()
-    # glathida = glathida[glathida["glathida_year"] > 2000]
-    # data = svalbardradar.comparisons.sample_glathida(data.copy())
-    #
-    #
     data["glacier"] = data["radar_key"].str.split("-", expand=True).iloc[:, 0]
 
     glacier_pts = gpd.read_file("shapes/glacier_locations.geojson")
     glacier_names = glacier_pts.set_index("key")["name"].to_dict()
-    glaciers = ["kroppbreen", "filantropbreen", "vallakrabreen"]
 
-    models = [str(col).replace("_thickness", "") for col in data if "_thickness" in col if "farinotti" not in col]
+    models = [str(col).replace("_thickness", "") for col in data if "_thickness" in col and "uncorr" not in col]
 
     colors = {
         "cold": "lightblue",
         "temperate": "red",
         "all": "grey",
     }
-    ref_names = {
-        "furst": "Fürst et al.\n(2018)",
-        "farinotti": "Farinotti et al.\n(2019)",
-        "millan": "Millan et al.\n(2022)",
-        "vanpelt": "van Pelt & Frank\n(2025)",
-        "frank": "Frank et al., (in review)",
-        "glathida": "GlaThiDa 2000-",
-    }
-    short_names = {
-        "furst": "Fü",
-        "millan": "Mi",
-        "vanpelt": "vP",
-        # "frank": "Fr",
-    }
-    models = list(short_names.keys())
     case_names = {
         "temperate": "Temperate bed",
         "cold": "Cold bed",
@@ -1008,24 +964,16 @@ def plot_perglacier_temperate_cold_performance(show: bool = False):
                 )
 
             xtick_vals = np.arange(len(models)) * box_distance
-            axis.set_xticks(xtick_vals, [short_names[model] for model in models])
+            axis.set_xticks(xtick_vals, [svalbardradar.comparisons.ref_names(model, short=True) for model in models])
 
             axis.set_ylim(-200, 200)
             yticks = axis.get_yticks()
 
             if col == 0 and row in [0, 4]:
-                print(glacier_key, col, row)
-                # axis.set_yticks(yticks, rotation=45)
-                # axis.set_yticks(yticks)
-                # axis.set_yticklabels(yticks.astype(int), rotation=45)
-                # axis.get_yticklabels
                 axis.tick_params("y", pad=0.01, labelsize=8)
             else:
                 axis.set_yticks(yticks, labels=[""] * len(yticks))
 
-            # if col == 0:
-            #     axis.set_yticks(yticks)
-            # else:
             xlim = (-2, xtick_vals.max() + 2)
             axis.hlines(0, *xlim, zorder=0, color="grey", linestyles="--")
             axis.set_xlim(xlim)
@@ -1045,8 +993,6 @@ def plot_perglacier_temperate_cold_performance(show: bool = False):
 
             if col == 0 and row == 2:
                 axis.set_ylabel("Thicknes difference (m)")
-            # if col ==4 and row == 4:
-            #     axis.legend(fontsize=8)
     plt.subplots_adjust(left=0.04, bottom=0.05, right=0.99, top=0.99, wspace=0.1, hspace=0.1)
     plt.savefig("figures/perglacier_thickness_vs_cold_temperate.jpg", dpi=500)
     if show:
