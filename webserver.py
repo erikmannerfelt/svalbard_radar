@@ -286,7 +286,7 @@ def get_n_required_submissions(radar_key: str) -> int:
     #     case "ragna_mariebreen-20240412-DAT_0404_A1_1":
     #         return 100
 
-    return 8
+    return 9
 
 
 @functools.lru_cache(maxsize=10)
@@ -376,14 +376,14 @@ def radargram_latest_submission(radar_key: str):
 
 def _recommended() -> list[list[str]]:
     recommendations = [
-        "ragna_mariebreen-20240405-DAT_0358_A1_1",
-        "dronbreen-20250326-DAT_0013_A1_1",
-        "ragna_mariebreen-20240405-DAT_0359_A1_1",
+        "antoniabreen-20250406-DAT_0166_A1_1",
+        "dronbreen-20220329-DAT_0236_A1_2",
         "dronbreen-20250326-DAT_0004_A1_1",
-        "dronbreen-20250325-DAT_0015_A1_7",
-        "antoniabreen-20250406-DAT_0168_A1_1",
-        "vallakrabreen-20220419-DAT_0069_A1_3",
-        "edvardbreen-20230305-DAT_0230_A1_1",
+        "etonbreen-20240503-DAT_0012_A1_1",
+        "fimbulisen-20220430-DAT_0084_B1_1",
+        "ragna_mariebreen-20240405-DAT_0359_A1_1",
+        "winsnesbreen-20240503-DAT_0013_A1_1",
+        "edvardbreen-20230305-DAT_0232_A1_1",
     ]
     # Extract the glacier name such that it's glacier/radar_key
     recommendations = [[s.split("-")[0], s] for s in recommendations]
