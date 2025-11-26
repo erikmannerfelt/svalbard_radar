@@ -1055,6 +1055,61 @@ def plot_perglacier_temperate_cold_performance(show: bool = False):
         plt.close()
 
 
+def plot_elevation_vs_temp_diff(show: bool = False):
+    import svalbardradar.comparisons
+
+    data = svalbardradar.comparisons.sample_models()
+    data["glacier"] = data["radar_key"].str.split("-", expand=True).iloc[:, 0]
+
+    models = [str(col).replace("_thickness", "") for col in data if "_thickness" in col if "farinotti" not in col and "uncorr" not in col]
+
+
+    elevs = data.groupby("glacier")["elevation"].describe()
+    data["elev_norm"] = (data["elevation"] - elevs["min"][data["glacier"].values].values) / (elevs["max"] - elevs["min"])[data["glacier"].values].values
+
+    bins = np.linspace(-0.01, 1.01, 11)
+    bin_centers = bins[1:] - np.mean(np.diff(bins)) / 2
+    data["elev_bin"] = bin_centers[np.digitize(data["elev_norm"], bins=bins) - 1]
+
+    data = data[data["bed_type"].isin(["certain_cold", "certain_temperate"])]
+
+    fig = plt.figure(figsize=(8, 4))
+    axes = fig.subplots(3, len(models), sharex=True, sharey="row")
+    for i, model in enumerate(models):
+        axes[0, i].set_title(svalbardradar.comparisons.ref_names(model))
+
+        data["diff"] = data[f"{model}_thickness"] - data["thickness"]
+
+        for part, per_part in data.groupby("bed_type"):
+            grouped = per_part.groupby("elev_bin")["diff"]
+            df = grouped.median()
+
+            color = "red" if part == "certain_temperate" else "blue"
+
+            axes[2, i].errorbar(df.index, df, yerr=grouped.std(), color="red" if part == "certain_temperate" else "blue", label=part.replace("certain_", "").capitalize() + " bed")
+
+            axes[0 if part == "certain_cold" else 1 , i].bar(x=df.index, height=grouped.count(), width=np.mean(np.diff(bins)), color=color, alpha=0.5)
+
+
+    axes[0, 0].set_ylabel("Cold bed count")
+    axes[1, 0].set_ylabel("Temperate\nbed count")
+    for i in (2,):
+        axes[i, 0].set_ylabel("Difference (m)")
+
+    for axis in axes[2, :]:
+        axis.grid(alpha=0.5)
+
+    axes[2, 0].legend(fontsize=8)
+    axes[2, 1].set_xlabel("Normalized elevation")
+    plt.tight_layout()
+    plt.savefig("figures/elevation_vs_temp_diff.jpg", dpi=500)
+
+    if show:
+        plt.show()
+    else:
+        plt.close()
+
+
 def s20_hillshade() -> Path:
     dtm20_path = CACHE_PATH / "NP_S0_DTM20.zip"
     misc.download_large_file(
