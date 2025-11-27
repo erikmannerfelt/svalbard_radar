@@ -364,7 +364,9 @@ def merge_all_interpretations(step_m: float = 5.0, overwrite_cache: bool = False
     temperate_data_list = []
     for key in ["bed_cold", "temperate"]:
         try:
-            temperate_data_list.append(data.loc[(slice(None), slice(None), [key])])
+            new_data = data.loc[(slice(None), slice(None), [key])].copy() # type: ignore
+            new_data["temperate_line"] = 1 if key == "temperate" else 0
+            temperate_data_list.append(new_data)
         except KeyError:
             continue
     temperate_data = pd.concat(temperate_data_list)
@@ -380,6 +382,8 @@ def merge_all_interpretations(step_m: float = 5.0, overwrite_cache: bool = False
         out[f"{prefix}_user_std"] = grouped["depth"].std()
         out[f"{prefix}_user_nmad"] = grouped["depth"].apply(lambda v: stats.nmad(v))
         out[f"{prefix}_user_count"] = grouped["depth"].count().astype(int)
+        if prefix == "temperate":
+            out["temperate_user_temperate_line_count"] = grouped["temperate_line"].sum().astype(int)
 
         out[f"{prefix}_gpr_uncertainty"] = gpr_uncertainty(
             thickness=out[prefix], frequency_mhz=out["antenna"].str.replace(" MHz", "").astype(float)
@@ -431,8 +435,13 @@ def merge_all_interpretations(step_m: float = 5.0, overwrite_cache: bool = False
 
     # If the bed is certainly cold, the temperate ice spread values default back to only user spread
     # This is because there would otherwise look like there is ambiguity everywhere.
+    # Also, if there is no temperate ice line at all, it's cold. Otherwise, ambiguities in the 
+    # ... "Glacier bed (no temperate ice)" class would lead to an apparent temperate ice uncertainty.
+    no_temp = out["temperate_user_temperate_line_count"] == 0
     for key in ["nmad", "std", "lower", "upper"]:
         out.loc[certain_cold, f"temperate_{key}"] = out.loc[certain_cold, f"temperate_user_{key}"]
+        out.loc[no_temp, f"temperate_{key}"] = 0.
+    out.loc[no_temp, "temperate_frac_std"] = 0.
 
     out["bed_elevation"] = out["elevation"] - out["thickness"]
     out["temperate_elevation"] = out["bed_elevation"] + out["temperate"]
