@@ -69,19 +69,18 @@
             </div>
         </div>
 
-        <div class="index-location-group index-recommended-container" style="">
-            <h2 class="index-location-title">Recommended radargrams</h2>
-            <div>
-                <div class="index-dataset-grid">
-                    {% for glacier_key, radar_key in recommendations %}
-                        {{ radargram(radar_key, all_radargrams[glacier_key][radar_key]) }}
-                    {% endfor %}
-                </div>
-            </div>
-        </div>
 
     </div>
-    <!-- <div class="radargram-index"> -->
+    <div class="index-location-group index-recommended-container" style="">
+        <h2 class="index-location-title">Recommended radargrams</h2>
+        <div>
+            <div class="index-dataset-grid">
+                {% for glacier_key, radar_key in recommendations %}
+                    {{ radargram(radar_key, all_radargrams[glacier_key][radar_key]) }}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
     {% for glacier_key, glacier_radargrams in all_radargrams.items() %}
         <div class="index-location-group" id="group-{{glacier_key}}">
             <h2 class="index-location-title">Glacier: {{glacier_radargrams._meta.nice_name}}</h2>
