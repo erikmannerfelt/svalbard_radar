@@ -23,6 +23,7 @@ def interpolate_raster(
     vmax: float | None = None,
     _rec: int = 0,
 ) -> tuple[np.ndarray, dict[str, float]]:
+    import rasterio
     if _rec > 2:
         raise RecursionError()
 

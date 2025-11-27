@@ -9,7 +9,7 @@ import scipy.interpolate
 import shapely.geometry
 import xarray as xr
 
-from svalbardradar.tools import paths, rasters, statistics
+from svalbardradar.tools import paths, rasters, stats
 
 CACHE_PATH = paths.BASE_CACHE_PATH / "interpretations"
 
@@ -270,6 +270,7 @@ def gnss_uncertainty(
     speed_kmh: float = 15.0,
     gnss_timing_uncertainty_s: float = 1.0,
     gnss_fix_uncertainty_m: float = 10.0,
+    min_x_step_m: float = 0.,
 ):
     """Calculate the GNSS(positioning)-component of uncertainty after Lapazaran et al., (2016).
 
@@ -285,6 +286,9 @@ def gnss_uncertainty(
         The timing uncertainty between GNSS and GPR measurements in seconds.
     gnss_fix_uncertainty_m
         The horizontal positioning uncertainty of the GNSS fix in meters.
+    min_x_step_m
+        The minimum distance value to clamp to. This is useful in case of sampling issues (e.g. if two subsequent
+        points are roughly in the same place, then step ~= 0).
 
     Examples
     --------
@@ -303,7 +307,7 @@ def gnss_uncertainty(
     -------
     An array of uncertainties.
     """
-    diffs = np.diff(thickness) / np.diff(distance)
+    diffs = np.diff(thickness) / np.clip(np.abs(np.diff(distance)), a_min=min_x_step_m, a_max=None)
     gradient = np.r_[diffs[[0]], (diffs[1:] + diffs[:-1]) / 2.0, diffs[[-1]]]
 
     horizontal_timing_uncertainty_m = (speed_kmh / 3.6) * gnss_timing_uncertainty_s
@@ -374,14 +378,14 @@ def merge_all_interpretations(step_m: float = 5.0, overwrite_cache: bool = False
         out[f"{prefix}_user_upper"] = grouped["depth"].quantile(0.75)
 
         out[f"{prefix}_user_std"] = grouped["depth"].std()
-        out[f"{prefix}_user_nmad"] = grouped["depth"].apply(lambda v: statistics.nmad(v))
-        out[f"{prefix}_user_count"] = grouped["depth"].count()
+        out[f"{prefix}_user_nmad"] = grouped["depth"].apply(lambda v: stats.nmad(v))
+        out[f"{prefix}_user_count"] = grouped["depth"].count().astype(int)
 
         out[f"{prefix}_gpr_uncertainty"] = gpr_uncertainty(
             thickness=out[prefix], frequency_mhz=out["antenna"].str.replace(" MHz", "").astype(float)
         )
         out[f"{prefix}_gnss_uncertainty"] = gnss_uncertainty(
-            thickness=out[prefix], distance=out.index.get_level_values("distance")
+            thickness=out[prefix], distance=out.index.get_level_values("distance"), min_x_step_m=step_m ** 0.5,
         )
 
         out[f"{prefix}_nmad"] = (
@@ -419,10 +423,16 @@ def merge_all_interpretations(step_m: float = 5.0, overwrite_cache: bool = False
         out.loc[to_clamp, col] = out["thickness"]
 
     out["bed_type"] = "unclear"
-    out.loc[(out["temperate_user_lower"] / out["thickness"]) < 0.01, "bed_type"] = "certain_cold"
+    certain_cold = (out["temperate_user_lower"] / out["thickness"]) < 0.01
+    out.loc[certain_cold, "bed_type"] = "certain_cold"
     out.loc[(out["temperate_user_upper"] / out["thickness"]) > 0.01, "bed_type"] = "certain_temperate"
     out.loc[(out["bed_type"] == "unclear") & (out["temperate_frac"] < 0.01), "bed_type"] = "uncertain_cold"
     out.loc[(out["bed_type"] == "unclear") & (out["temperate_frac"] > 0.01), "bed_type"] = "uncertain_temperate"
+
+    # If the bed is certainly cold, the temperate ice spread values default back to only user spread
+    # This is because there would otherwise look like there is ambiguity everywhere.
+    for key in ["nmad", "std", "lower", "upper"]:
+        out.loc[certain_cold, f"temperate_{key}"] = out.loc[certain_cold, f"temperate_user_{key}"]
 
     out["bed_elevation"] = out["elevation"] - out["thickness"]
     out["temperate_elevation"] = out["bed_elevation"] + out["temperate"]

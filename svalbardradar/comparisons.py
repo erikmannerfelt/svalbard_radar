@@ -16,6 +16,19 @@ CACHE_PATH = paths.BASE_CACHE_PATH / "comparisons"
 STANDARD_YEAR = 2015
 
 
+def ref_names(key: str, short: bool = False) -> str:
+    ref_names = {
+        "furst": ("Fürst et al., (2018)", "Fü"),
+        "farinotti": ("Farinotti et al., (2019)","Fa"),
+        "millan": ("Millan et al., (2022)", "Mi"),
+        "vanpelt": ("van Pelt & Frank (2025)", "vP"),
+        "frank": ("Frank et al., (in review)", "Fr"),
+    }
+
+    return ref_names[key][1 if short else 0]
+
+
+
 def get_vanpelt() -> Path:
     out_path = CACHE_PATH / "vanpelt/vanpelt_thickness.tif"
     url = "https://zenodo.org/records/11239460/files/Thickness_map.tif?download=1"
@@ -301,7 +314,7 @@ def sample_models(overwrite_cache: bool = False):
     data = svalbardradar.interpretations.merge_all_interpretations()
 
     model_paths = {
-        "farinotti": get_farinotti(),
+        # "farinotti": get_farinotti(),
         "furst": get_furst(),
         "millan": get_millan(),
         "vanpelt": get_vanpelt(),

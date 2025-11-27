@@ -19,8 +19,23 @@ web:
 web-debug: 
     python -c 'from webserver import *; main(debug=True)'
 
+rebuild-user-interpretations:
+    ipython -c 'from svalbardradar.interpretations import *; merge_all_interpretations(overwrite_cache=True)'
+    ipython -c 'from svalbardradar.comparisons import *; sample_models(overwrite_cache=True)'
+
 make-figures:
     ipython svalbardradar/figures.py
 
 make-user-report:
     ipython -c 'from svalbardradar.figures import *; plot_user_spread()'
+
+build-all-statistics:
+    rm tables/statistics.json
+    ipython -c 'from svalbardradar.statistics import *; contribution_stats()'
+    ipython -c 'from svalbardradar.statistics import *; data_stats()'
+    ipython -c 'from svalbardradar.statistics import *; cts_transition_steepness()'
+    ipython -c 'from svalbardradar.statistics import *; glacier_table()'
+    ipython -c 'from svalbardradar.figures import *; plot_cross_track_difference(show=False)'
+    ipython -c 'from svalbardradar.figures import *; plot_glathida_comparison(show=False, correct_topo=True)'
+    ipython -c 'from svalbardradar.figures import *; plot_model_comparison(show=False, correct_topo=True)'
+    ipython -c 'from svalbardradar.figures import *; plot_model_temperate_cold_performance(show=False)'
