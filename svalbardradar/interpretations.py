@@ -270,7 +270,7 @@ def gnss_uncertainty(
     speed_kmh: float = 15.0,
     gnss_timing_uncertainty_s: float = 1.0,
     gnss_fix_uncertainty_m: float = 10.0,
-    min_x_step_m: float = 0.,
+    min_x_step_m: float = 0.0,
 ):
     """Calculate the GNSS(positioning)-component of uncertainty after Lapazaran et al., (2016).
 
@@ -364,7 +364,7 @@ def merge_all_interpretations(step_m: float = 5.0, overwrite_cache: bool = False
     temperate_data_list = []
     for key in ["bed_cold", "temperate"]:
         try:
-            new_data = data.loc[(slice(None), slice(None), [key])].copy() # type: ignore
+            new_data = data.loc[(slice(None), slice(None), [key])].copy()  # type: ignore
             new_data["temperate_line"] = 1 if key == "temperate" else 0
             temperate_data_list.append(new_data)
         except KeyError:
@@ -389,7 +389,9 @@ def merge_all_interpretations(step_m: float = 5.0, overwrite_cache: bool = False
             thickness=out[prefix], frequency_mhz=out["antenna"].str.replace(" MHz", "").astype(float)
         )
         out[f"{prefix}_gnss_uncertainty"] = gnss_uncertainty(
-            thickness=out[prefix], distance=out.index.get_level_values("distance"), min_x_step_m=step_m ** 0.5,
+            thickness=out[prefix],
+            distance=out.index.get_level_values("distance"),
+            min_x_step_m=step_m**0.5,
         )
 
         out[f"{prefix}_nmad"] = (
@@ -435,13 +437,13 @@ def merge_all_interpretations(step_m: float = 5.0, overwrite_cache: bool = False
 
     # If the bed is certainly cold, the temperate ice spread values default back to only user spread
     # This is because there would otherwise look like there is ambiguity everywhere.
-    # Also, if there is no temperate ice line at all, it's cold. Otherwise, ambiguities in the 
+    # Also, if there is no temperate ice line at all, it's cold. Otherwise, ambiguities in the
     # ... "Glacier bed (no temperate ice)" class would lead to an apparent temperate ice uncertainty.
     no_temp = out["temperate_user_temperate_line_count"] == 0
     for key in ["nmad", "std", "lower", "upper"]:
         out.loc[certain_cold, f"temperate_{key}"] = out.loc[certain_cold, f"temperate_user_{key}"]
-        out.loc[no_temp, f"temperate_{key}"] = 0.
-    out.loc[no_temp, "temperate_frac_std"] = 0.
+        out.loc[no_temp, f"temperate_{key}"] = 0.0
+    out.loc[no_temp, "temperate_frac_std"] = 0.0
 
     out["bed_elevation"] = out["elevation"] - out["thickness"]
     out["temperate_elevation"] = out["bed_elevation"] + out["temperate"]

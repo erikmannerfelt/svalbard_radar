@@ -19,14 +19,13 @@ STANDARD_YEAR = 2015
 def ref_names(key: str, short: bool = False) -> str:
     ref_names = {
         "furst": ("Fürst et al., (2018)", "Fü"),
-        "farinotti": ("Farinotti et al., (2019)","Fa"),
+        "farinotti": ("Farinotti et al., (2019)", "Fa"),
         "millan": ("Millan et al., (2022)", "Mi"),
         "vanpelt": ("van Pelt & Frank (2025)", "vP"),
         "frank": ("Frank et al., (in review)", "Fr"),
     }
 
     return ref_names[key][1 if short else 0]
-
 
 
 def get_vanpelt() -> Path:
@@ -327,7 +326,6 @@ def sample_models(overwrite_cache: bool = False):
         "millan": (2017 + 2018) / 2,
         "vanpelt": (2010 + 2015) / 2,
     }
-    
 
     with rio.open(get_hugonnet()) as raster:
         data["hugonnet_dhdt"] = np.fromiter(

@@ -1008,11 +1008,17 @@ def plot_elevation_vs_temp_diff(show: bool = False):
     data = svalbardradar.comparisons.sample_models()
     data["glacier"] = data["radar_key"].str.split("-", expand=True).iloc[:, 0]
 
-    models = [str(col).replace("_thickness", "") for col in data if "_thickness" in col if "farinotti" not in col and "uncorr" not in col]
-
+    models = [
+        str(col).replace("_thickness", "")
+        for col in data
+        if "_thickness" in col
+        if "farinotti" not in col and "uncorr" not in col
+    ]
 
     elevs = data.groupby("glacier")["elevation"].describe()
-    data["elev_norm"] = (data["elevation"] - elevs["min"][data["glacier"].values].values) / (elevs["max"] - elevs["min"])[data["glacier"].values].values
+    data["elev_norm"] = (data["elevation"] - elevs["min"][data["glacier"].values].values) / (
+        elevs["max"] - elevs["min"]
+    )[data["glacier"].values].values
 
     bins = np.linspace(-0.01, 1.01, 11)
     bin_centers = bins[1:] - np.mean(np.diff(bins)) / 2
@@ -1033,10 +1039,17 @@ def plot_elevation_vs_temp_diff(show: bool = False):
 
             color = "red" if part == "certain_temperate" else "blue"
 
-            axes[2, i].errorbar(df.index, df, yerr=grouped.std(), color="red" if part == "certain_temperate" else "blue", label=part.replace("certain_", "").capitalize() + " bed")
+            axes[2, i].errorbar(
+                df.index,
+                df,
+                yerr=grouped.std(),
+                color="red" if part == "certain_temperate" else "blue",
+                label=part.replace("certain_", "").capitalize() + " bed",
+            )
 
-            axes[0 if part == "certain_cold" else 1 , i].bar(x=df.index, height=grouped.count(), width=np.mean(np.diff(bins)), color=color, alpha=0.5)
-
+            axes[0 if part == "certain_cold" else 1, i].bar(
+                x=df.index, height=grouped.count(), width=np.mean(np.diff(bins)), color=color, alpha=0.5
+            )
 
     axes[0, 0].set_ylabel("Cold bed count")
     axes[1, 0].set_ylabel("Temperate\nbed count")
@@ -1627,20 +1640,31 @@ def plot_interpretation_merging(show: bool = False):
 
 
 def plot_rgm_frequency_comparison(show: bool = False):
-
     # radar_keys = {
     #     "dronbreen-20230221-DAT_0014_A1_1": {"xlim": (9580, 10290), "ylim": (170, 50), "vlim": (0, 3)},
     #     "dronbreen-20250327-DAT_0063_A1_1": {"xlim": (1520, 1970), "ylim": (170, 50), "vlim": (0, 3)},
     # }
     radar_keys = {
-        "ragna_mariebreen-20240317-DAT_0345_A1_2": {"xlim": [4426, 2110], "ylim": [170, 50], "vlim": [0.3, 2], "zoom_vlim": 2.},
-        "ragna_mariebreen-20240412-DAT_0404_A1_1": {"xlim": [700, 2674], "ylim": [170, 50], "vlim": [-0.3, 4], "zoom_vlim": 4.5},
+        "ragna_mariebreen-20240317-DAT_0345_A1_2": {
+            "xlim": [4426, 2110],
+            "ylim": [170, 50],
+            "vlim": [0.3, 2],
+            "zoom_vlim": 2.0,
+        },
+        "ragna_mariebreen-20240412-DAT_0404_A1_1": {
+            "xlim": [700, 2674],
+            "ylim": [170, 50],
+            "vlim": [-0.3, 4],
+            "zoom_vlim": 4.5,
+        },
     }
 
     fig = plt.figure(figsize=(8.3, 5), dpi=300)
     width_steps = 9
     track_width = int(width_steps / 4)
-    track_axis = plt.subplot2grid((2, width_steps), (0, width_steps - track_width),colspan=track_width, rowspan=2, fig=fig)
+    track_axis = plt.subplot2grid(
+        (2, width_steps), (0, width_steps - track_width), colspan=track_width, rowspan=2, fig=fig
+    )
 
     # axes = fig.subplots(2, 1)
     for i, (radar_key, case) in enumerate(radar_keys.items()):
@@ -1658,7 +1682,7 @@ def plot_rgm_frequency_comparison(show: bool = False):
                 trace_n=slice(max(case["xlim"][0], 0), case["xlim"][1]), depth=slice(*case["ylim"][::-1])
             )
             dataset["data_abs"] = np.abs(dataset.data)
- 
+
             # dataset["distance"] -= dataset["distance"].min()
 
             if flipped:
@@ -1668,8 +1692,8 @@ def plot_rgm_frequency_comparison(show: bool = False):
                 # dataset = dataset.isel(trace_n=slice(dataset["trace_n"].shape[0], 0))
             dataset["trace_n"] = dataset["trace_n"] - dataset["trace_n"].min()
 
-            extent=(
-                0, 
+            extent = (
+                0,
                 dataset["trace_n"].max().item() - dataset["trace_n"].min().item(),
                 dataset["depth"].max().item(),
                 dataset["depth"].min().item(),
@@ -1682,7 +1706,12 @@ def plot_rgm_frequency_comparison(show: bool = False):
             subset_width = int(subset_mid_trace / 3.5)
             subset_mid_depth = (extent[2] + extent[3]) / 2 - 8
             subset_height = (extent[2] - extent[3]) / 9
-            subset_extent = (subset_mid_trace - subset_width // 2, subset_mid_trace + subset_width // 2, subset_mid_depth + subset_height / 2, subset_mid_depth - subset_height / 2)
+            subset_extent = (
+                subset_mid_trace - subset_width // 2,
+                subset_mid_trace + subset_width // 2,
+                subset_mid_depth + subset_height / 2,
+                subset_mid_depth - subset_height / 2,
+            )
             subset = dataset.sel(trace_n=slice(*subset_extent[:2]), depth=slice(*subset_extent[2:][::-1]))
 
             inset.imshow(
@@ -1711,21 +1740,41 @@ def plot_rgm_frequency_comparison(show: bool = False):
                     subset_extent[1] - subset_extent[0],
                     subset_extent[2] - subset_extent[3],
                     facecolor="none",
-                    edgecolor="red"
+                    edgecolor="red",
                 )
             )
 
             if i == 1:
                 axis.set_xlabel("Trace number")
             axis.set_ylabel("Depth (m)")
-            axis.text(0.02, 0.97, "ac"[i], va="top", path_effects=[matplotlib.patheffects.withStroke(linewidth=2, foreground="white")], transform=axis.transAxes)
-            inset.text(0.02, 0.95, "bd"[i], va="top", path_effects=[matplotlib.patheffects.withStroke(linewidth=2, foreground="white")], transform=inset.transAxes)
-
+            axis.text(
+                0.02,
+                0.97,
+                "ac"[i],
+                va="top",
+                path_effects=[matplotlib.patheffects.withStroke(linewidth=2, foreground="white")],
+                transform=axis.transAxes,
+            )
+            inset.text(
+                0.02,
+                0.95,
+                "bd"[i],
+                va="top",
+                path_effects=[matplotlib.patheffects.withStroke(linewidth=2, foreground="white")],
+                transform=inset.transAxes,
+            )
 
             track_axis.plot(dataset["easting"], dataset["northing"], label="ac"[i])
 
     track_axis.legend(loc="lower right")
-    track_axis.text(0.03, 0.99, "e", va="top", path_effects=[matplotlib.patheffects.withStroke(linewidth=2, foreground="white")], transform=track_axis.transAxes)
+    track_axis.text(
+        0.03,
+        0.99,
+        "e",
+        va="top",
+        path_effects=[matplotlib.patheffects.withStroke(linewidth=2, foreground="white")],
+        transform=track_axis.transAxes,
+    )
 
     # Reference point for offset
     origin = [track_axis.get_xlim()[0], track_axis.get_ylim()[0]]
@@ -1738,7 +1787,7 @@ def plot_rgm_frequency_comparison(show: bool = False):
     track_axis.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda val, _: f"{val - origin[1]:.0f}"))
 
     track_axis.yaxis.tick_right()
-    track_axis.yaxis.set_label_position('right')
+    track_axis.yaxis.set_label_position("right")
 
     track_axis.set_xlabel(f"Easting (+{origin[0]:.0f} m)")
     track_axis.set_ylabel(f"Northing (+{origin[1]:.0f} m)")
@@ -1790,12 +1839,7 @@ def plot_cross_track_difference(show: bool = False):
         cols = ["antenna", "thickness", "temperate"]
         for col in cols:
             second[f"other_{col}"] = first[col].values[indices[distance_mask]]
-        # second["other_thickness"] = first["thickness"].values[indices[distance_mask]]
-        # second["other_temperate"] = first["temperate"].values[indices[distance_mask]]
-
-        out_list.append(
-            second[["temperate_frac", "bed_type", *cols, *[f"other_{col}" for col in cols]]]
-        )
+        out_list.append(second[["temperate_frac", "bed_type", *cols, *[f"other_{col}" for col in cols]]])
 
     cmps = pd.concat(out_list)
     cmps["temperate_frac"] *= 100
@@ -1816,11 +1860,8 @@ def plot_cross_track_difference(show: bool = False):
 
         nmad = stats.nmad(a_cmps["diff"])
         wavelength = 168 / int(antenna.split(" ")[0])
-        per_antenna_stats[antenna_alias[antenna]] = {
-            "nmad": nmad,
-            "perwavelength": int(round(100 * nmad / wavelength))
-        }
-    
+        per_antenna_stats[antenna_alias[antenna]] = {"nmad": nmad, "perwavelength": int(round(100 * nmad / wavelength))}
+
     svalbardradar.analysis.record_information(
         {
             "perantenna": {

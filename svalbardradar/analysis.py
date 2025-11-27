@@ -345,9 +345,9 @@ def data_stats():
         wavelength = 168 / int(antenna.split(" ")[0])
         per_antenna_stats[antenna_alias[antenna]] = {
             "median": e_user,
-            "perwavelength": int(round(100 * e_user / wavelength))
+            "perwavelength": int(round(100 * e_user / wavelength)),
         }
-    
+
     svalbardradar.analysis.record_information(
         {
             "perantenna": {
@@ -355,7 +355,6 @@ def data_stats():
             }
         }
     )
-
 
     high_bad_concensus_frac = np.count_nonzero(data["thickness_user_nmad"] > 20) / data.shape[0]
     record_information(
