@@ -1787,11 +1787,14 @@ def plot_cross_track_difference(show: bool = False):
             continue
 
         second = second[distance_mask]
-        second["other_thickness"] = first["thickness"].values[indices[distance_mask]]
-        second["other_temperate"] = first["temperate"].values[indices[distance_mask]]
+        cols = ["antenna", "thickness", "temperate"]
+        for col in cols:
+            second[f"other_{col}"] = first[col].values[indices[distance_mask]]
+        # second["other_thickness"] = first["thickness"].values[indices[distance_mask]]
+        # second["other_temperate"] = first["temperate"].values[indices[distance_mask]]
 
         out_list.append(
-            second[["thickness", "other_thickness", "temperate_frac", "temperate", "other_temperate", "bed_type"]]
+            second[["temperate_frac", "bed_type", *cols, *[f"other_{col}" for col in cols]]]
         )
 
     cmps = pd.concat(out_list)
@@ -1799,6 +1802,32 @@ def plot_cross_track_difference(show: bool = False):
 
     cmps["diff"] = cmps["thickness"] - cmps["other_thickness"]
     cmps["temperate_diff"] = cmps["temperate"] - cmps["other_temperate"]
+
+    antenna_alias = {"25 MHz": "low", "100 MHz": "high"}
+    per_antenna_stats = {}
+    for antenna, a_cmps in cmps.groupby("antenna"):
+        a_cmps = a_cmps[a_cmps["other_antenna"] == antenna]
+
+        if a_cmps.shape[0] == 0:
+            continue
+
+        if antenna not in antenna_alias:
+            continue
+
+        nmad = stats.nmad(a_cmps["diff"])
+        wavelength = 168 / int(antenna.split(" ")[0])
+        per_antenna_stats[antenna_alias[antenna]] = {
+            "nmad": nmad,
+            "perwavelength": int(round(100 * nmad / wavelength))
+        }
+    
+    svalbardradar.analysis.record_information(
+        {
+            "perantenna": {
+                "crosstrack": per_antenna_stats,
+            }
+        }
+    )
 
     # Filter the temperate differences to only look at transition zones
     # 0% could be a "cold bed" measurement, and 100% could be a clamped value. Only those in between are truly
