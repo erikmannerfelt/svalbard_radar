@@ -349,7 +349,7 @@ def merge_all_interpretations(step_m: float = 5.0, overwrite_cache: bool = False
     mask = missing_ > existing_
     idx_missing = mask[mask].index
 
-    out = bed_grouped.median().rename(columns={"depth": "thickness"}).drop(idx_missing)
+    out = bed_grouped.quantile(0.5, interpolation="midpoint").rename(columns={"depth": "thickness"}).drop(idx_missing)
 
     out = pd.merge(
         out,
@@ -372,12 +372,12 @@ def merge_all_interpretations(step_m: float = 5.0, overwrite_cache: bool = False
     temperate_data = pd.concat(temperate_data_list)
     temperate_grouped = temperate_data.select_dtypes(np.number).groupby(level=["radar_key", "distance"])
 
-    out["temperate"] = temperate_grouped["depth"].median()
+    out["temperate"] = temperate_grouped["depth"].quantile(0.5, interpolation="midpoint")
 
     out.loc[out["temperate"].isna() & (~out["thickness"].isna()), "temperate"] = out["thickness"]
     for prefix, grouped in [("thickness", bed_grouped), ("temperate", temperate_grouped)]:
-        out[f"{prefix}_user_lower"] = grouped["depth"].quantile(0.25)
-        out[f"{prefix}_user_upper"] = grouped["depth"].quantile(0.75)
+        out[f"{prefix}_user_lower"] = grouped["depth"].quantile(0.25, interpolation="midpoint")
+        out[f"{prefix}_user_upper"] = grouped["depth"].quantile(0.75, interpolation="midpoint")
 
         out[f"{prefix}_user_std"] = grouped["depth"].std()
         out[f"{prefix}_user_nmad"] = grouped["depth"].apply(lambda v: stats.nmad(v))
@@ -439,10 +439,14 @@ def merge_all_interpretations(step_m: float = 5.0, overwrite_cache: bool = False
     # This is because there would otherwise look like there is ambiguity everywhere.
     # Also, if there is no temperate ice line at all, it's cold. Otherwise, ambiguities in the
     # ... "Glacier bed (no temperate ice)" class would lead to an apparent temperate ice uncertainty.
-    no_temp = out["temperate_user_temperate_line_count"] == 0
+    no_temp = (out["temperate_user_temperate_line_count"] == 0) | (
+        (out["temperate_user_temperate_line_count"] / out["temperate_user_count"].clip(lower=1)) < 0.25
+    )
     for key in ["nmad", "std", "lower", "upper"]:
         out.loc[certain_cold, f"temperate_{key}"] = out.loc[certain_cold, f"temperate_user_{key}"]
         out.loc[no_temp, f"temperate_{key}"] = 0.0
+    out.loc[no_temp, "temperate"] = 0.0
+    out.loc[no_temp, "temperate_frac"] = 0.0
     out.loc[no_temp, "temperate_frac_std"] = 0.0
 
     out["bed_elevation"] = out["elevation"] - out["thickness"]
