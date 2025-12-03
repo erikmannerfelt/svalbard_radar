@@ -203,6 +203,8 @@ def read_interpretations(radar_key: str, step_m: float) -> pd.DataFrame:
     for key in models:
         data[key] = models[key](data.index.get_level_values("x").astype(float))
 
+    data["distance"] = (data["distance"] / step_m).round() * step_m
+
     data = (
         data.sort_values("distance")
         .reset_index(level="x", drop=False)
@@ -317,13 +319,18 @@ def gnss_uncertainty(
     return horizontal_pos_uncertainty_m * np.abs(gradient)
 
 
-def merge_all_interpretations(step_m: float = 5.0, overwrite_cache: bool = False) -> gpd.GeoDataFrame:
+def merge_all_interpretations(
+    step_m: float = 5.0, overwrite_cache: bool = False, _key_list: None | list[str] = None
+) -> gpd.GeoDataFrame:
     out_path = CACHE_PATH / "interp_all.feather"
 
     if out_path.is_file() and not overwrite_cache:
         return gpd.read_feather(out_path)
 
-    radar_keys = paths.get_all_interpreted_radargrams()
+    if _key_list is None:
+        radar_keys = paths.get_all_interpreted_radargrams()
+    else:
+        radar_keys = _key_list
 
     all_data_list = []
     for radar_key in radar_keys:
@@ -349,7 +356,8 @@ def merge_all_interpretations(step_m: float = 5.0, overwrite_cache: bool = False
     mask = missing_ > existing_
     idx_missing = mask[mask].index
 
-    out = bed_grouped.quantile(0.5, interpolation="midpoint").rename(columns={"depth": "thickness"}).drop(idx_missing)
+    # I'm taking the 49% percentile because in case of 50/50 splits, it will otherwise jump between the two solutions.
+    out = bed_grouped.quantile(0.49, interpolation="lower").rename(columns={"depth": "thickness"}).drop(idx_missing)
 
     out = pd.merge(
         out,
@@ -372,12 +380,13 @@ def merge_all_interpretations(step_m: float = 5.0, overwrite_cache: bool = False
     temperate_data = pd.concat(temperate_data_list)
     temperate_grouped = temperate_data.select_dtypes(np.number).groupby(level=["radar_key", "distance"])
 
-    out["temperate"] = temperate_grouped["depth"].quantile(0.5, interpolation="midpoint")
+    # I'm taking the 49% percentile because in case of 50/50 splits, it will otherwise jump between the two solutions.
+    out["temperate"] = temperate_grouped["depth"].quantile(0.49, interpolation="lower")
 
     out.loc[out["temperate"].isna() & (~out["thickness"].isna()), "temperate"] = out["thickness"]
     for prefix, grouped in [("thickness", bed_grouped), ("temperate", temperate_grouped)]:
-        out[f"{prefix}_user_lower"] = grouped["depth"].quantile(0.25, interpolation="midpoint")
-        out[f"{prefix}_user_upper"] = grouped["depth"].quantile(0.75, interpolation="midpoint")
+        out[f"{prefix}_user_lower"] = grouped["depth"].quantile(0.25, interpolation="lower")
+        out[f"{prefix}_user_upper"] = grouped["depth"].quantile(0.75, interpolation="lower")
 
         out[f"{prefix}_user_std"] = grouped["depth"].std()
         out[f"{prefix}_user_nmad"] = grouped["depth"].apply(lambda v: stats.nmad(v))
