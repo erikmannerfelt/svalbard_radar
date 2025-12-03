@@ -1494,11 +1494,17 @@ def plot_interpretation_merging(show: bool = False):
             "ylim": [170, 80],
             "vlim": [-0.05, 2.8],
         },
+        # {
+        #     "radar_key": "filantropbreen-20240406-DAT_0372_A1_1",
+        #     "xlim": [1300, 2800],
+        #     "ylim": [140, 30],
+        #     "vlim": [0.00, 2.8],
+        # },
         {
-            "radar_key": "filantropbreen-20240406-DAT_0372_A1_1",
-            "xlim": [1300, 2800],
-            "ylim": [140, 30],
-            "vlim": [0.00, 2.8],
+            "radar_key": "winsnesbreen-20240503-DAT_0013_A1_1",
+            "xlim": [600, 1400],
+            "ylim": [210, 128],
+            "vlim": [0.5, 3.0],
         },
     ]
 
@@ -1628,10 +1634,10 @@ def plot_interpretation_merging(show: bool = False):
             ):
                 props = DIGITIZE_CLASS_PROPS[key]
                 lines.append(plt.Line2D([], [], color=props["color"], label=props["name"]))
-            legend = ax_mid.legend(handles=lines, **legend_kwargs, bbox_to_anchor=(0.105, 1.))
+            legend = ax_mid.legend(handles=lines, **legend_kwargs, bbox_to_anchor=(0.105, 1.0))
             legend.set_zorder(-1)
 
-            ax_bot.legend(**legend_kwargs, bbox_to_anchor=(0.66, 1.))
+            ax_bot.legend(**legend_kwargs, bbox_to_anchor=(0.66, 1.0))
 
             boxes = [
                 {"label": "Users:", "left": 0.045, "width": 0.48},
@@ -1639,11 +1645,17 @@ def plot_interpretation_merging(show: bool = False):
             ]
             for box in boxes:
                 plt.text(box["left"] + 0.01, 0.966, box["label"], transform=fig.transFigure, va="center")
-                
-                fig.add_artist(plt.Rectangle(
-                    (box["left"], 0.941), box["width"], 0.05, facecolor="none", edgecolor="#333", transform=fig.transFigure
-                ))
 
+                fig.add_artist(
+                    plt.Rectangle(
+                        (box["left"], 0.941),
+                        box["width"],
+                        0.05,
+                        facecolor="none",
+                        edgecolor="#333",
+                        transform=fig.transFigure,
+                    )
+                )
 
     plt.savefig("figures/interpretation_merging_examples.jpg", dpi=600)
     if show:
