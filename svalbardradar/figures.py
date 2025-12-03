@@ -1504,7 +1504,7 @@ def plot_interpretation_merging(show: bool = False):
 
     fig = plt.figure(figsize=(8.3, 6.4))
     outer_grid = fig.add_gridspec(
-        nrows=2, ncols=2, left=0.08, right=0.97, bottom=0.07, top=0.99, wspace=0.12, hspace=0.09
+        nrows=2, ncols=2, left=0.08, right=0.97, bottom=0.07, top=0.93, wspace=0.12, hspace=0.09
     )
 
     for i, case in enumerate(cases):
@@ -1617,9 +1617,10 @@ def plot_interpretation_merging(show: bool = False):
             legend_kwargs = {
                 "fontsize": 8,
                 "loc": "upper left",
-                "bbox_to_anchor": (0.02, 0.0, 0.98, 1),
                 "framealpha": 0,
+                "ncol": 2,
                 "labelspacing": 0.25,
+                "bbox_transform": fig.transFigure,
             }
             lines = []
             for key in sorted(
@@ -1627,10 +1628,22 @@ def plot_interpretation_merging(show: bool = False):
             ):
                 props = DIGITIZE_CLASS_PROPS[key]
                 lines.append(plt.Line2D([], [], color=props["color"], label=props["name"]))
-            legend = ax_mid.legend(handles=lines, **legend_kwargs)
+            legend = ax_mid.legend(handles=lines, **legend_kwargs, bbox_to_anchor=(0.105, 1.))
             legend.set_zorder(-1)
 
-            ax_bot.legend(**legend_kwargs)
+            ax_bot.legend(**legend_kwargs, bbox_to_anchor=(0.66, 1.))
+
+            boxes = [
+                {"label": "Users:", "left": 0.045, "width": 0.48},
+                {"label": "Consensus:", "left": 0.55, "width": 0.42},
+            ]
+            for box in boxes:
+                plt.text(box["left"] + 0.01, 0.966, box["label"], transform=fig.transFigure, va="center")
+                
+                fig.add_artist(plt.Rectangle(
+                    (box["left"], 0.941), box["width"], 0.05, facecolor="none", edgecolor="#333", transform=fig.transFigure
+                ))
+
 
     plt.savefig("figures/interpretation_merging_examples.jpg", dpi=600)
     if show:
