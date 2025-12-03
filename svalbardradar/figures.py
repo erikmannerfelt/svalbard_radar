@@ -803,7 +803,7 @@ def plot_model_temperate_cold_performance(show: bool = True):
 
     colors = {
         "cold": "lightblue",
-        "temperate": "red",
+        "temperate": "purple",
         "all": "grey",
     }
     case_names = {
@@ -927,7 +927,7 @@ def plot_perglacier_temperate_cold_performance(show: bool = False):
 
     colors = {
         "cold": "lightblue",
-        "temperate": "red",
+        "temperate": "purple",
         "all": "grey",
     }
     case_names = {
@@ -1037,13 +1037,13 @@ def plot_elevation_vs_temp_diff(show: bool = False):
             grouped = per_part.groupby("elev_bin")["diff"]
             df = grouped.median()
 
-            color = "red" if part == "certain_temperate" else "blue"
+            color = "purple" if part == "certain_temperate" else "blue"
 
             axes[2, i].errorbar(
                 df.index,
                 df,
                 yerr=grouped.std(),
-                color="red" if part == "certain_temperate" else "blue",
+                color=color,
                 label=part.replace("certain_", "").capitalize() + " bed",
             )
 
