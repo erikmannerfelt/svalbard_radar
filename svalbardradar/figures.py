@@ -1039,10 +1039,16 @@ def plot_elevation_vs_temp_diff(show: bool = False):
 
     data = data[data["bed_type"].isin(["certain_cold", "certain_temperate"])]
 
+    bin_axes = []
+    line_axes = []
     fig = plt.figure(figsize=(8, 4))
-    axes = fig.subplots(3, len(models), sharex=True, sharey="row")
+    #axes = fig.subplots(3, len(models), sharex=True, sharey="row")
     for i, model in enumerate(models):
-        axes[0, i].set_title(svalbardradar.comparisons.ref_names(model))
+        axis = plt.subplot2grid((6, 2), (i * 2, 1),rowspan=2, fig=fig)
+        line_axes.append(axis)
+
+        plt.text(0.5, 0.97,svalbardradar.comparisons.ref_names(model), ha="center", va="top", transform=axis.transAxes)
+        # axis.set_title(svalbardradar.comparisons.ref_names(model))
 
         data["diff"] = data[f"{model}_thickness"] - data["thickness"]
 
@@ -1052,7 +1058,7 @@ def plot_elevation_vs_temp_diff(show: bool = False):
 
             color = "purple" if part == "certain_temperate" else "blue"
 
-            axes[2, i].errorbar(
+            axis.errorbar(
                 df.index,
                 df,
                 yerr=grouped.std(),
@@ -1060,21 +1066,46 @@ def plot_elevation_vs_temp_diff(show: bool = False):
                 label=part.replace("certain_", "").capitalize() + " bed",
             )
 
-            axes[0 if part == "certain_cold" else 1, i].bar(
-                x=df.index, height=grouped.count(), width=np.mean(np.diff(bins)), color=color, alpha=0.5
-            )
+            if i == 0:
+                ax2 = plt.subplot2grid((6, 2), (0 if part == "certain_cold" else 3 , 0), rowspan=3)
+                bin_axes.append(ax2)
 
-    axes[0, 0].set_ylabel("Cold bed count")
-    axes[1, 0].set_ylabel("Temperate\nbed count")
-    for i in (2,):
-        axes[i, 0].set_ylabel("Difference (m)")
+                ax2.bar(
+                    x=df.index, height=grouped.count(), width=np.mean(np.diff(bins)), color=color, alpha=0.5
+                )
 
-    for axis in axes[2, :]:
+    bin_axes[0].set_ylabel("Cold bed count")
+    bin_axes[1].set_ylabel("Temperate bed count")
+    # for i in (2,):
+    #     axes[i, 0].set_ylabel("Difference (m)")
+    xticks = np.linspace(0., 1., 5)
+
+    for i, axis in enumerate(bin_axes):
+        axis.set_xticks(xticks)
+        axis.ticklabel_format(style="sci", axis="y", scilimits=(0, 0), useMathText=True)
+        if i != 1:
+            axis.set_xticklabels([""] * len(xticks))
+        
+
+
+    for i, axis in enumerate(line_axes):
         axis.grid(alpha=0.5)
 
-    axes[2, 0].legend(fontsize=8)
-    axes[2, 1].set_xlabel("Normalized elevation")
-    plt.tight_layout()
+        axis.set_ylim(-130, 210)
+        axis.set_xticks(xticks)
+        if i == 1:
+            axis.set_ylabel("Difference (m)")
+        if i != 2:
+            axis.set_xticklabels([""] * len(xticks))
+            
+    
+    for i, axis in enumerate([*bin_axes, *line_axes]):
+        plt.text(0.02, 0.97, "abcdefghi"[i], ha="left", va="top", transform=axis.transAxes)
+
+    # axes[2, 0].legend(fontsize=8)
+    for axis in [bin_axes[-1], line_axes[-1]]:
+        axis.set_xlabel("Normalized elevation")
+    plt.subplots_adjust(left=0.08, bottom=0.10, right=0.98, top=0.95, wspace=0.2, hspace=0.7)
     plt.savefig("figures/elevation_vs_temp_diff.jpg", dpi=500)
 
     if show:
@@ -1678,10 +1709,6 @@ def plot_interpretation_merging(show: bool = False):
 
 
 def plot_rgm_frequency_comparison(show: bool = False):
-    # radar_keys = {
-    #     "dronbreen-20230221-DAT_0014_A1_1": {"xlim": (9580, 10290), "ylim": (170, 50), "vlim": (0, 3)},
-    #     "dronbreen-20250327-DAT_0063_A1_1": {"xlim": (1520, 1970), "ylim": (170, 50), "vlim": (0, 3)},
-    # }
     radar_keys = {
         "ragna_mariebreen-20240317-DAT_0345_A1_2": {
             "xlim": [4426, 2110],
@@ -1698,15 +1725,16 @@ def plot_rgm_frequency_comparison(show: bool = False):
     }
 
     fig = plt.figure(figsize=(8.3, 5), dpi=300)
-    width_steps = 9
-    track_width = int(width_steps / 4)
-    track_axis = plt.subplot2grid(
-        (2, width_steps), (0, width_steps - track_width), colspan=track_width, rowspan=2, fig=fig
-    )
+    # width_steps = 9
+    # track_width = int(width_steps / 4)
+    # track_axis = plt.subplot2grid(
+    #     (2, width_steps), (0, width_steps - track_width), colspan=track_width, rowspan=2, fig=fig
+    # )
 
-    # axes = fig.subplots(2, 1)
+    axes = fig.subplots(2, 1)
     for i, (radar_key, case) in enumerate(radar_keys.items()):
-        axis = plt.subplot2grid((2, width_steps), (i, 0), colspan=width_steps - track_width, fig=fig)
+        # axis = plt.subplot2grid((2, width_steps), (i, 0), colspan=width_steps - track_width, fig=fig)
+        axis = axes.ravel()[i]
         with xr.open_dataset(paths.processed_radar_path(radar_key)) as dataset:
             dataset.coords["trace_n"] = "x", np.arange(dataset.x.shape[0])
             dataset = dataset.swap_dims(x="trace_n", y="depth")  # .sel(
@@ -1802,35 +1830,35 @@ def plot_rgm_frequency_comparison(show: bool = False):
                 transform=inset.transAxes,
             )
 
-            track_axis.plot(dataset["easting"], dataset["northing"], label="ac"[i])
+            # track_axis.plot(dataset["easting"], dataset["northing"], label="ac"[i])
 
-    track_axis.legend(loc="lower right")
-    track_axis.text(
-        0.03,
-        0.99,
-        "e",
-        va="top",
-        path_effects=[matplotlib.patheffects.withStroke(linewidth=2, foreground="white")],
-        transform=track_axis.transAxes,
-    )
+    # track_axis.legend(loc="lower right")
+    # track_axis.text(
+    #     0.03,
+    #     0.99,
+    #     "e",
+    #     va="top",
+    #     path_effects=[matplotlib.patheffects.withStroke(linewidth=2, foreground="white")],
+    #     transform=track_axis.transAxes,
+    # )
 
-    # Reference point for offset
-    origin = [track_axis.get_xlim()[0], track_axis.get_ylim()[0]]
+    # # Reference point for offset
+    # origin = [track_axis.get_xlim()[0], track_axis.get_ylim()[0]]
 
-    for i in range(len(origin)):
-        origin[i] -= origin[i] % 100
+    # for i in range(len(origin)):
+    #     origin[i] -= origin[i] % 100
 
-    # Custom formatter to show relative values
-    track_axis.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda val, _: f"{val - origin[0]:.0f}"))
-    track_axis.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda val, _: f"{val - origin[1]:.0f}"))
+    # # Custom formatter to show relative values
+    # track_axis.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda val, _: f"{val - origin[0]:.0f}"))
+    # track_axis.yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda val, _: f"{val - origin[1]:.0f}"))
 
-    track_axis.yaxis.tick_right()
-    track_axis.yaxis.set_label_position("right")
+    # track_axis.yaxis.tick_right()
+    # track_axis.yaxis.set_label_position("right")
 
-    track_axis.set_xlabel(f"Easting (+{origin[0]:.0f} m)")
-    track_axis.set_ylabel(f"Northing (+{origin[1]:.0f} m)")
+    # track_axis.set_xlabel(f"Easting (+{origin[0]:.0f} m)")
+    # track_axis.set_ylabel(f"Northing (+{origin[1]:.0f} m)")
 
-    plt.subplots_adjust(left=0.08, bottom=0.09, right=0.92, top=0.98, wspace=0.06, hspace=0.15)
+    plt.subplots_adjust(left=0.08, bottom=0.09, right=0.99, top=0.98, wspace=0.06, hspace=0.15)
     plt.savefig("figures/rgm_frequency_comparison.jpg", dpi=500)
 
     if show:
