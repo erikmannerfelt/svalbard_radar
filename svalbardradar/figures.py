@@ -41,9 +41,6 @@ DIGITIZE_CLASS_PROPS = {
 
 def plot_dronbreen_examples(show: bool = True):
     import svalbardradar.interpretations
-    import svalbardradar.tools.rasters
-
-    # data = gpd.read_feather(Path("cache/interpretations/interp_all.feather"))
 
     dronbreen_outline = gpd.read_file("shapes/dronbreen_outline_20240828.geojson")
 
@@ -189,15 +186,21 @@ def plot_dronbreen_examples(show: bool = True):
         inset.plot(line.geometry.x, line.geometry.y, linewidth=0.5, color="black", zorder=2)
 
     for i, axis in enumerate([inset, *axes.ravel()]):
-        axis.text(
-            0.41 if i == 1 else 0.01,
-            0.99,
-            "abcde"[i],
-            transform=axis.transAxes,
-            fontsize=10,
-            va="top",
-            path_effects=[matplotlib.patheffects.withStroke(linewidth=2, foreground="white")],
-        )
+        xvals = [0.41 if i == 1 else 0.01]
+
+        if i in [3, 4]:
+            xvals += [0.95]
+
+        for j, xval in enumerate(xvals):
+            axis.text(
+                xval,
+                0.99,
+                "abcde"[i] + ("'" if j == 1 else ""),
+                transform=axis.transAxes,
+                fontsize=10,
+                va="top",
+                path_effects=[matplotlib.patheffects.withStroke(linewidth=2, foreground="white")],
+            )
 
     Path("figures").mkdir(exist_ok=True)
     plt.savefig("figures/dronbreen_example.jpg", dpi=600)
@@ -580,7 +583,7 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
 
     n_rows = 1
     n_cols = 3
-    fig = plt.figure(figsize=(8.3, 8.3 * (n_rows / n_cols)))
+    fig = plt.figure(figsize=(8.3, 3.))
     axes = fig.subplots(nrows=n_rows, ncols=n_cols, sharex=True, sharey=True)
 
     # Hack to make sure the array is always indexable as [row, col]
@@ -599,7 +602,7 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
         row = int((i - col) / n_cols)
         axis: plt.Axes = axes[row, col]
 
-        axis.set_title(ref_names[model])
+        axis.set_title(ref_names[model], fontsize=10)
 
         subset = data.dropna(subset=["thickness", f"{model}_thickness"], how="any")
 
@@ -645,8 +648,8 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
                 }
             )
         axis.text(
-            x=0.05,
-            y=0.95,
+            x=0.03,
+            y=0.97,
             s="\n".join(
                 [
                     f"Median: {diff.median():.1f} m",
@@ -655,12 +658,12 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
                 ]
             ),
             transform=axis.transAxes,
+            fontsize=9,
             va="top",
             path_effects=[matplotlib.patheffects.withStroke(linewidth=4, foreground="white")],
         )
 
-        if row == 1:
-            axis.set_xlabel("Measured thickness (m)")
+        axis.set_xlabel("Our thickness (m)")
 
         if col == 0:
             axis.set_ylabel("Modelled thickness (m)")
@@ -674,7 +677,7 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
                 }
             }
         )
-    plt.tight_layout()
+    plt.subplots_adjust(left=0.07, bottom=0.15, right=0.98, top=0.91, wspace=0.1)
 
     Path("figures/").mkdir(exist_ok=True)
     plt.savefig(f"figures/thickness_vs_models{'_uncorr' if not correct_topo else ''}.jpg", dpi=400)
@@ -705,26 +708,35 @@ def plot_glathida_comparison(show: bool = True, histogram: bool = False, correct
     step_size = 5
     thickness_bins = np.arange(0, max_thickness - (max_thickness % step_size) + step_size * 2, step_size)
 
-    fig = plt.figure(figsize=(9, 3.5))
+    fig = plt.figure(figsize=(8.3, 3.2))
     axes = fig.subplots(ncols=3, sharex=True, sharey=True)
     for i, group in data.groupby("glathida_group"):
         axis: plt.Axes = axes[i]
         bias = group["glathida_diff"].median()
-        stats_str = f"n={group.shape[0]}, ΔH: {bias:.1f}±{stats.nmad(group['glathida_diff']):.1f} m"
-
         if i == 0:
-            label = f"before {year_intervals[0]}\n{stats_str}"
+            title = f"before {year_intervals[0]}"
         elif i == (len(year_intervals) - 1):
-            label = f"after {year_intervals[-2]}\n{stats_str}"
+            title = f"after {year_intervals[-2]}"
         else:
-            label = f"{year_intervals[i - 1]}–{year_intervals[i]}\n{stats_str}"
+            title = f"{year_intervals[i - 1]}–{year_intervals[i]}"
+        axis.set_title(title, fontsize=10)
+
+        pearson = group['thickness'].corr(group['glathida_thickness'])
 
         axis.text(
-            0.5,
-            0.98,
-            label,
+            0.03,
+            0.97,
+            "\n".join(
+                [
+                    f"Median: {bias:.1f} m",
+                    f"NMAD: {stats.nmad(group['glathida_diff']):.1f} m",
+                    f"r: {pearson:.2f}",
+                    f"n: {group.shape[0]}",
+                ]
+            ),
             transform=axis.transAxes,
-            ha="center",
+            fontsize=9,
+            ha="left",
             va="top",
             path_effects=[matplotlib.patheffects.withStroke(linewidth=4, foreground="white")],
         )
@@ -754,9 +766,9 @@ def plot_glathida_comparison(show: bool = True, histogram: bool = False, correct
                 }
             )
 
-        print(
-            f"{label.replace('\n', ': ')}, Linear fit: old = {res_full[0]:.2f}*new + {res_full[1]:.2f}. Linear fit (<150 m): old = {res_150[0]:.2f}*new + {res_150[1]:.2f}"
-        )
+        # print(
+        #     f"{label.replace('\n', ': ')}, Linear fit: old = {res_full[0]:.2f}*new + {res_full[1]:.2f}. Linear fit (<150 m): old = {res_150[0]:.2f}*new + {res_150[1]:.2f}"
+        # )
 
         if histogram:
             hist2 = np.histogram2d(group["glathida_thickness"], group["thickness"], bins=thickness_bins)[0][::-1, :]
@@ -783,7 +795,8 @@ def plot_glathida_comparison(show: bool = True, histogram: bool = False, correct
         axis.set_xlabel("Our thickness (m)")
 
     # plt.legend()
-    plt.tight_layout()
+    plt.subplots_adjust(left=0.07, bottom=0.13, right=0.99, top=0.93, wspace=0.05)
+    # plt.tight_layout()
     Path("figures/").mkdir(exist_ok=True)
     plt.savefig(f"figures/thickness_vs_glathida{'_uncorr' if not correct_topo else ''}.jpg", dpi=400)
 
@@ -1923,7 +1936,7 @@ def plot_cross_track_difference(show: bool = False):
             axis.tick_params(labelbottom=False)
         else:
             axis.set_xlabel("Cross-track difference (m)")
-        if i == 1:
+        if i in [0, 1]:
             axis.set_ylabel("Frequency")
 
         plt.text(0.02, 0.97, "abcd"[i], transform=axis.transAxes, va="top", ha="left")

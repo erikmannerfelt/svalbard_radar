@@ -154,7 +154,7 @@ def glacier_table():
         "last_surge": "Last surge",
     }
 
-    no_date = "ND$^{[2]}$"
+    no_date = "No date$^{[2]}$"
     surging = {
         "etonbreen": "2023$^{[1]}$",
         "von_postbreen": "1870$^{[2]}$",
@@ -267,7 +267,7 @@ def cts_transition_steepness():
         "dronbreen-20230220-DAT_0009_A1_1": [0, 1500],
         # # "dronbreen-20250327-DAT_0065_A1_1",
         "kroppbreen-20230228-DAT_0042_A1_1": [1000, 2500],
-        "slakbreen-20240310-DAT_0286_A1_1": [6000, 9000],
+        "slakbreen-20240310-DAT_0286_A1_1": [6000, 11000],
         "edvardbreen-20240411-DAT_0396_A1_1": [9000, 13500],
         "vallakrabreen-20210513-DAT_0014_A1_31": [600, 1200],
     }
@@ -291,7 +291,7 @@ def cts_transition_steepness():
         # data["temperate_frac"] /= data["temperate_frac"].max()
 
         transition_start = data[data["temperate_frac"] > 0.05].iloc[0]
-        transition_end = data[data["temperate_frac"] >= 0.95].iloc[0]
+        transition_end = data[data["temperate_frac"] >= (0.95 if "slakbreen" not in radar_key else 0.93)].iloc[0]
         dist = sorted([transition_start["distance"], transition_end["distance"]])
 
         mean_thickness = data.loc[(data["distance"] > dist[0]) & (data["distance"] < dist[1]), "thickness"].mean()
@@ -356,6 +356,8 @@ def data_stats():
         }
     )
 
+    cts_relevant = (data["temperate_frac"] > 0.1) & (data["temperate_frac"] < 0.9)
+
     high_bad_concensus_frac = np.count_nonzero(data["thickness_user_nmad"] > 20) / data.shape[0]
     record_information(
         {
@@ -364,6 +366,8 @@ def data_stats():
                 "uncertainty": {
                     "bed": data["thickness_nmad"].median(),
                     "bed_pm": stats.nmad(data["thickness_nmad"]),
+                    "cts": data.loc[cts_relevant, "temperate_nmad"].median(),
+                    "cts_pm": stats.nmad(data.loc[cts_relevant, "temperate_nmad"]),
                     "e_gpr": data["thickness_gpr_uncertainty"].median(),
                     "e_gpr_pm": stats.nmad(data["thickness_gpr_uncertainty"]),
                     "e_gnss": data["thickness_gnss_uncertainty"].median(),
