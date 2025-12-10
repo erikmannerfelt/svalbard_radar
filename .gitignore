@@ -24,4 +24,4 @@ dems/
 /result
 .ruff_cache/
 tables/
-
+data_pub/

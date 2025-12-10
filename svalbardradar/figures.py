@@ -230,7 +230,8 @@ def plot_user_spread(show: bool = True):
     all_data["temp_elevation"] = all_data["bed_elevation"] + all_data["thickness"] * all_data["temperate_frac"]
 
     out_path = Path("figures/all_interpretations.pdf")
-    out_path.parent.mkdir(exist_ok=True)
+    out_dir = Path("figures/all_interpretations_perprofile")
+    out_dir.mkdir(exist_ok=True, parents=True)
     radar_keys = []
     with PdfPages(out_path) as pdf, tqdm.tqdm(total=all_data["radar_key"].unique().shape[0]) as progress_bar:
         for glacier, all_glacier_data in all_data.groupby("glacier"):
@@ -299,7 +300,7 @@ def plot_user_spread(show: bool = True):
                             f"n contributors: {len(interp_paths)}",
                             f"Length: {max_d:.2f} km",
                             f"Mean thickness: {data['thickness'].mean():.2f} m",
-                            f"Mean thickness uncertainty: {data['thickness_std'].mean():.2f} m",
+                            f"Mean thickness uncertainty: {data['thickness_nmad'].mean():.2f} m",
                             f"Mean temperate ice fraction: {100 * data['temperate_frac'].mean():.2f}%",
                             f"Mean temperate ice fraction uncertainty: {100 * data['temperate_frac_std'].mean():.2f}%",
                         ]
@@ -413,6 +414,8 @@ def plot_user_spread(show: bool = True):
                     va="bottom",
                     fontsize=8,
                 )
+
+                plt.savefig(out_dir / f"interpretations_{radar_key}.pdf")
                 fig.text(0.03, 0.01, str(len(radar_keys) + 1), ha="right", va="bottom", fontsize=8)
 
                 pdf.savefig(fig)
@@ -583,7 +586,7 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
 
     n_rows = 1
     n_cols = 3
-    fig = plt.figure(figsize=(8.3, 3.))
+    fig = plt.figure(figsize=(8.3, 3.0))
     axes = fig.subplots(nrows=n_rows, ncols=n_cols, sharex=True, sharey=True)
 
     # Hack to make sure the array is always indexable as [row, col]
@@ -721,7 +724,7 @@ def plot_glathida_comparison(show: bool = True, histogram: bool = False, correct
             title = f"{year_intervals[i - 1]}–{year_intervals[i]}"
         axis.set_title(title, fontsize=10)
 
-        pearson = group['thickness'].corr(group['glathida_thickness'])
+        pearson = group["thickness"].corr(group["glathida_thickness"])
 
         axis.text(
             0.03,
@@ -1042,12 +1045,12 @@ def plot_elevation_vs_temp_diff(show: bool = False):
     bin_axes = []
     line_axes = []
     fig = plt.figure(figsize=(8, 4))
-    #axes = fig.subplots(3, len(models), sharex=True, sharey="row")
+    # axes = fig.subplots(3, len(models), sharex=True, sharey="row")
     for i, model in enumerate(models):
-        axis = plt.subplot2grid((6, 2), (i * 2, 1),rowspan=2, fig=fig)
+        axis = plt.subplot2grid((6, 2), (i * 2, 1), rowspan=2, fig=fig)
         line_axes.append(axis)
 
-        plt.text(0.5, 0.97,svalbardradar.comparisons.ref_names(model), ha="center", va="top", transform=axis.transAxes)
+        plt.text(0.5, 0.97, svalbardradar.comparisons.ref_names(model), ha="center", va="top", transform=axis.transAxes)
         # axis.set_title(svalbardradar.comparisons.ref_names(model))
 
         data["diff"] = data[f"{model}_thickness"] - data["thickness"]
@@ -1067,26 +1070,22 @@ def plot_elevation_vs_temp_diff(show: bool = False):
             )
 
             if i == 0:
-                ax2 = plt.subplot2grid((6, 2), (0 if part == "certain_cold" else 3 , 0), rowspan=3)
+                ax2 = plt.subplot2grid((6, 2), (0 if part == "certain_cold" else 3, 0), rowspan=3)
                 bin_axes.append(ax2)
 
-                ax2.bar(
-                    x=df.index, height=grouped.count(), width=np.mean(np.diff(bins)), color=color, alpha=0.5
-                )
+                ax2.bar(x=df.index, height=grouped.count(), width=np.mean(np.diff(bins)), color=color, alpha=0.5)
 
     bin_axes[0].set_ylabel("Cold bed count")
     bin_axes[1].set_ylabel("Temperate bed count")
     # for i in (2,):
     #     axes[i, 0].set_ylabel("Difference (m)")
-    xticks = np.linspace(0., 1., 5)
+    xticks = np.linspace(0.0, 1.0, 5)
 
     for i, axis in enumerate(bin_axes):
         axis.set_xticks(xticks)
         axis.ticklabel_format(style="sci", axis="y", scilimits=(0, 0), useMathText=True)
         if i != 1:
             axis.set_xticklabels([""] * len(xticks))
-        
-
 
     for i, axis in enumerate(line_axes):
         axis.grid(alpha=0.5)
@@ -1097,8 +1096,7 @@ def plot_elevation_vs_temp_diff(show: bool = False):
             axis.set_ylabel("Difference (m)")
         if i != 2:
             axis.set_xticklabels([""] * len(xticks))
-            
-    
+
     for i, axis in enumerate([*bin_axes, *line_axes]):
         plt.text(0.02, 0.97, "abcdefghi"[i], ha="left", va="top", transform=axis.transAxes)
 

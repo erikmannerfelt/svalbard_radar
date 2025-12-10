@@ -3,10 +3,16 @@ import pandas as pd
 import collections.abc
 import json
 import numpy as np
+import itertools
+import shapely
+import zipfile
+import shutil
+import contextlib
+import io
 
 from pathlib import Path
 
-import svalbardradar.tools.stats as stats
+from svalbardradar.tools import stats, paths
 
 
 def format_float(number: float, decimals: int = 1) -> str:
@@ -378,3 +384,113 @@ def data_stats():
             }
         }
     )
+
+
+def make_data_publication(glaciers: list[str] | None = ["filantropbreen", "fimbulisen"]):
+    import svalbardradar.interpretations
+    import svalbardradar.process_radar
+    import xarray as xr
+    import subprocess
+
+    all_data = svalbardradar.interpretations.merge_all_interpretations()
+
+    pub_dir = Path("data_pub")
+
+    all_data["glacier"] = all_data["radar_key"].str.split("-", expand=True).iloc[:, 0]
+
+    if glaciers is None:
+        glaciers: list[str] = all_data["glacier"].unique().tolist()  # pyright: ignore[reportAssignmentType]
+    else:
+        all_data = all_data[all_data["glacier"].isin(glaciers)]
+
+    all_raw_dirs = svalbardradar.process_radar.get_paths()
+    report_paths = []
+
+    with contextlib.ExitStack() as stack:
+        csvs_zipfile = stack.enter_context(zipfile.ZipFile(pub_dir / "thickness_cts_points_csv.zip", mode="w"))
+        dem_paths = set()
+        for glacier, per_glacier in all_data.groupby("glacier"):
+            glacier = str(glacier)
+            radargrams_zipfile = stack.enter_context(zipfile.ZipFile(pub_dir / f"radargrams-{glacier}.zip", mode="w"))
+
+            for radar_key, per_key in per_glacier.groupby("radar_key"):
+                radar_key = str(radar_key)
+
+                data_bytes = io.BytesIO()
+                per_key.to_csv(data_bytes, index=False)
+                csvs_zipfile.writestr(f"thickness_cts_points_{radar_key}.csv", data_bytes.getvalue())
+                del data_bytes
+
+                dem_paths.add(svalbardradar.process_radar.get_dem_path(radar_key))
+
+                _, date_str, file_stem = radar_key.split("-")
+                thumbnail_path = Path(f"web/static/radargrams/{glacier}/{date_str}/{file_stem}/thumbnail.jpg")
+                report_path = Path(f"figures/all_interpretations_perprofile/interpretations_{radar_key}.pdf")
+                processed_path = paths.processed_radar_path(radar_key)
+
+                report_paths.append(str(report_path.absolute()))
+
+                file_stems = ["_".join(file_stem.split("_")[:-1])]
+                if not radar_key.endswith("_1"):
+                    with xr.open_dataset(processed_path) as dataset:
+                        for line in dataset.attrs["processing-log"].splitlines():
+                            if "Merged " in line:
+                                file_stems.append(line.split("/")[-1].split(".rd3")[0])
+
+                filepaths = []
+
+                for file_stem in file_stems:
+                    try:
+                        rd3_filepath = next(
+                            itertools.chain(*[d.rglob(f"*{file_stem}.rd3") for d in all_raw_dirs[glacier][date_str]])
+                        )
+                    except StopIteration:
+                        raise ValueError(f"Cannot find file {file_stem}")
+
+                    filepaths += [rd3_filepath, rd3_filepath.with_suffix(".cor"), rd3_filepath.with_suffix(".rad")]
+
+                lines = []
+                for part_idx, per_part in per_key.groupby("part_idx"):
+                    if per_part.shape[0] < 2:
+                        continue
+                    lines.append(
+                        {
+                            "geometry": shapely.LineString(per_part[["easting", "northing"]]),
+                            "part_idx": part_idx,
+                        }
+                    )
+
+                track = gpd.GeoDataFrame.from_records(lines)
+                track.set_geometry("geometry", crs=per_key.crs, inplace=True)
+                track["length"] = track["geometry"].length
+
+                rawdata_bytes = io.BytesIO()
+                with zipfile.ZipFile(rawdata_bytes, mode="w") as zip_file:
+                    for filepath in filepaths:
+                        zip_file.write(filepath, arcname=filepath.name)
+                radargrams_zipfile.writestr(f"{radar_key}/{radar_key}_raw_data.zip", rawdata_bytes.getvalue())
+                del rawdata_bytes
+
+                track_bytes = io.BytesIO()
+                track.to_file(track_bytes, driver="GeoJSON")
+                radargrams_zipfile.writestr(f"{radar_key}/{radar_key}_track.geojson", track_bytes.getvalue())
+                del track_bytes
+
+                radargrams_zipfile.write(thumbnail_path, f"{radar_key}/{radar_key}_thumbnail.jpg")
+                radargrams_zipfile.write(processed_path, f"{radar_key}/{radar_key}_processed.nc")
+                radargrams_zipfile.write(report_path, f"{radar_key}/{radar_key}_interpretation_report.pdf")
+
+    subprocess.run(["pdfunite"] + report_paths + [str(pub_dir / "interpretation_report.pdf")], check=True)
+
+    with zipfile.ZipFile(pub_dir / "dems.zip", mode="w") as zip_file:
+        for dem_path in dem_paths:
+            zip_file.write(dem_path, dem_path.name)
+
+    with zipfile.ZipFile(pub_dir / "interpretation_lines.zip", mode="w") as zip_file:
+        for filepath in Path("submitted").rglob("*.json"):
+            if not any(glacier in filepath.parts[-2] for glacier in glaciers):
+                continue
+            zip_file.write(filepath, "/".join(filepath.parts[-3:]))
+
+    all_data.to_feather(pub_dir / "thickness_cts_points.arrow")
+    shutil.copyfile("data_pub_README.md", pub_dir / "README.md")

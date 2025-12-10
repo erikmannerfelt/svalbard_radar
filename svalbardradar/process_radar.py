@@ -15,13 +15,6 @@ RSGPR_PATH = "rsgpr"
 def get_paths(offline: bool = False):
     gpr_dir = Path(os.environ["GPR_DIR"])
 
-    missing = [
-        "Mette 2024",
-        "Ragna 20240317",
-    ]
-
-    print("Missing", "\n".join(missing))
-
     filepaths = {
         "antoniabreen": {
             "20250406": [gpr_dir / "2025/GPR_20250406_B-Antoniabreen-25MHz"],
