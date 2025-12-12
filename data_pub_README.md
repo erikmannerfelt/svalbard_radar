@@ -1,6 +1,8 @@
 # Draft dataset publication from Mannerfelt et al., (submitted)
 Titled: **Glacier thickness, thermal regime, and subjective uncertainty from ground-penetrating radar of 25 Svalbard glaciers**
 
+### **NOTE**: This is a preliminary version that only contains radargrams from Filantropbreen and Fimbulisen. All data will be available upon final publication of the paper.
+
 ## Dataset description
 
 This repository contains ground-penetraing radar data (GPR) from 25 glaciers in Svalbard, associated with the publication Mannerfelt et al., (submitted).
@@ -21,14 +23,16 @@ Its contents are:
     - A thumbnail (picture) as it appeared on the website (.jpg)
     - A report showing the user interpretations and consensus for this radargram (.pdf) 
 * `dems.zip`: Digital Elevation Models (DEMs) used for elevation coordinate correction
-* `interpretation_lines.zip`: Interpretations submitted by users in the website.
+* `interpretation_lines.zip`: Interpretations submitted by users on the website.
 * `interpretation_report.pdf`: A report showing the user interpretations and consensus for each radargram
 
-
-### NOTE: This is a preliminary version that only contains radargrams from Filantropbreen and Fimbulisen. All data will be available upon final publication of the paper.
+Each profile's id (`radar_key`) is unique and is formed like this `<glacier>-<date>-<filename>`.
+The `<glacier>` part is a simplified version of the glacier's name (see `shapes/glacier_locations.geojson` in the code repository for locations and true names).
+The `<date>` part is the acquisition date in the format YYYYMMDD.
+The `<filename>` part is the stem of the first .rad filename (e.g. "DAT_0001_A1"), plus the amount of files that were merged by `rsgpr`,  (e.g. "_3" for three merged files).
 
 ## Thickness and thermal regime data description
-The consensus data (`thickness_cts_points.feather`) consists of tabular point data with the following fields:
+The consensus data (`thickness_cts_points.arrow`) consist of tabular point data with the following fields:
 
 * `radar_key`: The key shown on the website and in the radargram directory of the data publication
 * `distance`: The distance  along the profile (m)
@@ -37,7 +41,7 @@ The consensus data (`thickness_cts_points.feather`) consists of tabular point da
 * `easting`: The easting coordinate (EPSG:32633) (m)
 * `northing`: The northing coordinate (EPSG:32633) (m)
 * `elevation`: The elevation above sea level sampled from a DEM (m a.s.l.)
-* `part_idx`: Estimated part index (incremented in case case of data gaps or file changes)
+* `part_idx`: Estimated part index (incremented in case case of data gaps)
 * `antenna`: The antenna centre frequency that was used (MHz)
 * `date_str`: The acqusition date in the format YYYYMMDD
 * `temperate`: The median consensus height of the CTS above the bed (0 means no temperate ice, =`thickness` means 100% temperate) (m)
@@ -48,14 +52,13 @@ The consensus data (`thickness_cts_points.feather`) consists of tabular point da
 * `{temperate,thickness}_gpr_uncertainty`: The calculated GPR-related uncertainty component (m)
 * `{temperate,thickness}_gnss_uncertainty`: The calculated GNSS-related uncertainty component (m)
 * `{temperate,thickness}_{std,nmad}`: The standard deviation and NMAD including the GPR and GNSS uncertainty (see the `_user_` variables for only consensus variability) (m)
-* `temperate_frac`: The fraction of the ice column (0-1; unitless) that is covered by temperate ice (m)
+* `temperate_frac`: The fraction of the ice column that is covered by temperate ice (0-1; unitless)
 * `temperate_frac_std`: The standard deviation of the temperate ice fraction (m)
-* `bed_type`: Classified glacier bed type in the pattern `{uncertain,certain}_{cold,temperate}`. Certain means if the user consensus range (25-75%) agrees and uncertain means that one of the two ranges disagree (m)
+* `bed_type`: Classified glacier bed type in the pattern `{uncertain,certain}_{cold,temperate}`. Certain means the user consensus range (25-75%) agrees and uncertain means that one of the two bounds disagree.
 * `bed_elevation`: The elevation above sea level of the median glacier bed (m)
 * `temperate_elevation`: The elevation above sea level of the median CTS (m a.s.l.)
 
 
-All units are in meters unless otherwise specified.
 The vertical CRS of elevation is unknown but is identical to that used by the [Norwegian Polar Institute S0 DEM](https://doi.org/10.21334/NPOLAR.2014.DCE53A47) due to it being the co-registration reference.
 
 ## Interpretation line format description
