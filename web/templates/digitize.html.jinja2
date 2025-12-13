@@ -13,6 +13,7 @@
 
         <a href="/howto" class="index-instructions-link">Please read the instructions before starting!</a>
 
+        <!--
         <p class="user-info">
         {% if user != None %}
             Logged in as <b>{{user}}</b>
@@ -21,6 +22,7 @@
             Not logged in. Log in on the home page.
         {% endif %}
         </p>
+        -->
     </div>
     <h1>Digitizing "{{radar_key}}"</h1>
     <!--
@@ -38,7 +40,9 @@
                     <p>Load data: </p>
                     <input type="file" id="load-button" accept=".json,application/json" style="max-width: 99%;">
                 
-                    <button id="submit-button" class="button submit-button">SUBMIT DATA</button>
+                    <!--<button id="submit-button" class="button submit-button">SUBMIT DATA</button>-->
+                    <b style="margin-top: 10px; color: #333;">SUBMISSION HAS CLOSED</b>
+
                 </div>
                 <div class="digitize-widget-card">
                     <h3 style="margin-top: 5px; margin-bottom: 5px;">Difficulty rating</h2>

@@ -28,15 +28,16 @@
 
         <a href="/howto" class="index-instructions-link">Please read the instructions before starting!</a>
 
+        <!--
         <p class="user-info">
         {% if user != None %}
             Logged in as <b>{{user}}</b>
             <button id="logout-button">Log out</button>
         {% else %}
-            <!--<button id="login-button">Log in</button>-->
             <a href="/login" style="font-weight: bold; text-decoration: none; color: black;">Login</a>
         {% endif %}
         </p>
+        -->
     </div>
 
     <div style="display: flex; flex-wrap: wrap;justify-content: space-between;">
@@ -72,7 +73,8 @@
 
     </div>
     <div class="index-location-group index-recommended-container" style="">
-        <h2 class="index-location-title">Recommended radargrams</h2>
+        <h2 class="index-location-title">Submission is closed. Thank you all who participated!</h2>
+        <!--
         <div>
             <div class="index-dataset-grid">
                 {% for glacier_key, radar_key in recommendations %}
@@ -80,6 +82,7 @@
                 {% endfor %}
             </div>
         </div>
+        -->
     </div>
     {% for glacier_key, glacier_radargrams in all_radargrams.items() %}
         <div class="index-location-group" id="group-{{glacier_key}}">

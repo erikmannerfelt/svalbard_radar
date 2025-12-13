@@ -399,6 +399,9 @@ def recommended():
 def index():
     all_radargrams = get_all_radargrams(get_username() or "")
 
+    # Submission closed: This will log out any remaining user
+    flask_login.logout_user()
+
     user = get_username()
     return flask.render_template(
         "index.html.jinja2",
@@ -411,6 +414,9 @@ def index():
 
 @APP.route("/digitize/<radar_key>")
 def radargram(radar_key: str):
+    # Submission closed: This will log out any remaining user
+    flask_login.logout_user()
+
     all_radargrams = get_all_radargrams(get_username() or "")
     meta = all_radargrams[radar_key.split("-")[0]][radar_key]
     user = get_username()
