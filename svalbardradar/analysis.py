@@ -173,7 +173,7 @@ def glacier_table():
         "bergmesterbreen": no_date,
         "rugaasfonna": no_date,
         "svellnosbreen": no_date,
-        "kroppbreen": no_date,
+        "kroppbreen": "2000s$^{[4]}$",
         "edvardbreen": "$\\sim$2025$^{[1]}$",
         "vallakrabreen": "2022$^{[1]}$",
         "mettebreen": no_date,
@@ -381,6 +381,10 @@ def data_stats():
                     "e_user": data["thickness_user_nmad"].median(),
                     "e_user_pm": stats.nmad(data["thickness_user_nmad"]),
                 },
+            },
+            "temperate_fractions": {
+                "average": round(100 * (data["temperate_frac"] * data["thickness"]).sum() / data["thickness"].sum())
+
             }
         }
     )

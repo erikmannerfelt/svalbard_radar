@@ -519,3 +519,85 @@ def grid_interpretations(
         out["bounds"] = bounds
 
     return out
+
+
+def temp_testing():
+    import matplotlib.pyplot as plt
+    import matplotlib.patheffects
+
+    DIGITIZE_CLASS_PROPS = {
+        "bed_cold": {
+            "name": "Glacier bed (no temperate ice)",
+            "color": "#002EBD",
+        },
+        "temperate": {
+            "name": "Temperate ice",
+            "color": "red",
+        },
+        "bed_unspecified": {
+            "name": "Glacier bed",
+            "color": "#CE00FF",
+        },
+        "bed_missing": {
+            "name": "Glacier bed not visible",
+            "color": "#62F700",
+        },
+    }
+    radar_keys = ["winsnesbreen-20240503-DAT_0013_A1_1", "slakbreen-20240310-DAT_0286_A1_1"]
+
+    data = merge_all_interpretations(overwrite_cache=True, _key_list=radar_keys)
+
+    radar_key = radar_keys[1]
+    data = data[data["radar_key"] == radar_key]
+
+    fig = plt.figure()
+    axes = fig.subplots(3, 1, sharex=True, sharey=True, height_ratios=[0.5, 0.25, 0.25])
+
+    print(data["distance"])
+    diffs = (data["distance"].diff().fillna(0) > (25)).cumsum()
+
+    all_points = read_interpretations(radar_key=radar_key, step_m=5.0).reset_index()
+    for _, points in all_points.groupby(["user", "line_i"]):
+        kind = points["kind"].iloc[0].replace("temperate_ice", "temperate")
+        axes[1].scatter(
+            points["x"],
+            points["depth"],
+            color=DIGITIZE_CLASS_PROPS[kind]["color"],
+            alpha=0.3,
+        )
+
+    for _, data_split in data.groupby(diffs):
+        axes[2].fill_between(
+            data_split["x"],
+            data_split["thickness_lower"],
+            data_split["thickness_upper"],
+            color="#555",
+            alpha=0.5,
+            label="Thickness (+- 25%)",
+            zorder=2,
+        )
+        axes[2].plot(
+            data_split["x"],
+            data_split["thickness"],
+            color="#555",
+            path_effects=[matplotlib.patheffects.withStroke(linewidth=3, foreground="black")],
+            zorder=4,
+            label="Thickness (median)",
+        )
+        axes[2].fill_between(
+            data_split["x"],
+            data_split["thickness"] - data_split["temperate_lower"],
+            data_split["thickness"] - data_split["temperate_upper"],
+            color="red",
+            alpha=0.5,
+            label="Temperate ice (+- 25%)",
+            zorder=1,
+        )
+        axes[2].plot(
+            data_split["x"],
+            data_split["thickness"] - data_split["thickness"] * data_split["temperate_frac"],
+            color="red",
+            zorder=3,
+            label="Temperate ice (median)",
+        )
+    plt.show()

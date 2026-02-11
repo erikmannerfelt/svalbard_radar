@@ -426,6 +426,7 @@ def plot_user_spread(show: bool = True):
 
 def plot_centerline_profiles(show: bool = True):
     import svalbardradar.interpretations
+    import svalbardradar.analysis
 
     radar_keys = [
         ["mettebreen-20230305-DAT_0235_A1_8"],
@@ -464,6 +465,8 @@ def plot_centerline_profiles(show: bool = True):
 
     all_data = svalbardradar.interpretations.merge_all_interpretations()
 
+    temperate_frac_minmax = [100, 0]
+
     for i, radar_key in enumerate(radar_keys):
         row = int(i / n_cols)
         col = i - row * n_cols
@@ -494,7 +497,7 @@ def plot_centerline_profiles(show: bool = True):
 
         data["bed_elevation"] = data["elevation"] - data["thickness"]
 
-        data["temp_elevation"] = data["bed_elevation"] + data["thickness"] * data["temperate_frac"]
+        data["temp_elevation"] = data["bed_elevation"] + data["temperate"]
 
         axis.fill_between(
             data["distance"],
@@ -557,6 +560,31 @@ def plot_centerline_profiles(show: bool = True):
             va="top",
         )
 
+        inset = axis.inset_axes((-0.08, 0.4, 0.35, 0.35))
+        inset.set_axis_off()
+
+        temperate_frac = (data["temperate_frac"] * data["thickness"]).sum() / data["thickness"].sum()
+
+        temperate_frac_minmax = min(temperate_frac_minmax[0], temperate_frac * 100), max(temperate_frac_minmax[1], temperate_frac * 100)
+        inset.pie(
+            [temperate_frac, 1- temperate_frac], 
+            colors=["#f77", "lightblue"],
+            labels=[f"{100 * temperate_frac:.0f}%", ""],
+            textprops={"fontsize": 8},
+            labeldistance=1.3,
+            wedgeprops={"edgecolor": "#333"}
+        )
+
+    # This is not an analytical min/max for the entire dataset, but Finster is max and Winsnes is min, so it's okay.
+    svalbardradar.analysis.record_information(
+        {
+            "temperate_fractions": {
+                "min": round(temperate_frac_minmax[0]),
+                "max": round(temperate_frac_minmax[1]),
+            }
+        }
+    )
+
     plt.tight_layout()
     plt.savefig("figures/centerline_profiles.jpg", dpi=600)
 
@@ -599,6 +627,7 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
     thickness_bins = np.arange(0, max_thickness - (max_thickness % step_size) + step_size * 2, step_size)
 
     r_minmax = [1, 0]
+    bias_minmax = [1000, -1000]
 
     for i, model in enumerate(models):
         col = i % n_cols
@@ -633,13 +662,12 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
         diff = subset[f"{model}_thickness"] - subset["thickness"]
 
         nmad = stats.nmad(diff)
+        bias = diff.median()
         pearson = subset["thickness"].corr(subset[f"{model}_thickness"])
 
         if correct_topo:
-            if pearson < r_minmax[0]:
-                r_minmax[0] = pearson
-            elif pearson > r_minmax[1]:
-                r_minmax[1] = pearson
+            bias_minmax = [min(bias_minmax[0], bias), max(bias_minmax[1], bias)] 
+            r_minmax = [min(r_minmax[0], pearson), max(r_minmax[1], pearson)] 
             svalbardradar.analysis.record_information(
                 {
                     "inversion": {
@@ -655,7 +683,7 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
             y=0.97,
             s="\n".join(
                 [
-                    f"Median: {diff.median():.1f} m",
+                    f"Median: {bias:.1f} m",
                     f"NMAD: {nmad: .1f} m",
                     f"r = {pearson:.2f}",
                 ]
@@ -677,6 +705,8 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
                 "inversion": {
                     "min_r": svalbardradar.analysis.format_float(r_minmax[0], 2),
                     "max_r": svalbardradar.analysis.format_float(r_minmax[1], 2),
+                    "min_bias": bias_minmax[0],
+                    "max_bias": bias_minmax[1],
                 }
             }
         )
@@ -1648,7 +1678,7 @@ def plot_interpretation_merging(show: bool = False):
             plt.text(
                 0.01,
                 0.98,
-                "abcdefghijklm"[i * 3 + j],
+                "abcghidefjkl"[i * 3 + j],
                 ha="left",
                 va="top",
                 transform=axis.transAxes,
@@ -1965,7 +1995,7 @@ def plot_cross_track_difference(show: bool = False):
         if i in [0, 1]:
             axis.set_ylabel("Frequency")
 
-        plt.text(0.02, 0.97, "abcd"[i], transform=axis.transAxes, va="top", ha="left")
+        plt.text(0.02, 0.97, "acbd"[i], transform=axis.transAxes, va="top", ha="left")
         plt.text(0.98, 0.97, name, transform=axis.transAxes, va="top", ha="right")
         nmad = stats.nmad(data["diff"])
         if name in ["All bed data", "CTS"]:
@@ -2013,6 +2043,8 @@ def plot_heerland_dhdt(show: bool = False):
 
     glaciers = gpd.sjoin(glaciers, outlines[["geometry"]], how="left", predicate="intersects")
     glaciers["geometry"] = outlines.loc[glaciers["index_right"].values, "geometry"].values
+    glaciers["easting"] = glaciers["geometry"].centroid.x
+    glaciers["northing"] = glaciers["geometry"].centroid.y
 
     with rasterio.open(svalbardradar.comparisons.get_hugonnet()) as raster:
         window = rasterio.windows.from_bounds(*bounds, transform=raster.transform)
@@ -2040,6 +2072,9 @@ def plot_heerland_dhdt(show: bool = False):
         axis.text(0.5, 1.02, params["title"], transform=axis.transAxes, ha="center", fontsize=12)
         img = axis.imshow(params["arr"], cmap="RdBu", vmin=-2, vmax=2, extent=extent)
         glaciers.plot(ax=axis, color="none", edgecolor="black")
+
+        for _, glacier in glaciers.iterrows():
+            axis.annotate(str(glacier["name"])[:1], (glacier["easting"], glacier["northing"]), ha="center", va="bottom", path_effects=[matplotlib.patheffects.withStroke(foreground="white", linewidth=2)])
 
         axis.set_xlabel("Easting (m)")
         if i == 0:
