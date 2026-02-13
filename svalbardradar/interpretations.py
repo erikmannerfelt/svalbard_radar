@@ -158,6 +158,190 @@ def read_interpretation_xy(filepath: Path, x_vals: np.ndarray | None = None) -> 
 
     return pd.DataFrame({"y": y_all, "i": i_all}, index=mi)
 
+def chord_sample_xinds_part_distance(x, easting, northing, step_m=5.0, jump_threshold=100.0, eps=1e-12):
+    """
+    Find sampling points such that successive samples are step_m apart in Euclidean (chord) distance.
+    Jumps (segment length > jump_threshold) split the polyline into parts. Each new part restarts sampling and
+    adds only step_m to the running distance (mimicking your previous 'cap big diffs to step size').
+
+    Inputs
+    ------
+    x : array-like (float/int)
+        Pixel x coordinate per vertex (not assumed monotonic).
+    easting, northing : array-like (float)
+        Coordinates per vertex.
+    step_m : float
+        Desired straight-line spacing between successive samples along the polyline.
+    jump_threshold : float
+        Segment length above this is treated as a discontinuity (new part).
+    eps : float
+        Numerical tolerance.
+
+    Returns
+    -------
+    x_inds : np.ndarray (uint16)
+        Rounded pixel x locations for sampled points (stable-unique).
+    part_idx : np.ndarray (int32)
+        Part label for each x_inds element (stable-unique, aligned).
+    distance : np.ndarray (float64)
+        Updated cumulative distance for each x_inds element (stable-unique, aligned).
+        Within a part it increases by exactly step_m per sample. Between parts it also increases by step_m.
+    """
+    x = np.asarray(x, dtype=np.float64)
+    E = np.asarray(easting, dtype=np.float64)
+    N = np.asarray(northing, dtype=np.float64)
+
+    n = len(x)
+    if n == 0:
+        return (np.empty(0, np.uint16), np.empty(0, np.int32), np.empty(0, np.float64))
+    if n == 1:
+        xi = np.rint(x[:1]).astype(np.int64)
+        if (xi < 0).any() or (xi > 65535).any():
+            raise ValueError("Rounded x index out of uint16 range [0, 65535].")
+        return (xi.astype(np.uint16), np.array([0], np.int32), np.array([0.0], np.float64))
+
+    # Compute segment lengths and jump mask from geometry
+    dE = np.diff(E)
+    dN = np.diff(N)
+    seglen = np.hypot(dE, dN)
+    jump = seglen > jump_threshold  # length n-1 boolean
+
+    # Part id per vertex (0,1,2,...)
+    part_vertex = np.zeros(n, dtype=np.int32)
+    part_vertex[1:] = np.cumsum(jump).astype(np.int32)
+
+    r2 = step_m * step_m
+
+    # We'll collect sampled x (float), part_id (int), distance (float)
+    xs = []
+    ps = []
+    ds = []
+
+    # Helper to append a sample point
+    def emit(xpos, part, dist):
+        xs.append(xpos)
+        ps.append(part)
+        ds.append(dist)
+
+    # Start: emit first vertex
+    current_part = part_vertex[0]
+    dist = 0.0
+    Px, Py, Pxpos = E[0], N[0], x[0]
+    emit(Pxpos, current_part, dist)
+
+    # Scan along segments, but split on jumps
+    i = 0
+    # segment start S is always at the current scanning position (initially at the last emitted point)
+    Sx, Sy, xS = Px, Py, Pxpos
+
+    while i < n - 1:
+        # If this segment is a jump, start new part at vertex i+1
+        if jump[i]:
+            # Reset to start of next part
+            i += 1
+            if i >= n:
+                break
+            current_part = part_vertex[i]
+            Px, Py, Pxpos = E[i], N[i], x[i]
+            dist += step_m  # cap jump increment to step size (matches your previous approach)
+            emit(Pxpos, current_part, dist)
+
+            # restart scanning from this vertex
+            Sx, Sy, xS = Px, Py, Pxpos
+            continue
+
+        # Normal segment from vertex i to i+1, but start may be inside it (S)
+        # Define segment end at vertex i+1
+        Tx, Ty, xT = E[i+1], N[i+1], x[i+1]
+
+        dx = Tx - Sx
+        dy = Ty - Sy
+        a = dx*dx + dy*dy
+        if a <= eps:
+            # Degenerate sub-segment: advance to next vertex
+            i += 1
+            if i >= n:
+                break
+            Sx, Sy, xS = E[i], N[i], x[i]
+            continue
+
+        # Circle center is current emitted point P = (Px, Py)
+        fx = Sx - Px
+        fy = Sy - Py
+        b = 2.0 * (dx*fx + dy*fy)
+        c = fx*fx + fy*fy - r2
+        disc = b*b - 4.0*a*c
+
+        if disc < 0.0:
+            # No intersection in this segment; advance to next segment
+            i += 1
+            if i >= n:
+                break
+            Sx, Sy, xS = E[i], N[i], x[i]
+            continue
+
+        sqrt_disc = np.sqrt(disc)
+        inv2a = 1.0 / (2.0*a)
+        u1 = (-b - sqrt_disc) * inv2a
+        u2 = (-b + sqrt_disc) * inv2a
+
+        # Forward intersections within [0,1], excluding u ~ 0 to avoid repeating the start point
+        candidates = []
+        if 0.0 <= u1 <= 1.0 and u1 > eps:
+            candidates.append(u1)
+        if 0.0 <= u2 <= 1.0 and u2 > eps:
+            candidates.append(u2)
+
+        if not candidates:
+            # Intersection is not forward inside this segment; advance to next segment
+            i += 1
+            if i >= n:
+                break
+            Sx, Sy, xS = E[i], N[i], x[i]
+            continue
+
+        u = min(candidates)
+
+        # Emit intersection point Q
+        Qx = Sx + u * dx
+        Qy = Sy + u * dy
+        Qxpos = xS + u * (xT - xS)
+
+        dist += step_m
+        emit(Qxpos, current_part, dist)
+
+        # Update circle center to Q, and continue scanning from Q on the same segment
+        Px, Py, Pxpos = Qx, Qy, Qxpos
+        Sx, Sy, xS = Qx, Qy, Qxpos
+
+        # If we're numerically at the segment end, advance i and reset S to the next vertex
+        if (Tx - Sx)**2 + (Ty - Sy)**2 <= eps:
+            i += 1
+            if i >= n:
+                break
+            Sx, Sy, xS = E[i], N[i], x[i]
+
+    # Convert collected lists to arrays
+    xs = np.asarray(xs, dtype=np.float64)
+    ps = np.asarray(ps, dtype=np.int32)
+    ds = np.asarray(ds, dtype=np.float64)
+
+    # Round x to uint16 indices (with a safety check)
+    xi = np.rint(xs).astype(np.int64)
+    if (xi < 0).any() or (xi > 65535).any():
+        raise ValueError("Rounded x index out of uint16 range [0, 65535]. Consider clipping or revisiting x scale.")
+    xi = xi.astype(np.uint16)
+
+    # Stable-unique by x_inds (keep first occurrence), preserving traversal order and alignment.
+    # Using a boolean "seen" array is very fast since uint16 range is fixed.
+    seen = np.zeros(65536, dtype=bool)
+    keep_mask = np.zeros(len(xi), dtype=bool)
+    for j, v in enumerate(xi):
+        if not seen[v]:
+            seen[v] = True
+            keep_mask[j] = True
+
+    return xi[keep_mask], ps[keep_mask], ds[keep_mask]
 
 def read_interpretations(radar_key: str, step_m: float) -> pd.DataFrame:
     interp_paths = paths.get_latest_submissions(radar_key)
@@ -169,28 +353,26 @@ def read_interpretations(radar_key: str, step_m: float) -> pd.DataFrame:
             bounds_error=False,
         )
 
-        diffs = np.r_[[0], np.diff(dataset["distance"].values)]
-        dataset["distance"] = np.cumsum(np.where(diffs < 100, diffs, step_m))
-
         models = {
             key: scipy.interpolate.interp1d(
                 dataset["x"].values,
                 dataset[key].values,
                 bounds_error=False,
             )
-            for key in ["easting", "northing", "distance", "elevation"]
+            for key in ["easting", "northing", "elevation"]
         }
+        x_inds, part_idx, distance = chord_sample_xinds_part_distance(
+            x=dataset["x"].values,                # pixel x per vertex
+            easting=dataset["easting"].values,
+            northing=dataset["northing"].values,
+            step_m=step_m,
+            jump_threshold=100.0
+        )
 
-        warnings.filterwarnings("ignore", message="invalid value encountered")
-        warnings.filterwarnings("ignore", message="divide by zero")
-        distance_model = scipy.interpolate.interp1d(dataset["distance"].values, dataset["x"].values, bounds_error=False)
-        distance_bins = np.arange(dataset["distance"].min(), dataset["distance"].max(), step_m)
-        x_inds = np.unique(np.round(distance_model(distance_bins)).astype(np.uint16))
-
-        # The part_idx represents potential jumps in location. So each idx should be treated as a separate radargram.
+        models["distance"] = scipy.interpolate.interp1d(x_inds, distance, bounds_error=False)
         models["part_idx"] = scipy.interpolate.interp1d(
-            dataset["x"].values,
-            np.cumsum(diffs > 100),
+            x_inds,
+            part_idx,
             bounds_error=False,
             kind="nearest",
         )
