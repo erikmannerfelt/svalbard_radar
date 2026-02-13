@@ -547,7 +547,7 @@ def merge_all_interpretations(
         right_index=True,
         left_index=True,
     )
-    out["date_str"] = out.index.get_level_values("radar_key").str.extract(r"(202\d{5})").iloc[:, 0].astype(str).values
+    out["date_str"] = out.index.get_level_values("radar_key").str.split("-", expand=True).get_level_values(1).values
 
     out["part_idx"] = out["part_idx"].round().astype(int)
 
