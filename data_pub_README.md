@@ -44,6 +44,7 @@ The consensus data (`thickness_cts_points.arrow`) consist of tabular point data 
 * `part_idx`: Estimated part index (incremented in case case of data gaps)
 * `antenna`: The antenna centre frequency that was used (MHz)
 * `date_str`: The acqusition date in the format YYYYMMDD
+* `time`: The exact acquisition timestamp of the trace according to the GNSS (in UTC, not GPS time).
 * `temperate`: The median consensus height of the CTS above the bed (0 means no temperate ice, =`thickness` means 100% temperate) (m)
 * `{temperate,thickness}_lower`: The lower (25%) total uncertainty bound of the variable (m)
 * `{temperate,thickness}_upper`: The upper (75%) total uncertainty bound of the variable (m)
