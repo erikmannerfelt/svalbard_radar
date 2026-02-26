@@ -353,13 +353,17 @@ def read_interpretations(radar_key: str, step_m: float) -> pd.DataFrame:
             bounds_error=False,
         )
 
+        # In some cases, the time coordinate is not updated. If so, reconstruct it from the time-interval
+        if np.mean(np.diff(dataset.time.values[:5])) < 1e-5:
+            dataset["time"] = dataset["time"] + np.arange(dataset["time"].shape[0]) * dataset.attrs["time-interval"]
+
         models = {
             key: scipy.interpolate.interp1d(
                 dataset["x"].values,
                 dataset[key].values,
                 bounds_error=False,
             )
-            for key in ["easting", "northing", "elevation"]
+            for key in ["easting", "northing", "elevation", "time"]
         }
         x_inds, part_idx, distance = chord_sample_xinds_part_distance(
             x=dataset["x"].values,                # pixel x per vertex
@@ -642,6 +646,8 @@ def merge_all_interpretations(
 
     out["bed_elevation"] = out["elevation"] - out["thickness"]
     out["temperate_elevation"] = out["bed_elevation"] + out["temperate"]
+
+    out["time"] = (out["time"] * 1e9).astype("datetime64[ns]").dt.tz_localize("UTC")
 
     out = gpd.GeoDataFrame(
         out,
