@@ -34,9 +34,7 @@ def main():
         "10. Department of Hydrology, Norwegian Water Resources and Energy Directorate (NVE), Oslo, Norway",
     ]
 
-    # freq_ids = {0: "25", 1: "50", 2: "100"}
     freq_ids = {"25 MHz": 0, "50 MHz": 1, "100 MHz": 2}
-    survey_freqs = []
 
     cts_survey = pd.DataFrame.from_records(
         [
@@ -68,28 +66,31 @@ def main():
     all_data["date_str"] = all_data["radar_key"].str.split("-", expand=True).iloc[:, 1]
     print((all_data["date_str"] == "nan").describe())
 
+    # Convert to isoformat with exactly one decimal
+    all_data["time"] = all_data["time"].dt.round(freq="100ms").dt.strftime("%Y-%m-%dT%H:%M:%S.%f").str.slice(0, 21) + all_data["time"].dt.strftime("%:z")
+
     all_data["survey_id"] = all_data["antenna"].apply(lambda s: freq_ids[s])
     all_data["id"] = all_data.index
-    all_data["profile_id"] = all_data["radar_key"].astype("category").cat.codes
+    # all_data["profile_id"] = all_data["radar_key"].astype("category").cat.codes
     all_data["date_min"] = all_data["date_str"].str.slice(0, 4) + "-" + all_data["date_str"].str.slice(4, 6) + "-" + all_data["date_str"].str.slice(6, 8)
     all_data["date_max"] = all_data["date_min"]
     # all_data["location_uncertainty"] = 10
     all_data["depth"] = np.where(all_data["temperate"] == 0, np.inf, all_data["thickness"] - all_data["temperate"])
     all_data["depth_uncertainty"] = np.where(all_data["temperate"] == 0, np.inf, all_data["temperate_nmad"])
-    all_data = all_data.rename(columns={"thickness": "bed_depth", "thickness_nmad": "bed_depth_uncertainty"})
+    all_data = all_data.rename(columns={"thickness": "bed_depth", "thickness_nmad": "bed_depth_uncertainty", "time": "datetime", "radar_key": "profile_id"})
     all_data["longitude"] = all_data["geometry"].x.round(6)
     all_data["latitude"] = all_data["geometry"].y.round(6)
+
 
     for key in ["depth", "depth_uncertainty", "bed_depth", "bed_depth_uncertainty", "elevation"]:
         all_data[key] = all_data[key].round(2)
 
     all_data.sort_values(["survey_id", "profile_id", "id"], inplace=True)
 
-    cts_point = all_data[["survey_id", "id", "profile_id", "date_min", "date_max", "latitude", "longitude", "depth", "depth_uncertainty", "elevation", "bed_depth", "bed_depth_uncertainty"]]
+    cts_point = all_data[["survey_id", "id", "profile_id", "date_min", "date_max", "latitude", "longitude", "depth", "depth_uncertainty", "elevation", "bed_depth", "bed_depth_uncertainty", "datetime"]]
 
-    print(cts_point.shape)
-
-    sub = pd.concat([cts_point[np.isfinite(cts_point["depth"])].sample(n=50, random_state=1),cts_point[~np.isfinite(cts_point["depth"])].sample(n=10, random_state=1)])
+    # sub = pd.concat([cts_point[np.isfinite(cts_point["depth"])].sample(n=50, random_state=1),cts_point[~np.isfinite(cts_point["depth"])].sample(n=10, random_state=1)])
+    sub = cts_point
 
 
     out_dir = Path(__file__).absolute().parents[1] / "glenglat_pub"
