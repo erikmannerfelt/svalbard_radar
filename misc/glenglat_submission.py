@@ -4,10 +4,8 @@ import numpy as np
 
 from pathlib import Path
 
-def main():
-
-    #
-    investigators = [
+def get_investigators() -> list[str]:
+    return [
         "Erik Schytt {Mannerfelt} 0000-0002-9146-557X (1,2)",
         "Ursula {Enzenhofer} 0009-0005-4802-1243 (2,3)",
         "Satu {Innanen} 0009-0002-2899-1021 (1)",
@@ -20,8 +18,10 @@ def main():
         "Geir {Moholdt} 0000-0002-8883-1620 (9)",
         "Solveig {Solem} 0009-0007-4566-0167 (10)",
         "Andrew {Hodson} 0000-0002-1255-7987 (2)"
-    ]
-    agencies = [
+    ]    
+
+def get_agencies() -> list[str]:
+    return [
         "1. Department of Geosciences, University of Oslo, Oslo, Norway",
         "2. Arctic Geology, The University Centre in Svalbard, Longyearbyen, Norway",
         "3. Department of Geography and Social Anthropology, NTNU, Trondheim, Norway",
@@ -34,7 +34,28 @@ def main():
         "10. Department of Hydrology, Norwegian Water Resources and Energy Directorate (NVE), Oslo, Norway",
     ]
 
-    freq_ids = {"25 MHz": 0, "50 MHz": 1, "100 MHz": 2}
+def get_freq_ids()-> dict[str, int]:
+    return {"25 MHz": 0, "50 MHz": 1, "100 MHz": 2}
+
+
+def get_funding() -> list[str]:
+    return [
+        "Research Council of Norway [00epmv149] > Arctic Field Grant [350271]",  # Erik AFG
+        "Research Council of Norway [00epmv149] > Arctic Field Grant [350454]",  # Ursula AFG
+        "Norwegian Polar Institute [03avf6522]",
+        "University of Oslo [01xtthb56]",
+        "European Space Agency [03wd9za21] > St3TART",  # Geir
+        "European Research Council [0472cxd90] > GLACMASS [101096057]", # Johannes funding
+        "Research Council of Norway [00epmv149] > CLIMAGAS [294764]",  # Gabby/Andy
+        "Research Council of Norway [00epmv149] > GLACIGAS [343293]",  # Gabby/Andy
+        "Research Council of Norway [00epmv149] > HYDRO-SURGE [329174]",  # Gabby/Andy
+    ]
+    
+
+def main():
+    investigators = get_investigators()
+    agencies = get_agencies()
+    freq_ids = get_freq_ids()
 
     cts_survey = pd.DataFrame.from_records(
         [
@@ -56,7 +77,7 @@ def main():
                 # "curator": investigators[0],
                 "investigators": "|".join(investigators),
                 "agencies": "|".join(agencies),
-                "funding": ""
+                "funding": "|".join(get_funding())
             } for freq, i in freq_ids.items()
         ]
     )
