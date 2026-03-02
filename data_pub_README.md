@@ -1,7 +1,8 @@
 # Draft dataset publication from Mannerfelt et al., (submitted)
 Titled: **Glacier thickness, thermal regime, and subjective uncertainty from ground-penetrating radar of 25 Svalbard glaciers**
 
-### **NOTE**: This is a preliminary version that only contains radargrams from Filantropbreen and Fimbulisen. All data will be available upon final publication of the paper.
+### **NOTE**: This is a preliminary version that only contains radargrams from Filantropbreen and Fimbulisen for getting peer feedback on the data format.. All data will be available upon final publication of the paper.
+
 
 ## Dataset description
 
@@ -9,7 +10,7 @@ This repository contains ground-penetraing radar data (GPR) from 25 glaciers in 
 It includes crowd-sourced consensus estimates of glacier thickness and thermal regime (defined by the cold-temperate transition surface; CTS).
 
 The crowd sourcing website is available at https://radar.mannerfelt.org.
-The source code is available at https://github.com/erikmannerfelt/svalbard_radar.
+The source code is soon available at https://github.com/erikmannerfelt/svalbard_radar.
 
 ## Dataset organization
 Its contents are:
@@ -30,6 +31,17 @@ Each profile's id (`radar_key`) is unique and is formed like this `<glacier>-<da
 The `<glacier>` part is a simplified version of the glacier's name (see `shapes/glacier_locations.geojson` in the code repository for locations and true names).
 The `<date>` part is the acquisition date in the format YYYYMMDD.
 The `<filename>` part is the stem of the first .rad filename (e.g. "DAT_0001_A1"), plus the amount of files that were merged by `rsgpr`,  (e.g. "_3" for three merged files).
+
+### **NOTE**: The following radargrams will be made available here latest 1 July 2027. They are currently reserved for Enzenhofer et al. (in prep) (link to be added here):
+- `mettebreen-20230305-DAT_0229_A1_1`
+- `mettebreen-20230305-DAT_0235_A1_8`
+- `ragna_mariebreen-20230305-DAT_0067_A1_1`
+- `ragna_mariebreen-20230305-DAT_0068_A1_3`
+- `edvardbreen-20230305-DAT_0230_A1_1`
+- `edvardbreen-20230305-DAT_0234_A1_1`
+- `edvardbreen-20230305-DAT_0232_A1_1`
+- `rabotbreen-20250402-DAT_0068_A1_1`
+- `rabotbreen-20250402-DAT_0071_A1_1`
 
 ## Thickness and thermal regime data description
 The consensus data (`thickness_cts_points.arrow`) consist of tabular point data with the following fields:
@@ -61,6 +73,8 @@ The consensus data (`thickness_cts_points.arrow`) consist of tabular point data 
 
 
 The vertical CRS of elevation is unknown but is identical to that used by the [Norwegian Polar Institute S0 DEM](https://doi.org/10.21334/NPOLAR.2014.DCE53A47) due to it being the co-registration reference.
+
+The uncertainty estimate of the CTS is set to only be the consensus spread wherever there is a "certain cold" flag (i.e. where the 75% consensus percentile says 0% temperate). In all other areas, the uncertainty is a combination of of GPR, GNSS, and consensus uncertainties. This is done to reduce ambiguity in the interpretation of the uncertainty, as "certain cold" areas would otherwise misleadingly appear like they could be temperate due to the added instrument-related uncertainty.
 
 ## Interpretation line format description
 Each user's interpretation (i.e. each time they pressed the "SUBMIT" button) is saved as a `.json`.

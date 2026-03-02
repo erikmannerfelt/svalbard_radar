@@ -404,7 +404,7 @@ def embargoed_radar_keys() -> list[str]:
     ]
 
 
-def make_data_publication(glaciers: list[str] | None = ["filantropbreen", "fimbulisen"]):
+def make_data_publication(glaciers: list[str] | None = ["filantropbreen", "fimbulisen"], use_embargo: bool = True):
     import svalbardradar.interpretations
     import svalbardradar.process_radar
     import xarray as xr
@@ -413,7 +413,8 @@ def make_data_publication(glaciers: list[str] | None = ["filantropbreen", "fimbu
     all_data = svalbardradar.interpretations.merge_all_interpretations()
 
     # Make sure that the keys are spelled correctly (i.e. they all occur somewhere in the data)
-    assert np.isin(embargoed_radar_keys(), all_data["radar_key"]).all()
+    embargo_list = embargoed_radar_keys()
+    assert np.isin(embargo_list, all_data["radar_key"]).all()
 
     pub_dir = Path("data_pub")
 
@@ -423,8 +424,6 @@ def make_data_publication(glaciers: list[str] | None = ["filantropbreen", "fimbu
         glaciers: list[str] = all_data["glacier"].unique().tolist()  # pyright: ignore[reportAssignmentType]
     else:
         all_data = all_data[all_data["glacier"].isin(glaciers)]
-
-    all_data = all_data[~all_data["radar_key"].isin(embargoed_radar_keys())]
 
     all_raw_dirs = svalbardradar.process_radar.get_paths()
     report_paths = []
@@ -439,20 +438,26 @@ def make_data_publication(glaciers: list[str] | None = ["filantropbreen", "fimbu
             for radar_key, per_key in per_glacier.groupby("radar_key"):
                 radar_key = str(radar_key)
 
+                embargoed = radar_key in embargo_list and use_embargo
+                _, date_str, file_stem = radar_key.split("-")
+
+                # Write a thickness/cts csv for the key
                 data_bytes = io.BytesIO()
                 per_key.to_csv(data_bytes, index=False)
                 csvs_zipfile.writestr(f"thickness_cts_points_{radar_key}.csv", data_bytes.getvalue())
                 del data_bytes
 
+                # Make sure to include the DEM for this key
                 dem_paths.add(svalbardradar.process_radar.get_dem_path(radar_key))
 
-                _, date_str, file_stem = radar_key.split("-")
+                # Define filepaths to copy over to the data pub
                 thumbnail_path = Path(f"web/static/radargrams/{glacier}/{date_str}/{file_stem}/thumbnail.jpg")
                 report_path = Path(f"figures/all_interpretations_perprofile/interpretations_{radar_key}.pdf")
                 processed_path = paths.processed_radar_path(radar_key)
 
                 report_paths.append(str(report_path.absolute()))
 
+                # Add all the raw data filenames
                 file_stems = ["_".join(file_stem.split("_")[:-1])]
                 if not radar_key.endswith("_1"):
                     with xr.open_dataset(processed_path) as dataset:
@@ -460,8 +465,8 @@ def make_data_publication(glaciers: list[str] | None = ["filantropbreen", "fimbu
                             if "Merged " in line:
                                 file_stems.append(line.split("/")[-1].split(".rd3")[0])
 
+                # Construct filepaths for all the raw data
                 filepaths = []
-
                 for file_stem in file_stems:
                     try:
                         rd3_filepath = next(
@@ -472,6 +477,7 @@ def make_data_publication(glaciers: list[str] | None = ["filantropbreen", "fimbu
 
                     filepaths += [rd3_filepath, rd3_filepath.with_suffix(".cor"), rd3_filepath.with_suffix(".rad")]
 
+                # Make a track file for the key
                 lines = []
                 for part_idx, per_part in per_key.groupby("part_idx"):
                     if per_part.shape[0] < 2:
@@ -482,26 +488,29 @@ def make_data_publication(glaciers: list[str] | None = ["filantropbreen", "fimbu
                             "part_idx": part_idx,
                         }
                     )
-
                 track = gpd.GeoDataFrame.from_records(lines)
                 track.set_geometry("geometry", crs=per_key.crs, inplace=True)
                 track["length"] = track["geometry"].length
 
-                rawdata_bytes = io.BytesIO()
-                with zipfile.ZipFile(rawdata_bytes, mode="w") as zip_file:
-                    for filepath in filepaths:
-                        zip_file.write(filepath, arcname=filepath.name)
-                radargrams_zipfile.writestr(f"{radar_key}/{radar_key}_raw_data.zip", rawdata_bytes.getvalue())
-                del rawdata_bytes
+                if not embargoed:
+                    # Add the raw data to the zipfile
+                    rawdata_bytes = io.BytesIO()
+                    with zipfile.ZipFile(rawdata_bytes, mode="w") as zip_file:
+                        for filepath in filepaths:
+                            zip_file.write(filepath, arcname=filepath.name)
+                    radargrams_zipfile.writestr(f"{radar_key}/{radar_key}_raw_data.zip", rawdata_bytes.getvalue())
+                    del rawdata_bytes
 
+                # Add the track to the zipfile
                 track_bytes = io.BytesIO()
                 track.to_file(track_bytes, driver="GeoJSON")
                 radargrams_zipfile.writestr(f"{radar_key}/{radar_key}_track.geojson", track_bytes.getvalue())
                 del track_bytes
 
                 radargrams_zipfile.write(thumbnail_path, f"{radar_key}/{radar_key}_thumbnail.jpg")
-                radargrams_zipfile.write(processed_path, f"{radar_key}/{radar_key}_processed.nc")
                 radargrams_zipfile.write(report_path, f"{radar_key}/{radar_key}_interpretation_report.pdf")
+                if not embargoed:
+                    radargrams_zipfile.write(processed_path, f"{radar_key}/{radar_key}_processed.nc")
 
     subprocess.run(["pdfunite"] + report_paths + [str(pub_dir / "interpretation_report.pdf")], check=True)
 
