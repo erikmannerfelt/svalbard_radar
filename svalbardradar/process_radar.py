@@ -209,7 +209,7 @@ def get_dem_path(radar_key: str) -> Path:
             return dem_dir / "von_postbreen_dem_2024.tif"
         case "dronbreen" | "lofthusbreen":
             match year:
-                case 2023 | 2024:
+                case 2023 | 2024 | 2025:
                     return dem_dir / "dronbreen_dem_2024.tif"
                 case _:
                     return dem_dir / "dron_moysal_kok_dem_2022.tif"
