@@ -390,6 +390,20 @@ def data_stats():
     )
 
 
+def embargoed_radar_keys() -> list[str]:
+    return [
+        "mettebreen-20230305-DAT_0229_A1_1",
+        "mettebreen-20230305-DAT_0235_A1_8",
+        "ragna_mariebreen-20230305-DAT_0067_A1_1",
+        "ragna_mariebreen-20230305-DAT_0068_A1_3",
+        "edvardbreen-20230305-DAT_0230_A1_1",
+        "edvardbreen-20230305-DAT_0234_A1_1",
+        "edvardbreen-20230305-DAT_0232_A1_1",
+        "rabotbreen-20250402-DAT_0068_A1_1",
+        "rabotbreen-20250402-DAT_0071_A1_1",
+    ]
+
+
 def make_data_publication(glaciers: list[str] | None = ["filantropbreen", "fimbulisen"]):
     import svalbardradar.interpretations
     import svalbardradar.process_radar
@@ -397,6 +411,9 @@ def make_data_publication(glaciers: list[str] | None = ["filantropbreen", "fimbu
     import subprocess
 
     all_data = svalbardradar.interpretations.merge_all_interpretations()
+
+    # Make sure that the keys are spelled correctly (i.e. they all occur somewhere in the data)
+    assert np.isin(embargoed_radar_keys(), all_data["radar_key"]).all()
 
     pub_dir = Path("data_pub")
 
@@ -406,6 +423,8 @@ def make_data_publication(glaciers: list[str] | None = ["filantropbreen", "fimbu
         glaciers: list[str] = all_data["glacier"].unique().tolist()  # pyright: ignore[reportAssignmentType]
     else:
         all_data = all_data[all_data["glacier"].isin(glaciers)]
+
+    all_data = all_data[~all_data["radar_key"].isin(embargoed_radar_keys())]
 
     all_raw_dirs = svalbardradar.process_radar.get_paths()
     report_paths = []
