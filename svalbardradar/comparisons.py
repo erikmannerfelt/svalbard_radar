@@ -1,6 +1,7 @@
 import zipfile
 import tarfile
 from pathlib import Path
+import subprocess
 
 import geopandas as gpd
 import numpy as np
@@ -34,6 +35,34 @@ def get_vanpelt() -> Path:
 
     misc.download_large_file(out_path, url)
     return out_path
+
+
+def get_vanpelt_lowres() -> Path:
+
+    highres_path = get_vanpelt()
+
+    out_path = highres_path.with_name(highres_path.stem + "_lowres.vrt")
+
+    if out_path.is_file():
+        return out_path
+
+    from osgeo import gdal
+
+    with rio.open(highres_path) as raster:
+        bounds = raster.bounds
+
+    # The 500m grid is shifted 200m up and to the right compared to what GDAL would do.
+    shift = 200
+    gdal.UseExceptions()
+    gdal.BuildVRT(
+        out_path.absolute(),
+        highres_path,
+        xRes=500,
+        yRes=500,
+        resampleAlg="nearest",
+        targetAlignedPixels=False,
+        outputBounds=[bounds.left - shift, bounds.bottom - shift, bounds.right - shift, bounds.top - shift],
+    )    
 
 
 def get_furst() -> Path:
@@ -302,6 +331,67 @@ def sample_glathida() -> pd.DataFrame:
     return data
 
 
+def sample_raster(raster_path: Path, coords: gpd.GeoSeries):
+    if coords.shape[0] == 0:
+        raise ValueError("No points")
+
+    cmd = [
+        "gdallocationinfo",
+        "-xml",
+        "-b", "1",
+        "-geoloc",
+        "-r", "bilinear",
+        str(raster_path),
+    ]
+
+    stdin_data = "\n".join(f"{g.x} {g.y}" for g in coords.values) + "\n"
+
+    proc = subprocess.run(
+        cmd,
+        input=stdin_data,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+
+
+    import xml.etree.ElementTree as ET
+    xml_text = "<root>\n" + proc.stdout + "\n</root>"
+    root = ET.fromstring(xml_text)
+
+    reports = list(root.iter("Report"))
+    n_reports = len(reports)
+
+    if n_reports != len(coords):
+        # Optional: you can decide to be stricter or looser here
+        raise RuntimeError(
+            f"Expected {len(coords)} reports, got {n_reports}. "
+            "Check gdallocationinfo output."
+        )
+
+    out = np.empty(n_reports, dtype=np.float32)
+
+    for i, rep in enumerate(reports):
+        alert = rep.find(".//Alert")
+        if alert is not None and alert.text:
+            pt = coords[i]
+            raise ValueError(
+                f"Error parsing coord (x: {pt.x:.3f}, y: {pt.y:.3f}): {alert.text}"
+            )
+
+        val_el = rep.find(".//Value")
+        if val_el is None or val_el.text is None:
+            pt = coords[i]
+            out[i] = np.nan
+            continue
+
+        out[i] = np.float32(val_el.text)
+
+    return out
+
+
+
+
 def sample_models(overwrite_cache: bool = False):
     import svalbardradar.interpretations
 
@@ -320,6 +410,8 @@ def sample_models(overwrite_cache: bool = False):
         # "frank": get_frank(),
     }
 
+    vanpelt_lowres = get_vanpelt_lowres()
+
     model_year = {
         "farinotti": 2010,
         "furst": 2010,
@@ -328,24 +420,37 @@ def sample_models(overwrite_cache: bool = False):
     }
 
     with rio.open(get_hugonnet()) as raster:
-        data["hugonnet_dhdt"] = np.fromiter(
-            raster.sample(data[["easting", "northing"]].values),
-            dtype=raster.dtypes[0],
-            count=data.shape[0],
-        )
+        data["hugonnet_dhdt"] = sample_raster(get_hugonnet(), data.geometry)
+        # data["hugonnet_dhdt"] = np.fromiter(
+        #     raster.sample(data[["easting", "northing"]].values),
+        #     dtype=raster.dtypes[0],
+        #     count=data.shape[0],
+        # )
 
     for key in model_paths:
-        with rio.open(model_paths[key]) as raster:
-            arr = np.fromiter(
-                raster.sample(data[["easting", "northing"]].values),
-                dtype=raster.dtypes[0],
-                count=data.shape[0],
-            )
-            # There seem to be extreme outliers now and then.
-            arr[(arr < 0) | (arr > 1000)] = np.nan
+        # with rio.open(model_paths[key]) as raster:
+            # arr = np.fromiter(
+            #     raster.sample(data[["easting", "northing"]].values),
+            #     dtype=raster.dtypes[0],
+            #     count=data.shape[0],
+            # )
+        if key == "vanpelt":
+            highres = data["radar_key"].str.split("-", expand=True).iloc[:, 0].isin(["slakbreen", "mettebreen", "filantropbreen", "antoniabreen"])
 
-            data[f"{key}_thickness_uncorr"] = arr
-            data[f"{key}_thickness"] = arr - (model_year[key] - STANDARD_YEAR) * data["hugonnet_dhdt"]
+
+            arr = np.full(data.shape[0], np.nan, dtype="float32")
+
+            arr[highres] = sample_raster(model_paths[key], data[highres].geometry)
+            arr[~highres] = sample_raster(vanpelt_lowres, data[~highres].geometry)
+
+        else:
+            arr = sample_raster(model_paths[key], data.geometry)
+
+        # There seem to be extreme outliers now and then.
+        arr[(arr < 0) | (arr > 1000)] = np.nan
+
+        data[f"{key}_thickness_uncorr"] = arr
+        data[f"{key}_thickness"] = arr - (model_year[key] - STANDARD_YEAR) * data["hugonnet_dhdt"]
 
     data = data.dropna(subset=[f"{key}_thickness" for key in model_paths], how="all")
 

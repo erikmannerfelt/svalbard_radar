@@ -646,10 +646,13 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
             kde = scipy.stats.gaussian_kde(
                 subset[["thickness", f"{model}_thickness"]].sample(n=5000, random_state=0).astype("float32").T
             )
+            density = kde.evaluate(subset[["thickness", f"{model}_thickness"]].astype("float32").T)
+            # Remove extremely sparsely located points (i.e. based on just one track)
+            mask = density > np.percentile(density, 0.8)
             axis.scatter(
-                subset["thickness"],
-                subset[f"{model}_thickness"],
-                c=kde.evaluate(subset[["thickness", f"{model}_thickness"]].astype("float32").T),
+                subset["thickness"][mask],
+                subset[f"{model}_thickness"][mask],
+                c=density[mask],
                 edgecolor="none",
                 s=2,
             )
