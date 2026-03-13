@@ -54,45 +54,45 @@
         "nixpkgs": [
           "nixpkgs"
         ],
-        "rsgpr": "rsgpr"
+        "ridal": "ridal"
       },
       "locked": {
-        "lastModified": 1757499950,
-        "narHash": "sha256-zOyBLB5ect1G2hj7u39TzGb2Y+34haipOBpD2ES3pVY=",
+        "lastModified": 1773410479,
+        "narHash": "sha256-5T4VlG5qJXAqiHG2/mBmXmGlRrUt7xb75S6K+e6c3rM=",
         "owner": "erikmannerfelt",
         "repo": "nixrik",
-        "rev": "8e196691e3c15e86d95f5a467cd8bd0b69f8027f",
+        "rev": "e328a77b6269600b2c24896236fa97a069e09eec",
         "type": "gitlab"
       },
       "original": {
         "owner": "erikmannerfelt",
         "repo": "nixrik",
         "type": "gitlab"
+      }
+    },
+    "ridal": {
+      "inputs": {
+        "flake-utils": "flake-utils",
+        "nixpkgs": "nixpkgs_2"
+      },
+      "locked": {
+        "lastModified": 1773407076,
+        "narHash": "sha256-wrNo9A0c+wZlQfs91MR5nj2OAI2gu/W8Hd076lljL94=",
+        "owner": "erikmannerfelt",
+        "repo": "ridal",
+        "rev": "53a72d81dcdbfb9dfae7315b9a6b2c5160056741",
+        "type": "github"
+      },
+      "original": {
+        "owner": "erikmannerfelt",
+        "repo": "ridal",
+        "type": "github"
       }
     },
     "root": {
       "inputs": {
         "nixpkgs": "nixpkgs",
         "nixrik": "nixrik"
-      }
-    },
-    "rsgpr": {
-      "inputs": {
-        "flake-utils": "flake-utils",
-        "nixpkgs": "nixpkgs_2"
-      },
-      "locked": {
-        "lastModified": 1757499878,
-        "narHash": "sha256-etRfVLg7luWg5RwbhdjgVwj34B18FJp70xgHiwvZk+Y=",
-        "owner": "erikmannerfelt",
-        "repo": "rsgpr",
-        "rev": "53bdf45cc85c444bb7a325be36cff25e9b4e4a9a",
-        "type": "github"
-      },
-      "original": {
-        "owner": "erikmannerfelt",
-        "repo": "rsgpr",
-        "type": "github"
       }
     },
     "systems": {

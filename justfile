@@ -1,6 +1,6 @@
 
 # Run rsgpr with default settings
-run-rsgpr:
+run-ridal:
     ipython svalbardradar/process_radar.py
 
 # Build all cached items

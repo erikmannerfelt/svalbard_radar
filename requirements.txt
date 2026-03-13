@@ -22,3 +22,4 @@ pyarrow
 ssort
 python-dotenv
 textalloc
+ridal

@@ -19,7 +19,7 @@
             my-python
             zsh
             nodejs
-            rsgpr
+            ridal
             netcdf
             just
             ruff

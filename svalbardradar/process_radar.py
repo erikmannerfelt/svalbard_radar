@@ -9,7 +9,7 @@ import dotenv
 
 dotenv.load_dotenv()
 
-RSGPR_PATH = "rsgpr"
+RIDAL_PATH = "ridal"
 
 
 def get_paths(offline: bool = False):
@@ -255,6 +255,7 @@ def run_rsgpr(
     merge: str | None = "30 min",
     antenna: str | None = None,
 ):
+    import ridal
     siglog_strength = 1
     if antenna is not None and "25 MHz" in antenna:
         siglog_strength = 0
@@ -284,35 +285,15 @@ def run_rsgpr(
     elif "GPR_20250402_B-vonPostbreen-25MHz/DAT_0024_A1" in str(input_filepath):
         rsgpr_steps.insert(0, "subset(4500 -1)")
 
-    cmds = (
-        [
-            RSGPR_PATH,
-            "-v",
-            "0.168",
-            "--steps",
-            ",".join(rsgpr_steps),
-            "--filepath",
-            str(input_filepath),
-            "--output",
-            str(output_filepath),
-            "-r",
-        ]
-        + ((["--merge", merge]) if merge is not None else [])
-        + ((["--dem", str(dem_path)]) if dem_path is not None else [])
+    ridal.run_cli(
+        filepath=str(input_filepath),
+        output=str(output_filepath),
+        dem=str(dem_path) if dem_path is not None else None,
+        merge=merge,
+        render=str(Path(output_filepath).with_suffix(".jpg")),
+        velocity=0.168,
+        steps=rsgpr_steps,
     )
-
-    result = subprocess.run(
-        cmds,
-        # check=True,
-        capture_output=True,
-    )
-    if result.returncode != 0:
-        raise ValueError(f"rsgpr failed: {result.stderr}")
-
-    log_filepath = Path(output_filepath).with_suffix(".log")
-
-    log_filepath.write_text(f"stdout:\n{result.stdout.decode()}\n\n\nstderr:\n{result.stderr.decode()}")
-
 
 class GprInfo:
     filepath: str
@@ -353,7 +334,7 @@ class GprInfo:
     def from_rsgpr(cls, filepath: Path):
         result = subprocess.run(
             [
-                RSGPR_PATH,
+                RIDAL_PATH,
                 "--info",
                 "--filepath",
                 str(filepath),
