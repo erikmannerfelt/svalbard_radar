@@ -30,7 +30,7 @@ Its contents are:
 Each profile's id (`radar_key`) is unique and is formed like this `<glacier>-<date>-<filename>`.
 The `<glacier>` part is a simplified version of the glacier's name (see `shapes/glacier_locations.geojson` in the code repository for locations and true names).
 The `<date>` part is the acquisition date in the format YYYYMMDD.
-The `<filename>` part is the stem of the first .rad filename (e.g. "DAT_0001_A1"), plus the amount of files that were merged by `rsgpr`,  (e.g. "_3" for three merged files).
+The `<filename>` part is the stem of the first .rad filename (e.g. "DAT_0001_A1"), plus the amount of files that were merged by `ridal`,  (e.g. "_3" for three merged files).
 
 ### **NOTE**: The following radargrams will be made available here latest 1 July 2027. They are currently reserved for Enzenhofer et al. (in prep) (link to be added here):
 - `mettebreen-20230305-DAT_0229_A1_1`

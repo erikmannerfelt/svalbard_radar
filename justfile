@@ -39,3 +39,8 @@ build-all-statistics:
     ipython -c 'from svalbardradar.figures import *; plot_glathida_comparison(show=False, correct_topo=True)'
     ipython -c 'from svalbardradar.figures import *; plot_model_comparison(show=False, correct_topo=True)'
     ipython -c 'from svalbardradar.figures import *; plot_model_temperate_cold_performance(show=False)'
+
+make-data-publications:
+    ipython -c 'from svalbardradar.analysis import *; make_data_publication()'
+    ipython misc/glathida_submission.py
+    ipython misc/glenglat_submission.py
