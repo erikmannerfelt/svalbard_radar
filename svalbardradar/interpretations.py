@@ -8,6 +8,7 @@ import pandas as pd
 import scipy.interpolate
 import shapely.geometry
 import xarray as xr
+import rasterio as rio
 
 from svalbardradar.tools import paths, rasters, stats
 
@@ -353,6 +354,8 @@ def read_interpretations(radar_key: str, step_m: float) -> pd.DataFrame:
             bounds_error=False,
         )
 
+        dem_name = dataset.attrs["elevation-correction"].replace("\"", "").replace("DEM-corrected:", "").strip()
+
         # In some cases, the time coordinate is not updated. If so, reconstruct it from the time-interval
         if np.mean(np.diff(dataset.time.values[:5])) < 1e-5:
             dataset["time"] = dataset["time"] + np.arange(dataset["time"].shape[0]) * dataset.attrs["time-interval"]
@@ -403,6 +406,21 @@ def read_interpretations(radar_key: str, step_m: float) -> pd.DataFrame:
         points = gpd.points_from_xy(data["easting"], data["northing"], crs=crs).to_crs(32633)
         data["easting"] = points.x
         data["northing"] = points.y
+
+    # Read the DEM date
+    date_path = Path(f"dems/") / dem_name.replace(".tif", "_date.tif")
+    with rio.open(date_path) as raster:
+        dem_date = np.fromiter(
+            raster.sample(data[["easting", "northing"]].values),
+            dtype=raster.dtypes[0],
+            count=data.shape[0],
+        )
+    dem_year = np.floor(dem_date / 1000).astype(int)
+    dem_doy = (dem_date - (dem_year * 1000)).astype(int)
+    dates = pd.to_datetime(dem_year.astype(str) + "-01-01") + pd.to_timedelta(dem_doy - 1, unit="D")
+    data["elevation_date"] = dates
+    # The astype is to simplify a later groupby operation
+    data["elevation_date"] = data["elevation_date"].astype(object)
 
     data["antenna"] = antenna
     return data
@@ -551,6 +569,8 @@ def merge_all_interpretations(
         right_index=True,
         left_index=True,
     )
+
+    out["elevation_date"] = out["elevation_date"].astype("datetime64[ns]").dt.date
     out["date_str"] = out.index.get_level_values("radar_key").str.split("-", expand=True).get_level_values(1).values
 
     out["part_idx"] = out["part_idx"].round().astype(int)

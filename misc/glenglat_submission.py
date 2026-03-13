@@ -69,7 +69,7 @@ def main():
                         "From surface-coupled ground-penetrating radar.",
                         f"Data collected with a center frequency of {freq}.",
                         "Interpretations crowd-sourced from >= 10 contributors.",
-                        "Elevations are from co-registered ArcticDEM mosaics.",
+                        "Elevations are from co-registered ArcticDEMs in orthometric heights.",
                         "Uncertainties are normalized median absolute deviations (NMAD).",
                         "Location uncertainty is roughly +- 10 m."
                     ]
@@ -108,7 +108,7 @@ def main():
 
     all_data.sort_values(["survey_id", "profile_id", "id"], inplace=True)
 
-    cts_point = all_data[["survey_id", "id", "profile_id", "date_min", "date_max", "latitude", "longitude", "depth", "depth_uncertainty", "elevation", "bed_depth", "bed_depth_uncertainty", "datetime"]]
+    cts_point = all_data[["survey_id", "id", "profile_id", "date_min", "date_max", "latitude", "longitude", "depth", "depth_uncertainty", "elevation", "elevation_date","bed_depth", "bed_depth_uncertainty", "datetime"]]
 
     # sub = pd.concat([cts_point[np.isfinite(cts_point["depth"])].sample(n=50, random_state=1),cts_point[~np.isfinite(cts_point["depth"])].sample(n=10, random_state=1)])
     sub = cts_point

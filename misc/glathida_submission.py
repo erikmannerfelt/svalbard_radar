@@ -19,8 +19,6 @@ def main():
     all_data["longitude"] = all_data.geometry.x.round(6)
     all_data["survey_id"] = all_data["antenna"].apply(lambda s: freq_ids[s])
 
-    all_data["elevation_date"] = all_data["radar_key"].apply(lambda key: svalbardradar.process_radar.get_dem_path(key).stem.split("_")[-1])
-
     all_data["time"] = all_data["time"].astype(str).str.slice(0, 10)
 
     for key in ["thickness", "thickness_nmad", "elevation"]:
@@ -53,7 +51,7 @@ def main():
                         f"Malå ProEx GPR system with a {frequency} unshielded antenna."
                         "Constant wave velocity in ice of 0.168 m per ns."
                         "Interpretations crowd-sourced from >= 10 contributors.",
-                        "Elevations are from co-registered ArcticDEM mosaics.",
+                        "Elevations are from co-registered ArcticDEMs in orthometric heights.",
                         "Uncertainties are normalized median absolute deviations (NMAD).",
                         "Location uncertainty is roughly +- 10 m."
                     ],
@@ -70,7 +68,7 @@ def main():
 
     all_data = all_data.sample(n=50,random_state=1) 
 
-    all_data[["survey_id", "profile_id", "point_id", "date", "elevation_date", "latitude", "longitude", "elevation", "thickness", "thickness_uncertainty"]].to_csv(out_dir / "point.csv", index=False)
+    all_data[["survey_id", "profile_id", "point_id", "date", "latitude", "longitude", "elevation", "elevation_date", "thickness", "thickness_uncertainty"]].to_csv(out_dir / "point.csv", index=False)
 
 
 

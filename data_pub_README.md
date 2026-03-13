@@ -53,6 +53,7 @@ The consensus data (`thickness_cts_points.arrow`) consist of tabular point data 
 * `easting`: The easting coordinate (EPSG:32633) (m)
 * `northing`: The northing coordinate (EPSG:32633) (m)
 * `elevation`: The elevation above sea level sampled from a DEM (m a.s.l.)
+* `elevation_date`: The date of the elevation value (from a DEM).
 * `part_idx`: Estimated part index (incremented in case case of data gaps)
 * `antenna`: The antenna centre frequency that was used (MHz)
 * `date_str`: The acqusition date in the format YYYYMMDD
