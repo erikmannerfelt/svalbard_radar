@@ -526,3 +526,4 @@ def make_data_publication(glaciers: list[str] | None = ["filantropbreen", "fimbu
 
     all_data.to_feather(pub_dir / "thickness_cts_points.arrow")
     shutil.copyfile("data_pub_README.md", pub_dir / "README.md")
+    shutil.copyfile("funding.csv",  pub_dir / "funding.csv")
