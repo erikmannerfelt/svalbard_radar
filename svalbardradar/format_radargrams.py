@@ -4,6 +4,7 @@ import warnings
 from pathlib import Path
 
 import geopandas as gpd
+import pandas as pd
 import numpy as np
 import scipy
 import scipy.interpolate
@@ -35,7 +36,7 @@ def get_radargram_cache_dirs(src_filepath: Path) -> tuple[Path, Path]:
     filename_for_key = "/".join(src_filepath.parts[-3:])
     with xr.open_dataset(src_filepath) as data:
         checksum = hashlib.md5(
-            (filename_for_key + data.attrs["processing-datetime"]).encode()
+            (filename_for_key + data.attrs["processing_datetime"]).encode()
         ).hexdigest()
 
     static_dir = (
@@ -81,6 +82,7 @@ def parse_radargram(
         return json.loads(meta_cache_path.read_text())
 
     with xr.open_dataset(src_filepath) as data:
+        data["time"] = data["time"].astype(float) / 1e9
         d_t = data["time"].diff("x").values
         d_t[d_t == 0] = np.nan
 
@@ -269,7 +271,7 @@ def parse_radargram(
             "length": length,
             "length_km_rounded": round(length / 1000, 1),
             "max_depth": round(data.depth.max().item(), 2),
-            "max_time": round(data["return-time"].max().item(), 2),
+            "max_time": round(data["twtt"].max().item(), 2),
             "antenna": data.attrs["antenna"],
             "depth_resolution_m": round(float(np.diff(data.depth.values[-2:])[0]), 3),
             "trace_resolution_s": float(trace_resolution_s),

@@ -348,17 +348,18 @@ def read_interpretations(radar_key: str, step_m: float) -> pd.DataFrame:
     interp_paths = paths.get_latest_submissions(radar_key)
 
     with xr.open_dataset(paths.processed_radar_path(radar_key)) as dataset, warnings.catch_warnings():
+        dataset["time"] = dataset["time"].astype(float) / 1e9
         depth_model = scipy.interpolate.interp1d(
             np.arange(dataset["data"].shape[0])[::-1],
             dataset["depth"].values,
             bounds_error=False,
         )
 
-        dem_name = dataset.attrs["elevation-correction"].replace("\"", "").replace("DEM-corrected:", "").strip()
+        dem_name = dataset.attrs["elevation_correction"].replace("\"", "").replace("DEM-corrected:", "").strip()
 
         # In some cases, the time coordinate is not updated. If so, reconstruct it from the time-interval
         if np.mean(np.diff(dataset.time.values[:5])) < 1e-5:
-            dataset["time"] = dataset["time"] + np.arange(dataset["time"].shape[0]) * dataset.attrs["time-interval"]
+            dataset["time"] = dataset["time"] + np.arange(dataset["time"].shape[0]) * dataset.attrs["time_interval"]
 
         models = {
             key: scipy.interpolate.interp1d(

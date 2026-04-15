@@ -248,7 +248,7 @@ def extract_glacier_raw_data(glacier: str = "dronbreen"):
                 print(rad_fp)
 
 
-def run_rsgpr(
+def run_ridal(
     input_filepath: Path | str,
     output_filepath: Path | str,
     dem_path: Path | None = None,
@@ -285,11 +285,12 @@ def run_rsgpr(
     elif "GPR_20250402_B-vonPostbreen-25MHz/DAT_0024_A1" in str(input_filepath):
         rsgpr_steps.insert(0, "subset(4500 -1)")
 
-    ridal.run_cli(
-        filepath=str(input_filepath),
-        output=str(output_filepath),
+    ridal.process(
+        input_filepath,
+        output=output_filepath,
         dem=str(dem_path) if dem_path is not None else None,
-        merge=merge,
+        quiet=True,
+        # merge=merge,
         render=str(Path(output_filepath).with_suffix(".jpg")),
         velocity=0.168,
         steps=rsgpr_steps,
@@ -331,12 +332,32 @@ class GprInfo:
         return min(abs(diff0), abs(diff1))
 
     @classmethod
-    def from_rsgpr(cls, filepath: Path):
+    def from_ridal(cls, filepath: Path):
+
+        import ridal
+
+        info = ridal.info(filepath)[0]
+
+        # print(info)
+        new = cls()
+        new.filepath=info["related_files"]["data"]
+        new.samples=info["metadata"]["samples"]
+        new.traces=info["metadata"]["last_trace"]
+        new.frequency=info["metadata"]["sampling_frequency_mhz"]
+        new.track_length=info["location"]["track_length_m"]
+        new.antenna = info["metadata"]["antenna_name"]
+        new.start_time = datetime.datetime.fromisoformat(info["location"]["start_time"])
+        new.stop_time = datetime.datetime.fromisoformat(info["location"]["stop_time"])
+        return new
+            
+            
+
+
+        raise NotImplementedError()
         result = subprocess.run(
             [
                 RIDAL_PATH,
-                "--info",
-                "--filepath",
+                "info",
                 str(filepath),
             ],
             capture_output=True,
@@ -356,7 +377,7 @@ class GprInfo:
             return constructor(value)
 
         for line in result.stdout.decode().splitlines():
-            if (value := parse(line, "Samples (height):", int)) is not None:
+            if (value := parse(line, "Samples:", int)) is not None:
                 new.samples = value
             elif (value := parse(line, "Traces (width):", int)) is not None:
                 new.traces = value
@@ -425,8 +446,8 @@ def run_all(offline: bool = False, force_redo: bool = False):
                 groups: list[list[GprInfo]] = [[]]
                 for filepath in sorted(file_dir.rglob("*.rad")):
                     try:
-                        gpr_info = GprInfo.from_rsgpr(filepath)
-                    except ValueError as exception:
+                        gpr_info = GprInfo.from_ridal(filepath)
+                    except RuntimeError as exception:
                         if "Could not parse location data" in str(exception):
                             print(f"Skipped {filepath} (invalid location)")
                             continue
@@ -464,20 +485,22 @@ def run_all(offline: bool = False, force_redo: bool = False):
                     if group_length < 100:
                         print(f"Skipped {glacier}/{date_str}/{group_name} (length={group_length:.1f}m)")
                         continue
+
+                    filepaths = [i.filepath for i in group]
                     with tempfile.TemporaryDirectory() as temp_dir:
-                        if len(group) > 1:
-                            input_dir = Path(temp_dir) / "input"
-                            input_dir.mkdir(exist_ok=True)
+                        # if len(group) > 1:
+                        #     input_dir = Path(temp_dir) / "input"
+                        #     input_dir.mkdir(exist_ok=True)
 
-                            for item in group:
-                                filepath = Path(item.filepath)
-                                for subfile in list(filepath.parent.glob(filepath.stem + ".*")):
-                                    (input_dir / subfile.name).symlink_to(subfile)
+                        #     for item in group:
+                        #         filepath = Path(item.filepath)
+                        #         for subfile in list(filepath.parent.glob(filepath.stem + ".*")):
+                        #             (input_dir / subfile.name).symlink_to(subfile)
 
-                            filepath = "" + str(input_dir) + "/*.rad"
+                        #     filepath = "" + str(input_dir) + "/*.rad"
 
-                        else:
-                            filepath = group[-1].filepath
+                        # else:
+                        #     filepath = group[-1].filepath
 
                         out_path = Path(f"processed_radar/{glacier}/{date_str}/{group_name}.nc")
                         out_path.parent.mkdir(exist_ok=True, parents=True)
@@ -497,8 +520,8 @@ def run_all(offline: bool = False, force_redo: bool = False):
                         else:
                             print(f"Processing {out_path}")
                         try:
-                            run_rsgpr(
-                                filepath,
+                            run_ridal(
+                                filepaths,
                                 out_path,
                                 dem_path=dem_path,
                                 antenna=group[0].antenna,

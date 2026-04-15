@@ -262,7 +262,7 @@ def cts_transition_steepness():
     all_data = svalbardradar.interpretations.merge_all_interpretations()
 
     radar_keys = {
-        "mettebreen-20230305-DAT_0235_A1_8": [4300, 5300],
+        "mettebreen-20230305-DAT_0235_A1_8": [4300, 6300],
         # "filantropbreen-20240406-DAT_0372_A1_1",
         # "moysalbreen-20220222-DAT_0749_A1_1",
         # "rugaasfonna-20220218-DAT_0723_A1_1",
@@ -270,12 +270,12 @@ def cts_transition_steepness():
         # "finsterwalderbreen-20250407-DAT_0171_A1_1"],
         "ragna_mariebreen-20240412-DAT_0404_A1_1": [0, 10000],
         # "winsnesbreen-20240503-DAT_0014_A1_1",
-        "dronbreen-20230220-DAT_0009_A1_1": [0, 1500],
+        "dronbreen-20230220-DAT_0009_A1_1": [0, 2500],
         # # "dronbreen-20250327-DAT_0065_A1_1",
-        "kroppbreen-20230228-DAT_0042_A1_1": [1000, 2500],
-        "slakbreen-20240310-DAT_0286_A1_1": [6000, 11000],
-        "edvardbreen-20240411-DAT_0396_A1_1": [9000, 13500],
-        "vallakrabreen-20210513-DAT_0014_A1_31": [600, 1200],
+        "kroppbreen-20230228-DAT_0042_A1_1": [1000, 4500],
+        "slakbreen-20240310-DAT_0286_A1_1": [6000, 14000],
+        "edvardbreen-20240411-DAT_0396_A1_1": [8000, 13500],
+        "vallakrabreen-20210513-DAT_0014_A1_31": [5900, 6200],
     }
 
     transitions = {}
@@ -295,6 +295,10 @@ def cts_transition_steepness():
 
         # data["temperate_frac"] -= data["temperate_frac"].min()
         # data["temperate_frac"] /= data["temperate_frac"].max()
+        # fig, axes = plt.subplots(2, 1, sharex=True)
+        # axes[0].plot(data["distance"], data["temperate_frac"])
+        # axes[1].plot(data["distance"], data["thickness"])
+        # plt.show()
 
         transition_start = data[data["temperate_frac"] > 0.05].iloc[0]
         transition_end = data[data["temperate_frac"] >= (0.95 if "slakbreen" not in radar_key else 0.93)].iloc[0]
@@ -458,12 +462,11 @@ def make_data_publication(glaciers: list[str] | None = ["filantropbreen", "fimbu
                 report_paths.append(str(report_path.absolute()))
 
                 # Add all the raw data filenames
-                file_stems = ["_".join(file_stem.split("_")[:-1])]
+                file_stems = []
                 if not radar_key.endswith("_1"):
                     with xr.open_dataset(processed_path) as dataset:
-                        for line in dataset.attrs["processing-log"].splitlines():
-                            if "Merged " in line:
-                                file_stems.append(line.split("/")[-1].split(".rd3")[0])
+                        for filepath in map(Path, dataset.attrs["original_filepaths"]):
+                            file_stems.append(filepath.stem)
 
                 # Construct filepaths for all the raw data
                 filepaths = []

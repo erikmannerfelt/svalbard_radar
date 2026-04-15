@@ -118,6 +118,7 @@ def plot_dronbreen_examples(show: bool = True):
         axis: plt.Axes = axes[1, i]
 
         with xr.open_dataset(paths.processed_radar_path(info["radar_key"])) as dataset:
+            dataset = dataset.reset_coords(["easting", "northing", "distance"])
             dataset.coords["trace_n"] = "x", np.arange(dataset.x.shape[0])
             dataset = dataset.swap_dims(x="trace_n", y="depth").sel(trace_n=slice(info["start_trace"], None))
 
