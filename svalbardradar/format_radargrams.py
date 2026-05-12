@@ -170,7 +170,7 @@ def parse_radargram(
                 for key in ["abslog", "classic"]:
                     filepath = (
                         static_dir
-                        / f"tiles/{key}/tile_{str(row).zfill(5)}_{str(col).zfill(5)}.jpg"
+                        / f"tiles/{key}/tile_{str(row).zfill(5)}_{str(col).zfill(5)}.webp"
                     )
 
                     if (not filepath.is_file()) or override_cache:
@@ -179,7 +179,7 @@ def parse_radargram(
                         tile_arr = images[key][row_slice, col_slice]
                         filepath.parent.mkdir(exist_ok=True, parents=True)
 
-                        Image.fromarray(tile_arr).save(filepath)
+                        Image.fromarray(tile_arr).convert("L").resize((800, 800)).save(filepath, quality=50, method=6)
                     filepaths[key] = str(filepath).replace(static_base_part, "")
 
                 tiles.append(
