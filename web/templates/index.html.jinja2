@@ -5,18 +5,26 @@
 
 {% macro radargram(radar_key, values, addref=True) %}
     <a 
-        href="/digitize/{{radar_key}}"
-        class="index-card"
+        href="{{ site_root_prefix }}digitize/{{radar_key}}/"
+        class="index-card index-card-anonymous"
         {% if addref %}id="card-{{radar_key}}"{% endif %}
     >
         <div class="index-card-info">
             <h3 class="index-card-title">{{radar_key}}</h3>
-            <p class="index-card-description" id="done-by">            </p>
+            <p class="index-card-description">
+                {% if values.n_total_submissions > 1 %}
+                    Done by {{ values.n_total_submissions }} people.
+                {% elif values.n_total_submissions == 1 %}
+                    Done by 1 person.
+                {% else %}
+                    Not done by anyone.
+                {% endif %}
+            </p>
             <p class="index-card-description">Length: {{values.length_km_rounded}} km.</p>
 
         </div>
         <div class="index-card-img-container">
-              <img loading="lazy" src="{{values.thumbnail}}"></img>
+              <img loading="lazy" src="{{values.thumbnail}}" alt="Thumbnail for {{ radar_key }}"></img>
         </div>
     </a>
 {% endmacro %}
@@ -26,63 +34,24 @@
     <div class="header">
         <h1 class="header-title">{{base_title}}</h1>
 
-        <a href="/howto" class="index-instructions-link">Please read the instructions before starting!</a>
-
-        <!--
-        <p class="user-info">
-        {% if user != None %}
-            Logged in as <b>{{user}}</b>
-            <button id="logout-button">Log out</button>
-        {% else %}
-            <a href="/login" style="font-weight: bold; text-decoration: none; color: black;">Login</a>
-        {% endif %}
-        </p>
-        -->
+        <a href="{{ site_root_prefix }}howto/" class="index-instructions-link">Please read the instructions before starting!</a>
     </div>
 
     <div style="display: flex; flex-wrap: wrap;justify-content: space-between;">
-        <div id="progress-div" style="min-width: 40%;{% if user == None %}display: none;{% endif %}">
-            <div class="index-location-group">
-                <h2 class="index-location-title">Progress</h2>
-                <p id="progress-text" style="font-size: 15pt;">
-                <div class="progress-container">
-                    <div id="progress-percentage" class="progress-percentage">0%</div>
-                    <div class="progress-bar" id="progress-bar"></div>
-                </div>
-                <p><b>Radargram box color explanation</b></p>
-                <p><span class="color-box index-card-important" style="width: 30px;"></span> Focus on these (done by very few)!</p>
-                <p><span class="color-box index-card-unfinished" style="width: 30px;"></span> Still need more contributions!</p>
-                <p><span class="color-box background-color: white;" style="width: 30px;"></span> We have enough for statistics, but even more is better!</p>
-                <p><span class="color-box index-card-finished" style="width: 30px;"></span> Finished by you!</p>
-
-            </div>
-        </div>
-        <div style="min-width: 49%; margin-right: 5px;">
+        <div style="min-width: 100%; margin-right: 5px;">
             <div class="index-location-group">
                 <h2 class="index-location-title">All glaciers</h2>
                 <div class="index-location-list">
                     {% for glacier_key, glacier_radargrams in all_radargrams.items() %}
                         {% set n_total = glacier_radargrams | length - 1 %}
-                        {% set n_done = glacier_radargrams["_meta"]["n_done_by_user"] %}
                         <a href="#group-{{glacier_key}}" id="li-{{glacier_key}}" class="index-card-anonymous">{{glacier_radargrams._meta.nice_name}}. n={{n_total}}</a>
                     {% endfor %}
                 </div>
             </div>
         </div>
-
-
     </div>
     <div class="index-location-group index-recommended-container" style="">
         <h2 class="index-location-title">Submission is closed. Thank you all who participated!</h2>
-        <!--
-        <div>
-            <div class="index-dataset-grid">
-                {% for glacier_key, radar_key in recommendations %}
-                    {{ radargram(radar_key, all_radargrams[glacier_key][radar_key]) }}
-                {% endfor %}
-            </div>
-        </div>
-        -->
     </div>
     {% for glacier_key, glacier_radargrams in all_radargrams.items() %}
         <div class="index-location-group" id="group-{{glacier_key}}">
@@ -106,9 +75,7 @@
                         <p>These radargrams need more contributors!</p>
                         <div class="index-dataset-grid">
                             {% for radar_key, values in parts.unfinished %}
-                                {% if radar_key != "_meta" %}
-                                    {{ radargram(radar_key, values) }}
-                                {% endif %}
+                                {{ radargram(radar_key, values) }}
                             {% endfor %}
                         </div>
                     </div>
@@ -118,9 +85,7 @@
                     <div>
                         <div class="index-dataset-grid">
                             {% for radar_key, values in parts.finished %}
-                                {% if radar_key != "_meta" %}
-                                    {{ radargram(radar_key, values) }}
-                                {% endif %}
+                                {{ radargram(radar_key, values) }}
                             {% endfor %}
                         </div>
                     </div>
@@ -128,5 +93,4 @@
             </div>
         </div>
     {% endfor %}
-    <script src="{{ url_for('static', filename='index.js') }}"></script>
 {% endblock content %}

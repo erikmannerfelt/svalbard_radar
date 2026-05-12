@@ -26,12 +26,8 @@ function get_layer_classes() {
 }
 
 async function get_metadata() {
-  let radar_key = document.querySelector('meta[name="radarkey"]').content;
-
-  let meta = await fetch(`/radargram_meta/${radar_key}.json`).then((response) =>
-    response.json()
-  );
-  meta["radar_key"] = radar_key;
+  let meta_element = document.getElementById("radar-meta");
+  let meta = JSON.parse(meta_element.textContent);
 
   if (meta["xscale"] == undefined) {
     meta["xscale"] = 1;
@@ -434,33 +430,6 @@ function user_message(message, feedback = null) {
   response_text.textContent = message;
 }
 
-async function submit_digitized(data) {
-  try {
-    const response = await fetch("/submit-digitized", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    });
-
-    if (response.status == 401) {
-      user_message(
-        "Not logged in! Please save the data, log in, and try again.",
-        "error"
-      );
-      return;
-    }
-
-    const result = await response.json();
-    console.log("Response:", result);
-    user_message(result.message, "success");
-  } catch (error) {
-    console.error("Error:", error);
-    user_message("An erorr occurred submitting!", "error");
-  }
-}
-
 async function load_digitized_inner(data, meta, drawn_items) {
   const classes = get_layer_classes();
   try {
@@ -556,26 +525,6 @@ async function load_digitized(event, meta, drawn_items) {
     user_message("Error reading file. Please try again", "error");
   };
   reader.readAsText(file);
-}
-
-async function load_latest(meta, drawn_items) {
-  try {
-    let latest = await fetch(
-      `/radargram_latest_submission/${meta.radar_key}.json`
-    ).then((response) => response.json());
-    // If it's emtpy, then there is no submission yet.
-    if (Object.keys(latest).length == 0) {
-      return;
-    }
-    console.log(latest);
-    await load_digitized_inner(latest, meta, drawn_items);
-    user_message(
-      `Loaded the last submission (${drawn_items.getLayers().length} line(s))`
-    );
-  } catch (error) {
-    console.log(error);
-    return;
-  }
 }
 
 function get_user_difficulty() {
@@ -770,8 +719,6 @@ async function setup_map() {
 
   let drawn_items = setup_draw_features(map);
 
-  await load_latest(meta, drawn_items);
-
   if (meta["difficulty"] == undefined) {
     meta["difficulty"] = get_user_difficulty();
   }
@@ -879,47 +826,6 @@ async function setup_map() {
       await load_digitized(event, meta, drawn_items);
       data_saved = false;
     });
-
-  let submit_button = document.getElementById("submit-button");
-  submit_button.onclick = function (event) {
-    if (meta["difficulty"] === null) {
-      user_message("Please choose a difficulty before submitting", "error");
-      return;
-    }
-
-    if (drawn_items.getLayers().length == 0) {
-      user_message("Submit failed: project is empty", "error");
-      return;
-    }
-
-    let n_lines_with_issues = 0;
-    drawn_items.eachLayer(function (layer) {
-      if (validate_polyline(map, layer, true).length > 0) {
-        n_lines_with_issues += 1;
-      }
-    });
-
-    if (n_lines_with_issues > 0) {
-      user_message(
-        `Submit failed: ${n_lines_with_issues} line(s) have unfixed issues. Please look for the red circles.`,
-        "error"
-      );
-      return;
-    }
-
-    let confirmed = confirm(
-      "Are you sure you want to submit your interpretation?"
-    );
-    if (!confirmed) {
-      event.preventDefault();
-      return;
-    }
-
-    let output = make_feature_save_json(drawn_items, meta);
-    submit_digitized(output);
-
-    data_saved = true;
-  };
 
   document
     .getElementById("user-comment")

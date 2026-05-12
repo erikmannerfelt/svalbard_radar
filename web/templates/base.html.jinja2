@@ -8,12 +8,11 @@
     {% set base_title = "GlacieRSTATE: the collaborative Glacier Radar on Svalbard for Temperate ice and Thickness Experiment" %}
     {% set base_title = "The Svalbard radar interpretation experiment" %}
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ static_prefix }}style.css">
 
-    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+		<link rel="icon" type="image/svg+xml" href="{{ static_prefix }}favicon.svg">
 		{% block extrahead %}{% endblock extrahead %}
 </head>
 <body>
-  <script src="{{ url_for('static', filename='base.js') }}"></script>
 	{% block content %}{% endblock content %}
 </body>

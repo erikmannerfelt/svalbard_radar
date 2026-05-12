@@ -15,7 +15,7 @@
 {% set bed_missing = annotated_box('#62F700', "Glacier bed not visible") %}
 {% block content %}
   <div class="header">
-      <a class="home-link" href="/" id="home-button">Home</a>
+      <a class="home-link" href="{{ site_root_prefix }}" id="home-button">Home</a>
       <div style="flex: 1 1 auto;">
         <h1 class="header-title">{{base_title}}</h1>
       </div>
@@ -70,7 +70,7 @@
     </div>
 
     <div class="howto-image-content">
-      <img src="{{ url_for('static', filename='images/interp_illustration.png') }}"></img>
+      <img src="{{ static_prefix }}images/interp_illustration.png"></img>
     </div>
   </div>
 
@@ -92,7 +92,7 @@
     </div>
 
     <div class="howto-image-content">
-      <img src="{{ url_for('static', filename='images/examples/kroppbreen_cold_bed.jpg') }}"></img>
+      <img src="{{ static_prefix }}images/examples/kroppbreen_cold_bed.jpg"></img>
     </div>
 
   </div>
@@ -115,7 +115,7 @@
        </p>
     </div>
     <div class="howto-image-content">
-      <image src="{{ url_for('static', filename='images/examples/dronbreen_temperate_ice.jpg') }}"></image>
+      <image src="{{ static_prefix }}images/examples/dronbreen_temperate_ice.jpg"></image>
     </div>
   </div>
 
@@ -140,7 +140,7 @@
       </p>
     </div>
     <div class="howto-image-content">
-      <image src="{{ url_for('static', filename='images/examples/bergmesterbreen_temperate_bed.jpg') }}"></image>
+      <image src="{{ static_prefix }}images/examples/bergmesterbreen_temperate_bed.jpg"></image>
     </div>
   </div>
 
@@ -164,7 +164,7 @@
        </p>
     </div>
     <div class="howto-image-content">
-      <image src="{{ url_for('static', filename='images/examples/ragnamariebreen_no_bed.jpg') }}"></image>
+      <image src="{{ static_prefix }}images/examples/ragnamariebreen_no_bed.jpg"></image>
     </div>
   </div>
 
@@ -209,7 +209,7 @@
 
     </div>
     <div class="howto-image-content">
-      <image src="{{ url_for('static', filename='images/howto_add_lines.png') }}"></image>
+      <image src="{{ static_prefix }}images/howto_add_lines.png"></image>
     </div>
 
 

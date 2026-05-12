@@ -1,47 +1,28 @@
 {% extends "base.html.jinja2" %}
 {% block extrahead %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='plugins/node_modules/leaflet/dist/leaflet.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='plugins/node_modules/leaflet-draw/dist/leaflet.draw.css') }}">
+    <link rel="stylesheet" href="{{ static_prefix }}plugins/node_modules/leaflet/dist/leaflet.css">
+    <link rel="stylesheet" href="{{ static_prefix }}plugins/node_modules/leaflet-draw/dist/leaflet.draw.css">
 
     <meta name="radarkey" content="{{radar_key}}">
+    <script id="radar-meta" type="application/json">{{ radar_meta_json | safe }}</script>
     <title>Digitizing "{{radar_key}}" - {{base_title}}</title>
 {% endblock extrahead %}
 {% block content %}
     <div class="header">
-        <a class="home-link" href="/#card-{{radar_key}}" id="home-button">Home</a>
+        <a class="home-link" href="{{ site_root_prefix }}" id="home-button">Home</a>
         <h1 class="header-title">{{base_title}}</h1>
 
-        <a href="/howto" class="index-instructions-link">Please read the instructions before starting!</a>
-
-        <!--
-        <p class="user-info">
-        {% if user != None %}
-            Logged in as <b>{{user}}</b>
-            <button id="logout-button">Log out</button>
-        {% else %}
-            Not logged in. Log in on the home page.
-        {% endif %}
-        </p>
-        -->
+        <a href="{{ site_root_prefix }}howto/" class="index-instructions-link">Please read the instructions before starting!</a>
     </div>
     <h1>Digitizing "{{radar_key}}"</h1>
-    <!--
-    <form id="name-form" onSubmit="return false;">
-        <label for="name">Name/alias:</label>
-        <input type="text" id="user-name" name="name">
-    </form>
-    -->
     <div class="digitize-widgets-container">
         <div class="digitize-widgets-item" style="max-width: 80 vw;flex: 1 1 auto;">
             <div style="display: flex; flex-wrap: wrap; flex-direction: rows; width: 100%;">
                 <div class="digitize-widget-card" style="min-width: 50%;">
-                    <h3 style="margin-top: 5px;">Load / save / submit</h3>
+                    <h3 style="margin-top: 5px;">Load / save</h3>
                     <button id="save-button" class="button">Save progress</button>
                     <p>Load data: </p>
                     <input type="file" id="load-button" accept=".json,application/json" style="max-width: 99%;">
-                
-                    <!--<button id="submit-button" class="button submit-button">SUBMIT DATA</button>-->
-                    <b style="margin-top: 10px; color: #333;">SUBMISSION HAS CLOSED</b>
 
                 </div>
                 <div class="digitize-widget-card">
@@ -119,9 +100,8 @@
         <div id="map"></div>
     </div>
 
-    <script src="{{ url_for('static', filename='plugins/node_modules/leaflet/dist/leaflet.js') }}"></script>
-    <script src="{{ url_for('static', filename='plugins/node_modules/leaflet-draw/dist/leaflet.draw.js') }}"></script>
-    <script src="{{ url_for('static', filename='plugins/node_modules/leaflet-polylinedecorator/dist/leaflet.polylineDecorator.js') }}"></script>
-    <script src="{{ url_for('static', filename='base.js') }}"></script>
-    <script src="{{ url_for('static', filename='digitize.js') }}"></script>
+    <script src="{{ static_prefix }}plugins/node_modules/leaflet/dist/leaflet.js"></script>
+    <script src="{{ static_prefix }}plugins/node_modules/leaflet-draw/dist/leaflet.draw.js"></script>
+    <script src="{{ static_prefix }}plugins/node_modules/leaflet-polylinedecorator/dist/leaflet.polylineDecorator.js"></script>
+    <script src="{{ static_prefix }}digitize.js"></script>
 {% endblock content %}
