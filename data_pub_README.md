@@ -6,10 +6,10 @@ Titled: **Glacier thickness, thermal regime, and subjective uncertainty from gro
 
 ## Dataset description
 
-This repository contains ground-penetraing radar data (GPR) from 25 glaciers in Svalbard, associated with the publication Mannerfelt et al., (submitted).
+This repository contains ground-penetraing radar (GPR) data from 25 glaciers in Svalbard, associated with the publication Mannerfelt et al., (submitted).
 It includes crowd-sourced consensus estimates of glacier thickness and thermal regime (defined by the cold-temperate transition surface; CTS).
 
-The crowd sourcing website is available at https://radar.mannerfelt.org.
+An archival version of the crowd sourcing website is available at https://erikmannerfelt.github.io/svalbard_radar_web.
 The source code is soon available at https://github.com/erikmannerfelt/svalbard_radar.
 
 ## Dataset organization
@@ -24,10 +24,10 @@ Its contents are:
     - A thumbnail (picture) as it appeared on the website (.jpg)
     - A report showing the user interpretations and consensus for this radargram (.pdf) 
 * `dems.zip`: Digital Elevation Models (DEMs) used for elevation coordinate correction
-* `interpretation_lines.zip`: Interpretations submitted by users on the website.
-* `interpretation_report.pdf`: A report showing the user interpretations and consensus for each radargram
+* `interpretation_lines.zip`: Interpretations (.json) submitted by users on the website.
+* `interpretation_report.pdf`: A report showing the user interpretations and consensus for every radargram
 
-Each profile's id (`radar_key`) is unique and is formed like this `<glacier>-<date>-<filename>`.
+Each profile's id (`radar_key`) is unique and is formed in the pattern `<glacier>-<date>-<filename>`.
 The `<glacier>` part is a simplified version of the glacier's name (see `shapes/glacier_locations.geojson` in the code repository for locations and true names).
 The `<date>` part is the acquisition date in the format YYYYMMDD.
 The `<filename>` part is the stem of the first .rad filename (e.g. "DAT_0001_A1"), plus the amount of files that were merged by `ridal`,  (e.g. "_3" for three merged files).
@@ -65,7 +65,7 @@ The consensus data (`thickness_cts_points.arrow`) consist of tabular point data 
 * `{temperate,thickness}_user_count`: The amount of users contributing to the consensus (m)
 * `{temperate,thickness}_gpr_uncertainty`: The calculated GPR-related uncertainty component (m)
 * `{temperate,thickness}_gnss_uncertainty`: The calculated GNSS-related uncertainty component (m)
-* `{temperate,thickness}_{std,nmad}`: The standard deviation and NMAD including the GPR and GNSS uncertainty (see the `_user_` variables for only consensus variability) (m)
+* `{temperate,thickness}_{std,nmad}`: The standard deviation and NMAD including the GPR, GNSS and consensus uncertainty (see the `_user_` variables for only consensus variability) (m)
 * `temperate_frac`: The fraction of the ice column that is covered by temperate ice (0-1; unitless)
 * `temperate_frac_std`: The standard deviation of the temperate ice fraction (m)
 * `bed_type`: Classified glacier bed type in the pattern `{uncertain,certain}_{cold,temperate}`. Certain means the user consensus range (25-75%) agrees and uncertain means that one of the two bounds disagree.
@@ -73,7 +73,7 @@ The consensus data (`thickness_cts_points.arrow`) consist of tabular point data 
 * `temperate_elevation`: The elevation above sea level of the median CTS (m a.s.l.)
 
 
-The vertical CRS of elevation is unknown but is identical to that used by the [Norwegian Polar Institute S0 DEM](https://doi.org/10.21334/NPOLAR.2014.DCE53A47) due to it being the co-registration reference.
+The vertical CRS of elevation is identical to that used by the [Norwegian Polar Institute S0 DEM](https://doi.org/10.21334/NPOLAR.2014.DCE53A47) due to it being the co-registration reference.
 
 The uncertainty estimate of the CTS is set to only be the consensus spread wherever there is a "certain cold" flag (i.e. where the 75% consensus percentile says 0% temperate). In all other areas, the uncertainty is a combination of of GPR, GNSS, and consensus uncertainties. This is done to reduce ambiguity in the interpretation of the uncertainty, as "certain cold" areas would otherwise misleadingly appear like they could be temperate due to the added instrument-related uncertainty.
 
