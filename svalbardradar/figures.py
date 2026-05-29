@@ -6,6 +6,7 @@ import geopandas as gpd
 import matplotlib.patheffects
 import matplotlib.ticker
 import matplotlib.pyplot as plt
+import mpl_toolkits.axes_grid1.inset_locator
 import numpy as np
 import pandas as pd
 import scipy.interpolate
@@ -629,6 +630,7 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
 
     r_minmax = [1, 0]
     bias_minmax = [1000, -1000]
+    slope_minmax = [2, 0]
 
     for i, model in enumerate(models):
         col = i % n_cols
@@ -650,7 +652,7 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
             density = kde.evaluate(subset[["thickness", f"{model}_thickness"]].astype("float32").T)
             # Remove extremely sparsely located points (i.e. based on just one track)
             mask = density > np.percentile(density, 0.8)
-            axis.scatter(
+            scatter = axis.scatter(
                 subset["thickness"][mask],
                 subset[f"{model}_thickness"][mask],
                 c=density[mask],
@@ -660,6 +662,13 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
             plt.xlim(0, thickness_bins.max())
             plt.ylim(0, thickness_bins.max())
 
+            if i == 2:
+                inset = axis.inset_axes([0.65, 0.1, 0.1, 0.25])
+                inset.set_xticks([])
+                inset.set_yticks([])
+                cbar = fig.colorbar(scatter, ticks=[density[mask].min(), density[mask].max()], cax=inset) 
+                cbar.ax.set_yticklabels(["Low\ndensity", "High\ndensity"], fontsize=8)
+
         xlim = axis.get_ylim()
         axis.plot([xlim[0], xlim[1]], [xlim[0], xlim[1]], color="black")
 
@@ -668,16 +677,19 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
         nmad = stats.nmad(diff)
         bias = diff.median()
         pearson = subset["thickness"].corr(subset[f"{model}_thickness"])
+        slope_full, intercept_full = total_least_squares_line(subset["thickness"].values, subset[f"{model}_thickness"].values)
 
         if correct_topo:
             bias_minmax = [min(bias_minmax[0], bias), max(bias_minmax[1], bias)] 
             r_minmax = [min(r_minmax[0], pearson), max(r_minmax[1], pearson)] 
+            slope_minmax = [min(slope_minmax[0], slope_full), max(slope_minmax[1], slope_full)] 
             svalbardradar.analysis.record_information(
                 {
                     "inversion": {
                         model: {
                             "nmad": nmad,
-                            "r": svalbardradar.analysis.format_float(pearson, 2),
+                            # "r": svalbardradar.analysis.format_float(pearson, 2),
+                            "slope": svalbardradar.analysis.format_float(slope_full, 2),
                         }
                     }
                 }
@@ -687,9 +699,10 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
             y=0.97,
             s="\n".join(
                 [
+                    f"TLS = {slope_full:.2f}x {'+' if intercept_full > 0 else '-'} {abs(intercept_full):.2f}",
                     f"Median: {bias:.1f} m",
                     f"NMAD: {nmad: .1f} m",
-                    f"r = {pearson:.2f}",
+                    # f"r = {pearson:.2f}",
                 ]
             ),
             transform=axis.transAxes,
@@ -709,6 +722,8 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
                 "inversion": {
                     "min_r": svalbardradar.analysis.format_float(r_minmax[0], 2),
                     "max_r": svalbardradar.analysis.format_float(r_minmax[1], 2),
+                    "min_slope": svalbardradar.analysis.format_float(slope_minmax[0], 2),
+                    "max_slope": svalbardradar.analysis.format_float(slope_minmax[1], 2),
                     "min_bias": bias_minmax[0],
                     "max_bias": bias_minmax[1],
                 }
@@ -721,6 +736,31 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
 
     if show:
         plt.show()
+
+def total_least_squares_line(x, y):
+    x = np.asarray(x)
+    y = np.asarray(y)
+
+    mask = np.isfinite(x) & np.isfinite(y)
+    x = x[mask]
+    y = y[mask]
+
+    if len(x) < 2:
+        raise ValueError("Need at least two points for TLS fit")
+
+    xm = x.mean()
+    ym = y.mean()
+    X = np.column_stack((x - xm, y - ym))
+
+    _, _, vh = np.linalg.svd(X, full_matrices=False)
+    dx, dy = vh[0]
+
+    if np.isclose(dx, 0):
+        return np.inf, xm  # vertical line x = xm
+
+    m = dy / dx
+    b = ym - m * xm
+    return m, b
 
 
 def plot_glathida_comparison(show: bool = True, histogram: bool = False, correct_topo: bool = True):
@@ -758,46 +798,49 @@ def plot_glathida_comparison(show: bool = True, histogram: bool = False, correct
             title = f"{year_intervals[i - 1]}–{year_intervals[i]}"
         axis.set_title(title, fontsize=10)
 
-        pearson = group["thickness"].corr(group["glathida_thickness"])
+        # if i == 0 and correct_topo:
+        #     group["glathida_thickness"] = group["glathida_thickness_uncorr"] - (group["glathida_thickness_uncorr"] - group["glathida_thickness"]) * 0.6
 
-        axis.text(
-            0.03,
-            0.97,
-            "\n".join(
-                [
-                    f"Median: {bias:.1f} m",
-                    f"NMAD: {stats.nmad(group['glathida_diff']):.1f} m",
-                    f"r: {pearson:.2f}",
-                    f"n: {group.shape[0]}",
-                ]
-            ),
-            transform=axis.transAxes,
-            fontsize=9,
-            ha="left",
-            va="top",
-            path_effects=[matplotlib.patheffects.withStroke(linewidth=4, foreground="white")],
-        )
+        # Median-binned points
+        binned = [
+            (vals["thickness"].median(), vals["glathida_thickness"].median())
+            for _, vals in group.groupby(np.digitize(group["thickness"], bins=thickness_bins))
+        ]
+        x, y = np.array(binned).T
 
-        def residuals(coefs, x, y):
-            return coefs[0] * x + coefs[1] - y
+        slope_full, intercept_full = total_least_squares_line(group["thickness"], group["glathida_thickness"])
+        slope_150, _ = total_least_squares_line(*group.loc[group["thickness"] < 150, ["thickness", "glathida_thickness"]].dropna().values.T.astype(float))
 
-        # Calculate a slope (should be =1 in the best case) and print the fit. Also calculate a <150 m slope separately.
-        x = []
-        y = []
-        for _, vals in group.groupby(np.digitize(group["thickness"], bins=thickness_bins)):
-            x.append(vals["thickness"].median())
-            y.append(vals["glathida_thickness"].median())
-        x, y = np.array(x), np.array(y)
-        res_full = scipy.optimize.least_squares(residuals, x0=[0.0, 0.0], args=(x, y)).x
-        res_150 = scipy.optimize.least_squares(residuals, x0=[0.0, 0.0], args=(x[x < 150], y[x < 150])).x
+        # Wierd hack here: the patheffect overlaps the text, so this draws text twice, but without patheffects on the second run.
+        for j in range(2, 4):
+            axis.text(
+                0.03,
+                0.97,
+                "\n".join(
+                    [
+                        f"TLS: y = {slope_full:.2f}x {'+' if intercept_full > 0 else '-'} {abs(intercept_full):.2f}",
+                        f"Median: {bias:.1f} m",
+                        f"NMAD: {stats.nmad(group['glathida_diff']):.1f} m",
+                        # f"r: {pearson:.2f}",
+                        f"n: {group.shape[0]}",
+                    ]
+                ),
+                transform=axis.transAxes,
+                fontsize=9,
+                ha="left",
+                va="top",
+                zorder=j,
+                path_effects=[matplotlib.patheffects.withStroke(linewidth=10, foreground="white")] if j == 2 else None,
+            )
+
 
         if correct_topo:
             key = ["before", "middle", "after"][i]
             svalbardradar.analysis.record_information(
                 {
                     "glathida": {
-                        f"{key}_slope_full": svalbardradar.analysis.format_float(res_full[0], 2),
-                        f"{key}_slope_thin": svalbardradar.analysis.format_float(res_150[0], 2),
+                        f"{key}_slope_full": svalbardradar.analysis.format_float(slope_full, 2),
+                        f"{key}_slope_thin": svalbardradar.analysis.format_float(slope_150, 2),
                         f"{key}_bias": bias,
                     }
                 }
@@ -813,16 +856,24 @@ def plot_glathida_comparison(show: bool = True, histogram: bool = False, correct
             axis.imshow(hist2, extent=(0.0, thickness_bins[-1], 0.0, thickness_bins[-1]))
         else:
             kde = scipy.stats.gaussian_kde(group[["thickness", "glathida_thickness"]].astype("float32").T)
-            axis.scatter(
+            density = kde.evaluate(group[["thickness", "glathida_thickness"]].astype("float32").T)
+            scatter = axis.scatter(
                 group["thickness"],
                 group["glathida_thickness"],
                 s=5,
                 alpha=1,
-                c=kde.evaluate(group[["thickness", "glathida_thickness"]].astype("float32").T),
+                c=density,
                 edgecolor="none",
             )
             plt.xlim(0, thickness_bins.max())
             plt.ylim(0, thickness_bins.max())
+
+            if i == 2:
+                inset = axis.inset_axes([0.65, 0.1, 0.1, 0.25])
+                inset.set_xticks([])
+                inset.set_yticks([])
+                cbar = fig.colorbar(scatter, ticks=[density.min(), density.max()], cax=inset) 
+                cbar.ax.set_yticklabels(["Low\ndensity", "High\ndensity"], fontsize=8)
 
         axis.plot([0, max_thickness], [0, max_thickness], color="black")
 
