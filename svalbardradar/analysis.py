@@ -408,7 +408,7 @@ def embargoed_radar_keys() -> list[str]:
     ]
 
 
-def make_data_publication(glaciers: list[str] | None = ["filantropbreen", "fimbulisen"], use_embargo: bool = True):
+def make_data_publication(glaciers: list[str] | None = None, use_embargo: bool = True):
     import svalbardradar.interpretations
     import svalbardradar.process_radar
     import xarray as xr
