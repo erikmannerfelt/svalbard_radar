@@ -309,23 +309,20 @@ def sample_glathida() -> pd.DataFrame:
     data = data[distance_mask]
     data["glathida_thickness_uncorr"] = glathida["thickness"].values[indices[distance_mask]]
     data["glathida_date"] = glathida["date"].values[indices[distance_mask]]
-    with rio.open(get_hugonnet()) as raster:
-        arr = np.fromiter(
-            raster.sample(data[["easting", "northing"]].values),
-            dtype=raster.dtypes[0],
-            count=data.shape[0],
-        )
-        data["hugonnet_dhdt"] = arr
+    data["hugonnet_dhdt"] = sample_raster(get_hugonnet(), data.geometry)
+    data["geyman_dhdt"] = sample_raster(get_geyman(), data.geometry) / (2010 - 1936)
 
     data["year"] = data["date_str"].str.slice(0, 4).astype(int)
     data["dt"] = data["year"] - STANDARD_YEAR
 
     data.rename(columns={"thickness": "thickness_uncorr"}, inplace=True)
-    data["thickness"] = data["thickness_uncorr"] - (data["dt"] * data["hugonnet_dhdt"])
+    data["dhdt"] = blend_dhdt(data["year"], data["geyman_dhdt"], data["hugonnet_dhdt"])
+    data["thickness"] = data["thickness_uncorr"] - (data["dt"] * data["dhdt"])
 
     data["glathida_year"] = data["glathida_date"].astype(str).str.slice(0, 4).astype(int)
     data["glathida_dt"] = data["glathida_year"] - STANDARD_YEAR
-    data["glathida_thickness"] = data["glathida_thickness_uncorr"] - (data["glathida_dt"] * data["hugonnet_dhdt"])
+    data["glathida_dhdt"] = blend_dhdt(data["glathida_year"], data["geyman_dhdt"], data["hugonnet_dhdt"])
+    data["glathida_thickness"] = data["glathida_thickness_uncorr"] - (data["glathida_dt"] * data["glathida_dhdt"])
     data["glathida_diff"] = data["glathida_thickness"] - data["thickness"]
 
     return data
@@ -390,6 +387,25 @@ def sample_raster(raster_path: Path, coords: gpd.GeoSeries):
     return out
 
 
+def blend_dhdt(
+    years: pd.Series | np.ndarray,
+    geyman_dhdt: np.ndarray,
+    hugonnet_dhdt: np.ndarray,
+) -> np.ndarray:
+    years = np.asarray(years, dtype=np.float32)
+    geyman_dhdt = np.asarray(geyman_dhdt, dtype=np.float32)
+    hugonnet_dhdt = np.asarray(hugonnet_dhdt, dtype=np.float32)
+
+    weight = np.clip((years - 1990.0) / 10.0, 0.0, 1.0)
+    out = (1.0 - weight) * geyman_dhdt + weight * hugonnet_dhdt
+
+    geyman_only = np.isfinite(geyman_dhdt) & ~np.isfinite(hugonnet_dhdt)
+    hugonnet_only = ~np.isfinite(geyman_dhdt) & np.isfinite(hugonnet_dhdt)
+
+    out[geyman_only] = geyman_dhdt[geyman_only]
+    out[hugonnet_only] = hugonnet_dhdt[hugonnet_only]
+
+    return out
 
 
 def sample_models(overwrite_cache: bool = False):
@@ -419,21 +435,10 @@ def sample_models(overwrite_cache: bool = False):
         "vanpelt": (2010 + 2015) / 2,
     }
 
-    with rio.open(get_hugonnet()) as raster:
-        data["hugonnet_dhdt"] = sample_raster(get_hugonnet(), data.geometry)
-        # data["hugonnet_dhdt"] = np.fromiter(
-        #     raster.sample(data[["easting", "northing"]].values),
-        #     dtype=raster.dtypes[0],
-        #     count=data.shape[0],
-        # )
+    data["hugonnet_dhdt"] = sample_raster(get_hugonnet(), data.geometry)
+    data["geyman_dhdt"] = sample_raster(get_geyman(), data.geometry) / (2010 - 1936)
 
     for key in model_paths:
-        # with rio.open(model_paths[key]) as raster:
-            # arr = np.fromiter(
-            #     raster.sample(data[["easting", "northing"]].values),
-            #     dtype=raster.dtypes[0],
-            #     count=data.shape[0],
-            # )
         if key == "vanpelt":
             highres = data["radar_key"].str.split("-", expand=True).iloc[:, 0].isin(["slakbreen", "mettebreen", "filantropbreen", "antoniabreen"])
 
@@ -450,7 +455,12 @@ def sample_models(overwrite_cache: bool = False):
         arr[(arr < 0) | (arr > 1000)] = np.nan
 
         data[f"{key}_thickness_uncorr"] = arr
-        data[f"{key}_thickness"] = arr - (model_year[key] - STANDARD_YEAR) * data["hugonnet_dhdt"]
+        data["dhdt"] = blend_dhdt(
+            np.full(data.shape[0], model_year[key], dtype=np.float32),
+            data["geyman_dhdt"],
+            data["hugonnet_dhdt"],
+        )
+        data[f"{key}_thickness"] = arr - (model_year[key] - STANDARD_YEAR) * data["dhdt"]
 
     data = data.dropna(subset=[f"{key}_thickness" for key in model_paths], how="all")
 
@@ -460,7 +470,8 @@ def sample_models(overwrite_cache: bool = False):
     data["dt"] = data["year"] - STANDARD_YEAR
 
     data.rename(columns={"thickness": "thickness_uncorr"}, inplace=True)
-    data["thickness"] = data["thickness_uncorr"] - (data["dt"] * data["hugonnet_dhdt"])
+    data["dhdt"] = blend_dhdt(data["year"], data["geyman_dhdt"], data["hugonnet_dhdt"])
+    data["thickness"] = data["thickness_uncorr"] - (data["dt"] * data["dhdt"])
 
     data.to_feather(out_path)
     return gpd.read_feather(out_path)
