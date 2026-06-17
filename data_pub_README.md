@@ -1,20 +1,18 @@
-# Draft dataset publication from Mannerfelt et al., (submitted)
+# Data publication from Mannerfelt et al., (in review)
 Titled: **Glacier thickness, thermal regime, and subjective uncertainty from ground-penetrating radar of 25 Svalbard glaciers**
-
-### **NOTE**: This is a preliminary version that only contains radargrams from Filantropbreen and Fimbulisen for getting peer feedback on the data format.. All data will be available upon final publication of the paper.
-
 
 ## Dataset description
 
-This repository contains ground-penetraing radar (GPR) data from 25 glaciers in Svalbard, associated with the publication Mannerfelt et al., (submitted).
+This repository contains ground-penetraing radar (GPR) data from 25 glaciers in Svalbard, associated with the publication Mannerfelt et al., (in review).
 It includes crowd-sourced consensus estimates of glacier thickness and thermal regime (defined by the cold-temperate transition surface; CTS).
 
 An archival version of the crowd sourcing website is available at https://erikmannerfelt.github.io/svalbard_radar_web.
-The source code is soon available at https://github.com/erikmannerfelt/svalbard_radar.
+The source code is available at https://github.com/erikmannerfelt/svalbard_radar.
 
 ## Dataset organization
 Its contents are:
 
+* `collectors_and_funding.csv`: A list of funders and field data collectors. Please keep the latter in mind when using and referencing the radargrams.
 * `thickness_cts_points.arrow`: Thickness and thermal regime (CTS) data for all profiles from crowd-sourced interpretation consensus estimates.
 * `thickness_cts_points_csv.zip`: The same thickness and thermal regime data as above, but separated per profile in CSV files.
 * `radargrams-*.zip`: A zipfile for each glacier, containing data for each radargram:
