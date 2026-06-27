@@ -1,6 +1,8 @@
 ## Code for processing, interpreting, analysing, and visualising ground-penetrating radar (GPR) data from 25 Svalbard glaciers, accompanying Mannerfelt et al. (in review)
 **Titled**: Glacier thickness, thermal regime, and subjective uncertainty from ground-penetrating radar of 25 Svalbard glaciers
 
+See our preprint here: [https://doi.org/10.31223/X5P19C](https://doi.org/10.31223/X5P19C).
+
 This repo contains all code for processing, analyzing and visualizing Ground-Penetrating Radar (GPR) data from 25 glaciers in Svalbard. It also includes code for hosting the crowd-sourcing website that was part of the project. It supports the workflows used to generate the data publication products, comparisons, and figures described in the manuscript.
 
 The data publication (see `svalbardradar/analysis.py::make_data_publication()`) is available here: https://doi.org/10.5281/zenodo.17882299. For published data products and field descriptions, see the Zenodo publication. This README focuses on the code and how to reproduce the results.
