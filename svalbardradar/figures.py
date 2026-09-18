@@ -784,6 +784,7 @@ def plot_glathida_comparison(show: bool = True, histogram: bool = False, correct
 
     step_size = 5
     thickness_bins = np.arange(0, max_thickness - (max_thickness % step_size) + step_size * 2, step_size)
+    slope_minmax = [2, 0]
 
     fig = plt.figure(figsize=(8.3, 3.2))
     axes = fig.subplots(ncols=3, sharex=True, sharey=True)
@@ -811,6 +812,7 @@ def plot_glathida_comparison(show: bool = True, histogram: bool = False, correct
         slope_full, intercept_full = total_least_squares_line(group["thickness"], group["glathida_thickness"])
         slope_150, _ = total_least_squares_line(*group.loc[group["thickness"] < 150, ["thickness", "glathida_thickness"]].dropna().values.T.astype(float))
 
+        nmad = stats.nmad(group['glathida_diff'])
         # Wierd hack here: the patheffect overlaps the text, so this draws text twice, but without patheffects on the second run.
         for j in range(2, 4):
             axis.text(
@@ -820,7 +822,7 @@ def plot_glathida_comparison(show: bool = True, histogram: bool = False, correct
                     [
                         f"TLS: y = {slope_full:.2f}x {'+' if intercept_full > 0 else '-'} {abs(intercept_full):.2f}",
                         f"Median: {bias:.1f} m",
-                        f"NMAD: {stats.nmad(group['glathida_diff']):.1f} m",
+                        f"NMAD: {nmad:.1f} m",
                         # f"r: {pearson:.2f}",
                         f"n: {group.shape[0]}",
                     ]
@@ -836,12 +838,14 @@ def plot_glathida_comparison(show: bool = True, histogram: bool = False, correct
 
         if correct_topo:
             key = ["before", "middle", "after"][i]
+            slope_minmax = [min(slope_minmax[0], slope_full), max(slope_minmax[1], slope_full)] 
             svalbardradar.analysis.record_information(
                 {
                     "glathida": {
                         f"{key}_slope_full": svalbardradar.analysis.format_float(slope_full, 2),
                         f"{key}_slope_thin": svalbardradar.analysis.format_float(slope_150, 2),
                         f"{key}_bias": bias,
+                        f"{key}_nmad": nmad,
                     }
                 }
             )
@@ -882,6 +886,15 @@ def plot_glathida_comparison(show: bool = True, histogram: bool = False, correct
 
         axis.set_xlabel("Our thickness (m)")
 
+    svalbardradar.analysis.record_information(
+        {
+            "glathida": {
+                "slope_min": svalbardradar.analysis.format_float(slope_minmax[0], 2),
+                "slope_max": svalbardradar.analysis.format_float(slope_minmax[1], 2),
+
+            }
+        }
+    )
     # plt.legend()
     plt.subplots_adjust(left=0.07, bottom=0.13, right=0.99, top=0.93, wspace=0.05)
     # plt.tight_layout()

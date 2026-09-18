@@ -347,28 +347,33 @@ def data_stats():
 
     antenna_alias = {"25 MHz": "low", "100 MHz": "high"}
     per_antenna_stats = {}
-    for antenna, a_data in data.groupby("antenna"):
-        if antenna not in antenna_alias:
-            continue
+    for key, column in [("e_user", "thickness_user_nmad"), ("e_total", "thickness_nmad")]:
+        per_antenna_stats[key] = {}
+        for antenna, a_data in data.groupby("antenna"):
+            if antenna not in antenna_alias:
+                continue
 
-        e_user = a_data["thickness_user_nmad"].median()
-        wavelength = 168 / int(antenna.split(" ")[0])
-        per_antenna_stats[antenna_alias[antenna]] = {
-            "median": e_user,
-            "perwavelength": int(round(100 * e_user / wavelength)),
-        }
+            e_med = a_data[column].median()
+            wavelength = 168 / int(antenna.split(" ")[0])
+            per_antenna_stats[key][antenna_alias[antenna]] = {
+                "median": e_med,
+                "nmad": stats.nmad(a_data[column]),
+                "perwavelength": int(round(100 * e_med / wavelength)),
+            }
 
     svalbardradar.analysis.record_information(
         {
-            "perantenna": {
-                "e_user": per_antenna_stats,
-            }
+            "perantenna": per_antenna_stats,
         }
     )
 
     cts_relevant = (data["temperate_frac"] > 0.1) & (data["temperate_frac"] < 0.9)
 
     high_bad_concensus_frac = np.count_nonzero(data["thickness_user_nmad"] > 20) / data.shape[0]
+
+    centerline_keys = (Path(__file__).absolute().parents[1] / "centerline_keys.txt").read_text().splitlines()
+
+    temperate_fractions =(100 *  data[data["radar_key"].isin(centerline_keys)].groupby("radar_key").apply(lambda d: (d["temperate_frac"] * d["thickness"]).sum() / d["thickness"].sum())).round().astype(int)
     record_information(
         {
             "data": {
@@ -387,7 +392,9 @@ def data_stats():
                 },
             },
             "temperate_fractions": {
-                "average": round(100 * (data["temperate_frac"] * data["thickness"]).sum() / data["thickness"].sum())
+                "average": round(100 * (data["temperate_frac"] * data["thickness"]).sum() / data["thickness"].sum()),
+                "min": temperate_fractions.min(),
+                "max": temperate_fractions.max(),
 
             }
         }
@@ -463,10 +470,13 @@ def make_data_publication(glaciers: list[str] | None = None, use_embargo: bool =
 
                 # Add all the raw data filenames
                 file_stems = []
-                if not radar_key.endswith("_1"):
-                    with xr.open_dataset(processed_path) as dataset:
-                        for filepath in map(Path, dataset.attrs["original_filepaths"]):
-                            file_stems.append(filepath.stem)
+                # if not radar_key.endswith("_1"):
+                with xr.open_dataset(processed_path) as dataset:
+                    fps = dataset.attrs["original_filepaths"]
+                    if isinstance(fps, str):
+                        fps = [fps]
+                    for filepath in map(Path, fps):
+                        file_stems.append(filepath.stem)
 
                 # Construct filepaths for all the raw data
                 filepaths = []

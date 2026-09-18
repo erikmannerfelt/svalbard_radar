@@ -66,7 +66,7 @@ def main():
 
     pd.DataFrame.from_records(surveys).to_csv(out_dir / "survey.csv", index=False)
 
-    all_data = all_data.sample(n=50,random_state=1) 
+    # all_data = all_data.sample(n=50,random_state=1) 
 
     all_data[["survey_id", "profile_id", "point_id", "date", "latitude", "longitude", "elevation", "elevation_date", "thickness", "thickness_uncertainty"]].to_csv(out_dir / "point.csv", index=False)
 
