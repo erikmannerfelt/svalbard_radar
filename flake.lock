@@ -80,11 +80,11 @@
         "ridal": "ridal"
       },
       "locked": {
-        "lastModified": 1776265677,
-        "narHash": "sha256-enHomd6guMOxVhNv+wd9y7krq9EVff/LOHCy7sORWug=",
+        "lastModified": 1789740737,
+        "narHash": "sha256-S9KJX3L2L1UUYbFaRwku2gjaMuovyNth1JDKaD+w8ws=",
         "owner": "erikmannerfelt",
         "repo": "nixrik",
-        "rev": "1d9dc81fca7cccb1d466fe8ac42095f639044d10",
+        "rev": "7e54ad0d95daba37d95183d7cb381a4d84aed93b",
         "type": "gitlab"
       },
       "original": {
@@ -100,11 +100,11 @@
         "nixpkgs": "nixpkgs_2"
       },
       "locked": {
-        "lastModified": 1776265657,
-        "narHash": "sha256-UgM2N0O2uLsOlzCNmemA3ZAG+dG37hf8ORqrBFiYOgE=",
+        "lastModified": 1789572788,
+        "narHash": "sha256-+ND+GJ/LzABZASV5Gtw+YlKqOze0lIkiets12O4+0Q0=",
         "owner": "erikmannerfelt",
         "repo": "ridal",
-        "rev": "5bea4f55ce82ad55fe3b2cfaece264d107a4a4f1",
+        "rev": "d63ec4146492df6c73433c2a264da60f87f900ea",
         "type": "github"
       },
       "original": {
