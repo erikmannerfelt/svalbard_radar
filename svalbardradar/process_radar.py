@@ -1,7 +1,9 @@
 import datetime
+import json
 import os
 import subprocess
 import tempfile
+import unicodedata
 from pathlib import Path
 from typing import Callable, Self
 
@@ -248,17 +250,37 @@ def extract_glacier_raw_data(glacier: str = "dronbreen"):
                 print(rad_fp)
 
 
+def get_glacier_names() -> dict[str, str]:
+    """Map each glacier key (e.g. "ragna_mariebreen") to its proper name (e.g. "Ragna-Mariebreen")."""
+    with open(Path(__file__).parents[1] / "shapes/glacier_locations.geojson") as infile:
+        features = json.load(infile)["features"]
+
+    return {feature["properties"]["key"]: feature["properties"]["name"] for feature in features}
+
+
+def to_ascii(text: str) -> str:
+    """
+    Transliterate a name to ASCII (e.g. "Drønbreen" -> "Dronbreen").
+
+    NetCDF text attributes are flagged as ASCII, so h5netcdf/xarray garble any UTF-8 in them (see ridal #65).
+    """
+    text = text.replace("ø", "o").replace("Ø", "O").replace("æ", "ae").replace("Æ", "Ae")
+    # Decompose e.g. "å" into "a" + a combining ring, then drop the combining character
+    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
+    return text
+
+
 def run_ridal(
     input_filepath: Path | str,
     output_filepath: Path | str,
+    radar_key: str,
     dem_path: Path | None = None,
     merge: str | None = "30 min",
     antenna: str | None = None,
 ):
     import ridal
-    siglog_strength = 1
-    if antenna is not None and "25 MHz" in antenna:
-        siglog_strength = 0
+
+    glacier = radar_key.split("-")[0]
 
     # Unit: dB / ns of TWT. Found using auto_gain. The value below is for 25 MHz
     gain_strength = 0.002340
@@ -272,7 +294,7 @@ def run_ridal(
         "bandpass",
         "dewow(15)",  # Some long-range undulations are not captured by bandpass. Unsure why.
         f"gain({gain_strength})",
-        f"siglog({siglog_strength})",
+        # siglog is not applied here; it's a visualization step (see svalbardradar.tools.misc.siglog)
     ]
 
     # This radargram is very long and the bed is not visible. This cuts the invisible parts.
@@ -294,6 +316,10 @@ def run_ridal(
         render=str(Path(output_filepath).with_suffix(".jpg")),
         velocity=0.168,
         steps=rsgpr_steps,
+        radargram_id=radar_key.lower(),
+        radargram_name=radar_key,
+        group_id=glacier,
+        group_name=to_ascii(get_glacier_names()[glacier]),
     )
 
 class GprInfo:
@@ -523,6 +549,7 @@ def run_all(offline: bool = False, force_redo: bool = False):
                             run_ridal(
                                 filepaths,
                                 out_path,
+                                radar_key=radar_key,
                                 dem_path=dem_path,
                                 antenna=group[0].antenna,
                             )

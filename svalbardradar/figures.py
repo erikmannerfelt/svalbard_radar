@@ -119,6 +119,7 @@ def plot_dronbreen_examples(show: bool = True):
         axis: plt.Axes = axes[1, i]
 
         with xr.open_dataset(paths.processed_radar_path(info["radar_key"])) as dataset:
+            dataset = misc.siglog_radargram(dataset.load())
             dataset = dataset.reset_coords(["easting", "northing", "distance"])
             dataset.coords["trace_n"] = "x", np.arange(dataset.x.shape[0])
             dataset = dataset.swap_dims(x="trace_n", y="depth").sel(trace_n=slice(info["start_trace"], None))
@@ -1665,6 +1666,7 @@ def plot_interpretation_merging(show: bool = False):
         all_points = interpretations.read_interpretations(radar_key=case["radar_key"], step_m=5.0).reset_index()
 
         with xr.open_dataset(paths.processed_radar_path(case["radar_key"])) as dataset:
+            dataset = misc.siglog_radargram(dataset.load())
             dataset.coords["trace_n"] = "x", np.arange(dataset.x.shape[0])
             dataset = dataset.swap_dims(x="trace_n", y="depth")  # .sel(
 
@@ -1832,6 +1834,7 @@ def plot_rgm_frequency_comparison(show: bool = False):
         # axis = plt.subplot2grid((2, width_steps), (i, 0), colspan=width_steps - track_width, fig=fig)
         axis = axes.ravel()[i]
         with xr.open_dataset(paths.processed_radar_path(radar_key)) as dataset:
+            dataset = misc.siglog_radargram(dataset.load())
             dataset.coords["trace_n"] = "x", np.arange(dataset.x.shape[0])
             dataset = dataset.swap_dims(x="trace_n", y="depth")  # .sel(
 

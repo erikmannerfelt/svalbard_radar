@@ -19,7 +19,6 @@
             my-python
             zsh
             nodejs
-            ridal
             netcdf
             just
             ruff

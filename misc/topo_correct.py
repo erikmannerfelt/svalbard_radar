@@ -6,6 +6,8 @@ import xarray as xr
 from pathlib import Path
 import shutil
 
+import svalbardradar.tools.misc
+
 def resample(values: np.ndarray, new_shape: int) -> np.ndarray:
     # Correct off-by-one endpoint
     model = scipy.interpolate.interp1d(
@@ -20,6 +22,7 @@ def topocorr(radar_key: str, stepsize_m: float = 2.5, cut_min_height_masl: float
     glacier, date_str, filestem = radar_key.split("-")
     filepath = base_dir / f"processed_radar/{glacier}/{date_str}/{filestem}.nc"
     with xr.open_dataset(filepath) as data:
+        data = svalbardradar.tools.misc.siglog_radargram(data.load())
 
         if cut_max_depth:
             # data = data.where(data["depth"] < cut_max_depth, drop=True)

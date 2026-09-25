@@ -13,7 +13,7 @@ import tqdm
 import xarray as xr
 from PIL import Image
 
-from svalbardradar.tools import paths
+from svalbardradar.tools import misc, paths
 
 CACHE_PATH = paths.BASE_CACHE_PATH / "radargrams"
 
@@ -36,7 +36,7 @@ def get_radargram_cache_dirs(src_filepath: Path) -> tuple[Path, Path]:
     filename_for_key = "/".join(src_filepath.parts[-3:])
     with xr.open_dataset(src_filepath) as data:
         checksum = hashlib.md5(
-            (filename_for_key + data.attrs["processing_datetime"]).encode()
+            (filename_for_key + data.attrs.get("ridal_processing_datetime", data.attrs.get("processing_datetime"))).encode()
         ).hexdigest()
 
     static_dir = (
@@ -82,6 +82,7 @@ def parse_radargram(
         return json.loads(meta_cache_path.read_text())
 
     with xr.open_dataset(src_filepath) as data:
+        data = misc.siglog_radargram(data.load())
         data["time"] = data["time"].astype(float) / 1e9
         d_t = data["time"].diff("x").values
         d_t[d_t == 0] = np.nan

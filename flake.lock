@@ -80,11 +80,11 @@
         "ridal": "ridal"
       },
       "locked": {
-        "lastModified": 1789740737,
-        "narHash": "sha256-S9KJX3L2L1UUYbFaRwku2gjaMuovyNth1JDKaD+w8ws=",
+        "lastModified": 1790330296,
+        "narHash": "sha256-Db6mL7HtxJdEx4tHsxc5Q2xduRpjqwOU6s5VaEpLv0Q=",
         "owner": "erikmannerfelt",
         "repo": "nixrik",
-        "rev": "7e54ad0d95daba37d95183d7cb381a4d84aed93b",
+        "rev": "c3494db8c8c8983bae447607140a7abecdb06348",
         "type": "gitlab"
       },
       "original": {
