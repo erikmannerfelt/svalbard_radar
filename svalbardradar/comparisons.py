@@ -1,4 +1,5 @@
 import zipfile
+import shutil
 import tarfile
 from pathlib import Path
 import subprocess
@@ -76,12 +77,17 @@ def get_furst() -> Path:
 
     misc.download_large_file(tar_path, url)
 
+    nc_path = out_path.with_name("svift_v11_thickness.nc")
+    if not nc_path.is_file():
+        with tarfile.open(tar_path) as tar_file, open(nc_path, "wb") as outfile:
+            shutil.copyfileobj(tar_file.extractfile("svift_v11/svift_v11_thickness.nc"), outfile)
+
     from osgeo import gdal
 
     gdal.UseExceptions()
     gdal.BuildVRT(
-        out_path.absolute(),
-        f"/vsitar/{tar_path.absolute()}/svift_v11/svift_v11_thickness.nc",
+        str(out_path.absolute()),
+        str(nc_path.absolute()),
     )
 
     return out_path
