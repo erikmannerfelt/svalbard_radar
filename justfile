@@ -35,7 +35,7 @@ build-all-statistics:
     ipython -c 'from svalbardradar.analysis import *; data_stats()'
     ipython -c 'from svalbardradar.analysis import *; cts_transition_steepness()'
     ipython -c 'from svalbardradar.analysis import *; glacier_table()'
-    ipython -c 'from svalbardradar.figures import *; plot_cross_track_difference(show=False)'
+    ipython -c 'from svalbardradar.figures import *; plot_crossover_difference(show=False)'
     ipython -c 'from svalbardradar.figures import *; plot_glathida_comparison(show=False, correct_topo=True)'
     ipython -c 'from svalbardradar.figures import *; plot_model_comparison(show=False, correct_topo=True)'
     ipython -c 'from svalbardradar.figures import *; plot_model_temperate_cold_performance(show=False)'

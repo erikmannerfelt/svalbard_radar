@@ -1956,7 +1956,7 @@ def plot_rgm_frequency_comparison(show: bool = False):
         plt.close()
 
 
-def plot_cross_track_difference(show: bool = False):
+def plot_crossover_difference(show: bool = False):
     import itertools
 
     all_data = interpretations.merge_all_interpretations()
@@ -2020,7 +2020,7 @@ def plot_cross_track_difference(show: bool = False):
     svalbardradar.analysis.record_information(
         {
             "perantenna": {
-                "crosstrack": per_antenna_stats,
+                "crossover": per_antenna_stats,
             }
         }
     )
@@ -2050,9 +2050,10 @@ def plot_cross_track_difference(show: bool = False):
             data["diff"], bins=np.linspace(-bin_edge, bin_edge, 100 if name != "CTS" else 50), color=color, alpha=0.5
         )
         if i % 2 == 0:
-            axis.tick_params(labelbottom=False)
+            pass
+            # axis.tick_params(labelbottom=False)
         else:
-            axis.set_xlabel("Cross-track difference (m)")
+            axis.set_xlabel("Crossover difference (m)")
         if i in [0, 1]:
             axis.set_ylabel("Frequency")
 
@@ -2063,7 +2064,7 @@ def plot_cross_track_difference(show: bool = False):
             key = {"All bed data": "all_bed", "CTS": "cts"}[name]
             svalbardradar.analysis.record_information(
                 {
-                    "crosstrack": {
+                    "crossover": {
                         f"{key}_nmad": nmad,
                     }
                 }
@@ -2083,7 +2084,7 @@ def plot_cross_track_difference(show: bool = False):
         )
 
     plt.subplots_adjust(left=0.07, bottom=0.1, right=0.986, top=0.99, wspace=0.136, hspace=0.207)
-    plt.savefig("figures/cross_track_difference.jpg", dpi=600)
+    plt.savefig("figures/crossover_difference.jpg", dpi=600)
 
     if show:
         plt.show()
@@ -2169,7 +2170,7 @@ def generate_all_figures(show: bool = False):
     print("Generating interpretation merging figure.")
     plot_interpretation_merging(show=show)
     print("Generating cross-track difference figure.")
-    plot_cross_track_difference(show=show)
+    plot_crossover_difference(show=show)
     print("Generating cold/temperate performance difference figure.")
     plot_model_temperate_cold_performance(show=show)
     print("Generating supplementary cold/temperate performance difference figure.")
