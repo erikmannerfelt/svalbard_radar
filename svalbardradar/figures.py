@@ -598,11 +598,11 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
             data[col] = data[f"{col}_uncorr"]
 
     ref_names = {
-        "furst": "Fürst et al., (2018)",
-        "farinotti": "Farinotti et al., (2019)",
-        "millan": "Millan et al., (2022)",
-        "vanpelt": "van Pelt & Frank (2025)",
-        "frank": "Frank et al., (in review)",
+        "furst": "Fürst and others (2018)",
+        "farinotti": "Farinotti and others (2019)",
+        "millan": "Millan and others (2022)",
+        "vanpelt": "van Pelt and Frank (2025)",
+        "frank": "Frank and others (in review)",
     }
 
     n_rows = 1
@@ -690,7 +690,7 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
             y=0.97,
             s="\n".join(
                 [
-                    f"TLS = {slope_full:.2f}x {'+' if intercept_full > 0 else '-'} {abs(intercept_full):.2f}",
+                    f"TLS: {slope_full:.2f}x {'+' if intercept_full > 0 else '-'} {abs(intercept_full):.2f}",
                     f"Median: {bias:.1f} m",
                     f"NMAD: {nmad: .1f} m",
                     # f"r = {pearson:.2f}",
@@ -811,7 +811,7 @@ def plot_glathida_comparison(show: bool = True, histogram: bool = False, correct
                 0.97,
                 "\n".join(
                     [
-                        f"TLS: y = {slope_full:.2f}x {'+' if intercept_full > 0 else '-'} {abs(intercept_full):.2f}",
+                        f"TLS: {slope_full:.2f}x {'+' if intercept_full > 0 else '-'} {abs(intercept_full):.2f}",
                         f"Median: {bias:.1f} m",
                         f"NMAD: {nmad:.1f} m",
                         # f"r: {pearson:.2f}",
@@ -1191,7 +1191,7 @@ def plot_elevation_vs_temp_diff(show: bool = False):
 
     # axes[2, 0].legend(fontsize=8)
     for axis in [bin_axes[-1], line_axes[-1]]:
-        axis.set_xlabel("Normalized elevation")
+        axis.set_xlabel("Normalised elevation")
     plt.subplots_adjust(left=0.08, bottom=0.10, right=0.98, top=0.95, wspace=0.2, hspace=0.7)
     plt.savefig("figures/elevation_vs_temp_diff.jpg", dpi=500)
 
@@ -2124,12 +2124,12 @@ def plot_heerland_dhdt(show: bool = False):
         if i == 0:
             params = {
                 "arr": geyman,
-                "title": "Geyman et al. (2022)",
+                "title": "Geyman and others (2022)",
             }
         else:
             params = {
                 "arr": hugonnet,
-                "title": "Hugonnet et al. (2021)",
+                "title": "Hugonnet and others (2021)",
             }
         axis.text(0.5, 1.02, params["title"], transform=axis.transAxes, ha="center", fontsize=12)
         img = axis.imshow(params["arr"], cmap="RdBu", vmin=-2, vmax=2, extent=extent)

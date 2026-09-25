@@ -20,11 +20,11 @@ STANDARD_YEAR = 2015
 
 def ref_names(key: str, short: bool = False) -> str:
     ref_names = {
-        "furst": ("Fürst et al., (2018)", "Fü"),
-        "farinotti": ("Farinotti et al., (2019)", "Fa"),
-        "millan": ("Millan et al., (2022)", "Mi"),
-        "vanpelt": ("van Pelt & Frank (2025)", "vP"),
-        "frank": ("Frank et al., (in review)", "Fr"),
+        "furst": ("Fürst and others (2018)", "Fü"),
+        "farinotti": ("Farinotti and others (2019)", "Fa"),
+        "millan": ("Millan and others (2022)", "Mi"),
+        "vanpelt": ("van Pelt and Frank (2025)", "vP"),
+        "frank": ("Frank and others (in review)", "Fr"),
     }
 
     return ref_names[key][1 if short else 0]
@@ -384,7 +384,7 @@ def sample_raster(raster_path: Path, coords: gpd.GeoSeries):
 
         val_el = rep.find(".//Value")
         if val_el is None or val_el.text is None:
-            pt = coords[i]
+            pt = coords.values[i]
             out[i] = np.nan
             continue
 

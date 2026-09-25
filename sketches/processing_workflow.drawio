@@ -1,6 +1,6 @@
-<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0" version="29.6.1">
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0">
   <diagram name="Page-1" id="xyE-d0_JUMNIQhL0kcqL">
-    <mxGraphModel dx="1448" dy="550" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="669" pageHeight="492" math="0" shadow="0">
+    <mxGraphModel dx="1009" dy="656" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="669" pageHeight="492" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -61,7 +61,7 @@
         <mxCell id="rWjCWvNGTbJ5V1EXSQ5F-7" parent="rWjCWvNGTbJ5V1EXSQ5F-26" style="rounded=0;whiteSpace=wrap;html=1;shadow=0;glass=0;imageWidth=20;imageHeight=10;treeMoving=0;fillColor=#ECF2FF;strokeColor=#6c8ebf;" value="&lt;font style=&quot;font-size: 11px;&quot;&gt;Processed radargrams&lt;/font&gt;" vertex="1">
           <mxGeometry height="40" width="80" x="10" y="80" as="geometry" />
         </mxCell>
-        <mxCell id="rWjCWvNGTbJ5V1EXSQ5F-22" parent="rWjCWvNGTbJ5V1EXSQ5F-26" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;fontStyle=2;fontColor=#4D4D4D;" value="ridal" vertex="1">
+        <mxCell id="rWjCWvNGTbJ5V1EXSQ5F-22" parent="rWjCWvNGTbJ5V1EXSQ5F-26" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;fontStyle=2;fontColor=#4D4D4D;" value="Ridal" vertex="1">
           <mxGeometry height="20" width="59" x="-5" as="geometry" />
         </mxCell>
         <mxCell id="rWjCWvNGTbJ5V1EXSQ5F-31" edge="1" parent="1" source="rWjCWvNGTbJ5V1EXSQ5F-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;endFill=1;endSize=2;startSize=8;strokeWidth=1.5;targetPerimeterSpacing=0;" target="rWjCWvNGTbJ5V1EXSQ5F-7">
