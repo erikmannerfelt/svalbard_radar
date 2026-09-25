@@ -1766,17 +1766,17 @@ def plot_interpretation_merging(show: bool = False):
             ):
                 props = DIGITIZE_CLASS_PROPS[key]
                 lines.append(plt.Line2D([], [], color=props["color"], label=props["name"]))
-            legend = ax_mid.legend(handles=lines, **legend_kwargs, bbox_to_anchor=(0.105, 1.0))
+            legend = ax_mid.legend(handles=lines, **legend_kwargs, bbox_to_anchor=(0.115, 1.0), columnspacing=0.8)
             legend.set_zorder(-1)
 
             ax_bot.legend(**legend_kwargs, bbox_to_anchor=(0.66, 1.0))
 
             boxes = [
-                {"label": "Users:", "left": 0.045, "width": 0.48},
+                {"label": "Contributors:", "left": 0.001, "width": 0.52},
                 {"label": "Consensus:", "left": 0.55, "width": 0.42},
             ]
             for box in boxes:
-                plt.text(box["left"] + 0.01, 0.966, box["label"], transform=fig.transFigure, va="center")
+                plt.text(box["left"] + 0.005, 0.966, box["label"], transform=fig.transFigure, va="center")
 
                 fig.add_artist(
                     plt.Rectangle(
