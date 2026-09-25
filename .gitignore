@@ -1,4 +1,4 @@
-processed_radar/
+/processed_radar*
 submitted/
 static/plugins/
 static/radargrams/
@@ -30,3 +30,4 @@ web/static/images/radar_experiment_poster4.webp
 glenglat_pub/
 TODO.md
 glathida_pub/
+docs/
