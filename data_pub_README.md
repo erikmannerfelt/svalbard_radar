@@ -9,6 +9,15 @@ It includes crowd-sourced consensus estimates of glacier thickness and thermal r
 An archival version of the crowd sourcing website is available at https://erikmannerfelt.github.io/svalbard_radar_web.
 The source code is available at https://github.com/erikmannerfelt/svalbard_radar.
 
+## Version history
+
+* **v4**: All radargrams were reprocessed with [ridal](https://github.com/erikmannerfelt/ridal) v0.6.1. Changes to the processed (.nc) radargrams:
+    - **No log compression**: The `siglog` step is no longer applied, so the `data` variable holds the gained amplitude (see [Processed radargram description](#processed-radargram-description) for how to reproduce the published figure look).
+    - **Corrected along-track distances**: The `distance` coordinate and the `total_distance` attribute of previous versions were wrong because of a bug in ridal (<v0.6.0) that summed squared rather than true step lengths. This error was contained to only the `distance` coordinate.. The `distance` field of the consensus data (`thickness_cts_points.arrow`) was calculated independently from the coordinates and was therefore correct in all versions.
+    - **New identifiers**: Each radargram carries its `radar_key` (in lowercase) as `ridal_radargram_id`, and its glacier as `ridal_group_id`/`ridal_group_name`.
+    - Some global attributes were renamed by ridal (e.g. `program_version` -> `ridal_version`, `processing_datetime` -> `ridal_processing_datetime`).
+* **v3**: Corrections to the data of the previous manuscript revision.
+
 ## Dataset organization
 Its contents are:
 
@@ -75,6 +84,20 @@ The vertical CRS of elevation is identical to that used by the [Norwegian Polar 
 
 The uncertainty estimate of the CTS is set to only be the consensus spread wherever there is a "certain cold" flag (i.e. where the 75% consensus percentile says 0% temperate). In all other areas, the uncertainty is a combination of of GPR, GNSS, and consensus uncertainties. This is done to reduce ambiguity in the interpretation of the uncertainty, as "certain cold" areas would otherwise misleadingly appear like they could be temperate due to the added instrument-related uncertainty.
 
+## Processed radargram description
+The processed radargrams (`<radar_key>_processed.nc`) are NetCDF files written by ridal.
+The processing steps, a log of what each step did, and the ridal version are stored in the global attributes (`processing_steps`, `processing_log`, `ridal_version`).
+
+As of v4, the radargrams are not log-compressed.
+The website, thumbnails, reports and figures instead applied ridal's `siglog` transform for visualization only:
+
+```
+siglog(v) = sign(v) * max(log10(|v|) - k, 0)
+```
+
+where `k = 0` for 25 MHz radargrams and `k = 1` for all others.
+Applying this to the `data` variable reproduces the processed data of previous versions of this publication (to within float32 rounding).
+
 ## Interpretation line format description
 Each user's interpretation (i.e. each time they pressed the "SUBMIT" button) is saved as a `.json`.
 In the publication, only the most recent JSON was used.
@@ -89,7 +112,7 @@ The contents of the JSON files are:
 - `width`: The width of the radargram in pixels (for validation)
 - `features`: A GeoJSON-conformative structure of the interpreted lines
 
-Each line in the GeoJSON structure is defined by its coordinates (x and y from the upper left corner in pixels), and its `kind`. There are also `color` and `name` fields which are related to the `kind` field (see below). The kind defines the type of interpretation and can be:
+Each line in the GeoJSON structure is defined by its coordinates (x from the left and y from the bottom of the radargram, in pixels), and its `kind`. There are also `color` and `name` fields which are related to the `kind` field (see below). The kind defines the type of interpretation and can be:
 
 - `bed_cold`, blue: "Glacier bed (no temperate ice)"
 - `bed_unspecified`, purple: "Glacier bed"
