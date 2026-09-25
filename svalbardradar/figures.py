@@ -578,16 +578,6 @@ def plot_centerline_profiles(show: bool = True):
             wedgeprops={"edgecolor": "#333"}
         )
 
-    # This is not an analytical min/max for the entire dataset, but Finster is max and Winsnes is min, so it's okay.
-    svalbardradar.analysis.record_information(
-        {
-            "temperate_fractions": {
-                "min": round(temperate_frac_minmax[0]),
-                "max": round(temperate_frac_minmax[1]),
-            }
-        }
-    )
-
     plt.tight_layout()
     plt.savefig("figures/centerline_profiles.jpg", dpi=600)
 
