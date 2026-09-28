@@ -191,7 +191,7 @@ def glacier_table():
         tex_table += "&".join((str(glacier[col]) for col in cols))
         tex_table += "\\\\\n"
 
-    tex_table += r"\end{tabular}"
+    tex_table += r"\bottomrule\n\end{tabular}"
 
     out_path = Path("tables/glacier_table.tex")
     out_path.parent.mkdir(exist_ok=True, parents=True)
