@@ -9,14 +9,6 @@ It includes crowd-sourced consensus estimates of glacier thickness and thermal r
 An archival version of the crowd sourcing website is available at https://erikmannerfelt.github.io/svalbard_radar_web.
 The source code is available at https://github.com/erikmannerfelt/svalbard_radar.
 
-## Version history
-
-* **v4**: All radargrams were reprocessed with [ridal](https://github.com/erikmannerfelt/ridal) v0.6.1. Changes to the processed (.nc) radargrams:
-    - **No log compression**: The `siglog` step is no longer applied, so the `data` variable holds the gained amplitude (see [Processed radargram description](#processed-radargram-description) for how to reproduce the published figure look).
-    - **Corrected along-track distances**: The `distance` coordinate and the `total_distance` attribute of previous versions were wrong because of a bug in ridal (<v0.6.0) that summed squared rather than true step lengths. This error was contained to only the `distance` coordinate.. The `distance` field of the consensus data (`thickness_cts_points.arrow`) was calculated independently from the coordinates and was therefore correct in all versions.
-    - **New identifiers**: Each radargram carries its `radar_key` (in lowercase) as `ridal_radargram_id`, and its glacier as `ridal_group_id`/`ridal_group_name`.
-    - Some global attributes were renamed by ridal (e.g. `program_version` -> `ridal_version`, `processing_datetime` -> `ridal_processing_datetime`).
-* **v3**: Corrections to the data of the previous manuscript revision.
 
 ## Dataset organization
 Its contents are:
@@ -32,6 +24,7 @@ Its contents are:
     - A report showing the user interpretations and consensus for this radargram (.pdf) 
 * `dems.zip`: Digital Elevation Models (DEMs) used for elevation coordinate correction
 * `interpretation_lines.zip`: Interpretations (.json) submitted by users on the website.
+* `interpretations_gprinterp.zip`: The interpretations used for the consensus (each contributor's latest submission per radargram), converted to ridal's gprinterp format.
 * `interpretation_report.pdf`: A report showing the user interpretations and consensus for every radargram
 
 Each profile's id (`radar_key`) is unique and is formed in the pattern `<glacier>-<date>-<filename>`.
@@ -120,3 +113,26 @@ Each line in the GeoJSON structure is defined by its coordinates (x from the lef
 - `bed_missing`, green: "Glacier bed not visible"
 
 **NOTE**: The `name` field may not align with the final equivalent on the website due to changes throughout the project. In early submissions (pre-May), the `kind` field sometimes does not exist and is then only defined by its old name. See `svalbardradar/interpretations.py` in the source code for an example of how to handle these edge-cases.
+
+## gprinterp interpretation description
+`interpretations_gprinterp.zip` contains the same interpretations as `interpretation_lines.zip`, but only each contributor's latest submission per radargram (the ones used for the consensus), converted to the gprinterp format used by [ridal](https://github.com/erikmannerfelt/ridal).
+The files are structured as `<radar_key>/<contributor>.gprinterp.json`, where `<contributor>` is the lowercase nickname.
+
+Compared to the legacy format:
+
+- The coordinates are in (trace, sample) indices from the **upper left** corner, i.e. `sample = height - 1 - y_legacy`. The two-way travel time of each sample is given by the `coordinates.axes.y.anchor` entry.
+- `source.id` equals the `ridal_radargram_id` attribute of the processed radargram (the `radar_key` in lowercase).
+- The legacy `kind`/`name` is mapped to a `label`: `bed_unspecified` -> `bed`, `bed_cold` -> `bed_no_temperate`, `temperate` -> `temperate_ice`, and `bed_missing` -> `bed_not_visible`. The original properties are kept.
+- The contributor nickname, difficulty rating, comment and the path of the legacy file are kept in `meta`.
+- Four features in the dataset consisted of a single point (probably accidental clicks) and could not be represented as lines. They are omitted and listed in `meta.dropped_single_vertex_features`.
+- Vertices outside the radargram are kept as they were submitted.
+
+## Version history
+
+* **v4**: All radargrams were reprocessed with [ridal](https://github.com/erikmannerfelt/ridal) v0.6.1. Changes to the processed (.nc) radargrams:
+    - **No log compression**: The `siglog` step is no longer applied, so the `data` variable holds the gained amplitude (see [Processed radargram description](#processed-radargram-description) for how to reproduce the published figure look).
+    - **Corrected along-track distances**: The `distance` coordinate and the `total_distance` attribute of previous versions were wrong because of a bug in ridal (<v0.6.0) that summed squared rather than true step lengths. This error was contained to only the `distance` coordinate. The `distance` field of the consensus data (`thickness_cts_points.arrow`) was calculated independently from the coordinates and was therefore correct in all versions.
+    - Some dataset attributes were added or renamed by ridal ([see the 0.6.0 changelog](https://ridal.readthedocs.io/en/stable/project/changelog.html)).
+    - **New identifiers**: Each radargram carries its `radar_key` (in lowercase) as `ridal_radargram_id`, and its glacier as `ridal_group_id`/`ridal_group_name`.
+    - **New file**: `interpretations_gprinterp.zip` (see [gprinterp interpretation description](#gprinterp-interpretation-description)).
+* **v3**: Corrections to the data of the previous manuscript revision.

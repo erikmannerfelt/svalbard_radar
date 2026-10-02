@@ -416,6 +416,7 @@ def embargoed_radar_keys() -> list[str]:
 
 
 def make_data_publication(glaciers: list[str] | None = None, use_embargo: bool = True):
+    import svalbardradar.gprinterp
     import svalbardradar.interpretations
     import svalbardradar.process_radar
     import xarray as xr
@@ -428,6 +429,7 @@ def make_data_publication(glaciers: list[str] | None = None, use_embargo: bool =
     assert np.isin(embargo_list, all_data["radar_key"]).all()
 
     pub_dir = Path("data_pub")
+    pub_dir.mkdir(exist_ok=True)
 
     all_data["glacier"] = all_data["radar_key"].str.split("-", expand=True).iloc[:, 0]
 
@@ -536,6 +538,10 @@ def make_data_publication(glaciers: list[str] | None = None, use_embargo: bool =
             if not any(glacier in filepath.parts[-2] for glacier in glaciers):
                 continue
             zip_file.write(filepath, "/".join(filepath.parts[-3:]))
+
+    svalbardradar.gprinterp.make_gprinterp_zip(
+        pub_dir / "interpretations_gprinterp.zip", radar_keys=sorted(all_data["radar_key"].unique())
+    )
 
     all_data.to_feather(pub_dir / "thickness_cts_points.arrow")
     shutil.copyfile("data_pub_README.md", pub_dir / "README.md")
