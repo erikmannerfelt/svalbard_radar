@@ -622,6 +622,9 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
     r_minmax = [1, 0]
     bias_minmax = [1000, -1000]
     slope_minmax = [2, 0]
+    # Relative improvements (%) in absolute bias and NMAD from the temporal thickness correction
+    bias_improvements = []
+    nmad_improvements = []
 
     for i, model in enumerate(models):
         col = i % n_cols
@@ -671,6 +674,12 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
         slope_full, intercept_full = total_least_squares_line(subset["thickness"].values, subset[f"{model}_thickness"].values)
 
         if correct_topo:
+            diff_uncorr = subset[f"{model}_thickness_uncorr"] - subset["thickness_uncorr"]
+            bias_uncorr = diff_uncorr.median()
+            nmad_uncorr = stats.nmad(diff_uncorr)
+            bias_improvements.append(100 * (abs(bias_uncorr) - abs(bias)) / abs(bias_uncorr))
+            nmad_improvements.append(100 * (nmad_uncorr - nmad) / nmad_uncorr)
+
             bias_minmax = [min(bias_minmax[0], bias), max(bias_minmax[1], bias)] 
             r_minmax = [min(r_minmax[0], pearson), max(r_minmax[1], pearson)] 
             slope_minmax = [min(slope_minmax[0], slope_full), max(slope_minmax[1], slope_full)] 
@@ -717,6 +726,8 @@ def plot_model_comparison(show: bool = True, histogram: bool = False, correct_to
                     "max_slope": svalbardradar.analysis.format_float(slope_minmax[1], 2),
                     "min_bias": bias_minmax[0],
                     "max_bias": bias_minmax[1],
+                    "temporal_corr_bias_improvement": np.mean(bias_improvements),
+                    "temporal_corr_nmad_improvement": np.mean(nmad_improvements),
                 }
             }
         )
@@ -2145,7 +2156,7 @@ def plot_heerland_dhdt(show: bool = False):
             colorbar_ax = axis.inset_axes((0.05, 0.75, 0.15, 0.3))
             colorbar_ax.set_axis_off()
             cbar = plt.colorbar(img, ax=colorbar_ax, aspect=5, fraction=1.0)
-            cbar.set_label("dH dt$^{-1}$")
+            cbar.set_label("m a$^{-1}$")
     plt.xlim(extent[:2])
     plt.ylim(extent[2:])
     plt.subplots_adjust(left=0.09, bottom=0.09, right=0.99, top=0.95, wspace=0.05)
